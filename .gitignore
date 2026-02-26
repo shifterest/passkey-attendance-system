@@ -489,6 +489,7 @@ app.*.symbols
 # === IDE ===
 .vscode/
 .idea/
+copilot-instructions.md
 *.swp
 *.swo
 
