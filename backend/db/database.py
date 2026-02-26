@@ -1,5 +1,7 @@
 import datetime
-from sqlalchemy import create_engine, ForeignKey, JSON
+import logging
+
+from sqlalchemy import JSON, ForeignKey, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -8,20 +10,22 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
+logger = logging.getLogger(__name__)
+
 # Old crusty sqlite3 method
 # try:
-#     print("Attempting to connect to database...")
+#     logger.info("Attempting to connect to database...")
 #     with sqlite3.connect("db/attendance.db") as conn:
 #         cursor = conn.cursor()
-#         print("Connected to database.")
+#         logger.info("Connected to database.")
 #         with open("db/schema.sql", "r") as schema_file:
 #             schema = schema_file.read()
-#             print("Loaded schema.")
+#             logger.info("Loaded schema.")
 #             cursor.executescript(schema)
 #             conn.commit()
-#             print("Applied schema.")
+#             logger.info("Applied schema.")
 # except:
-#     print("Failed to connect to database.")
+#     logger.info("Failed to connect to database.")
 
 engine = create_engine("sqlite+pysqlite:///db/attendance.db", echo=True)
 
@@ -39,7 +43,9 @@ class User(Base):
     email: Mapped[str]
     school_id: Mapped[int]
     credentials: Mapped["Credential"] = relationship(back_populates="user")
-    classes: Mapped[list["Class"]] = relationship(back_populates="members")
+    classes: Mapped[list["Class"]] = relationship(
+        back_populates="teacher", foreign_keys="[Class.teacher_id]"
+    )
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="student"
     )
@@ -64,7 +70,7 @@ class Class(Base):
     course_name: Mapped[str]
     # Stored as JSON string: [{"day": "Monday", "start_time": "10:00", "end_time": "11:30"}]
     schedule: Mapped[list[dict]] = mapped_column(JSON)
-    members: Mapped[list["User"]] = relationship(back_populates="classes")
+    teacher: Mapped["User"] = relationship(back_populates="classes")
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="enrolled_class"
     )
@@ -79,7 +85,7 @@ class ClassEnrollment(Base):
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
     student_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     enrolled_class: Mapped["Class"] = relationship(back_populates="enrollments")
-    student: Mapped["User"] = relationship(back_populates="classes")
+    student: Mapped["User"] = relationship(back_populates="enrollments")
 
 
 class AttendanceSession(Base):
@@ -100,7 +106,7 @@ class AttendanceRecord(Base):
     session_id: Mapped[str] = mapped_column(ForeignKey("attendance_sessions.id"))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime.datetime]
-    verification_methods: Mapped[str]
+    verification_methods: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str]
     session: Mapped["AttendanceSession"] = relationship(back_populates="records")
 
