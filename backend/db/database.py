@@ -41,7 +41,7 @@ class User(Base):
     role: Mapped[str]
     full_name: Mapped[str]
     email: Mapped[str]
-    school_id: Mapped[int]
+    school_id: Mapped[int] | None = None
     credentials: Mapped["Credential"] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
@@ -55,6 +55,7 @@ class Credential(Base):
     __tablename__ = "credentials"
     id: Mapped[str] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    device_id: Mapped[str]
     public_key: Mapped[str]
     credential_id: Mapped[str]
     sign_count: Mapped[int]
@@ -105,6 +106,8 @@ class AttendanceRecord(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(ForeignKey("attendance_sessions.id"))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    is_flagged: Mapped[bool]
+    flag_reason: Mapped[str] | None = None
     timestamp: Mapped[datetime.datetime]
     verification_methods: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str]

@@ -9,13 +9,14 @@ class UserRole(str, Enum):
     STUDENT = "student"
     TEACHER = "teacher"
     ADMIN = "admin"
+    OPERATOR = "operator"
 
 
 class UserBase(BaseModel):
     role: UserRole
     full_name: str
     email: EmailStr
-    school_id: int
+    school_id: int | None = None
 
 
 class UserCreate(UserBase):
@@ -39,6 +40,7 @@ class UserResponse(UserBase):
 # Credentials
 class CredentialBase(BaseModel):
     user_id: str
+    device_id: str
     public_key: str
     credential_id: str
     sign_count: int
@@ -148,6 +150,7 @@ class AttendanceRecordStatus(str, Enum):
 
 
 class AttendanceRecordVerificationMethods(str, Enum):
+    DEVICE = "device"
     FIDO2 = "fido2"
     BLUETOOTH = "bluetooth"
     WIFI = "wifi"
@@ -158,6 +161,8 @@ class AttendanceRecordVerificationMethods(str, Enum):
 class AttendanceRecordBase(BaseModel):
     session_id: str
     user_id: str
+    is_flagged: bool
+    flag_reason: str | None = None
     timestamp: datetime
     verification_methods: list[AttendanceRecordVerificationMethods]
     status: AttendanceRecordStatus
@@ -200,5 +205,27 @@ class AuthenticationOptionsBase(BaseModel):
 class AuthenticationResponseBase(BaseModel):
     user_id: str
     session_id: str
-    credential: str
-    verification_methods: list[AttendanceRecordVerificationMethods]
+    credential: dict
+    # verification_methods: list[AttendanceRecordVerificationMethods]
+
+
+# Login
+class LoginOptionsBase(BaseModel):
+    user_id: str
+
+
+class LoginResponseBase(BaseModel):
+    user_id: str
+    credential: dict
+
+
+class LoginSessionBase(BaseModel):
+    user_id: str
+    session_token: str
+    expires_in: int
+
+
+# Logout
+class LogoutOptionsBase(BaseModel):
+    user_id: str
+    session_token: str

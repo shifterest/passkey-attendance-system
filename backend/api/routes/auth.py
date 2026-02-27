@@ -1,0 +1,322 @@
+import datetime
+import logging
+import uuid
+
+from api.config import *
+from api.api import redis_client
+from api.messages import Logs, Messages
+from api.schemas import (
+    AttendanceRecordResponse,
+    AttendanceRecordStatus,
+    AuthenticationOptionsBase,
+    AuthenticationResponseBase,
+    CredentialResponse,
+    LoginSessionBase,
+    LoginOptionsBase,
+    LoginResponseBase,
+    LogoutOptionsBase,
+    RegistrationOptionsBase,
+    RegistrationResponseBase,
+)
+from db.database import AttendanceRecord, AttendanceSession, Credential, User, get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from webauthn import (
+    base64url_to_bytes,
+    generate_authentication_options,
+    generate_registration_options,
+    options_to_json,
+    verify_authentication_response,
+    verify_registration_response,
+)
+from webauthn.helpers.exceptions import (
+    InvalidAuthenticationResponse,
+    InvalidRegistrationResponse,
+)
+
+from backend.api.services.auth_service import create_login_session
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/register/options")
+def register_options(
+    options_data: RegistrationOptionsBase, db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == options_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.REGISTER_USER_NOT_FOUND,
+        )
+
+    options = generate_registration_options(
+        rp_id=RP_ID,
+        rp_name=RP_NAME,
+        user_id=bytes(user.id, "utf-8"),
+        user_name=user.email,
+        user_display_name=user.full_name,
+        timeout=CHALLENGE_TIMEOUT * 1000,
+    )
+
+    redis_client.set(
+        f"registration_challenge:{user.id}",
+        options.challenge,
+        ex=CHALLENGE_TIMEOUT,
+    )
+    return options_to_json(options)
+
+
+@router.post("/register/verify", response_model=CredentialResponse)
+def register_verify(
+    response_data: RegistrationResponseBase, db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == response_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.REGISTER_VERIFY_USER_NOT_FOUND,
+        )
+    challenge_bytes = redis_client.get(f"registration_challenge:{user.id}")
+    if not challenge_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=Messages.REGISTER_NO_PENDING
+        )
+    challenge = challenge_bytes.decode()  # type: ignore
+
+    try:
+        registration_verification = verify_registration_response(
+            credential=response_data.credential,
+            expected_challenge=challenge,
+            expected_origin=ORIGIN,
+            expected_rp_id=RP_ID,
+        )
+        new_uuid = str(uuid.uuid4())
+        while True:
+            credential = db.query(Credential).filter(Credential.id == new_uuid).first()
+            if credential is None:
+                break
+            new_uuid = str(uuid.uuid4())
+        new_credential = Credential(
+            id=new_uuid,
+            user_id=user.id,
+            public_key=registration_verification.credential_public_key.hex(),
+            credential_id=registration_verification.credential_id.hex(),
+            sign_count=0,
+            registered_at=datetime.datetime.now(datetime.timezone.utc),
+        )
+        db.add(new_credential)
+        db.commit()
+        redis_client.delete(f"registration_challenge:{user.id}")
+        db.refresh(new_credential)
+        logger.info(
+            Logs.CREDENTIAL_ADDED.format(
+                user_id=new_credential.user_id, credential_id=new_credential.id
+            )
+        )
+        return new_credential
+    except InvalidRegistrationResponse as e:
+        logger.error(Logs.REGISTER_VERIFY_FAILED.format(error=str(e)))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=Messages.REGISTER_VERIFY_FAILED,
+        )
+
+
+# Authentication
+@router.post("/authentication/options")
+def authentication_options(
+    options_data: AuthenticationOptionsBase, db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == options_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
+        )
+
+    options = generate_authentication_options(
+        rp_id=RP_ID,
+        timeout=CHALLENGE_TIMEOUT * 1000,
+    )
+
+    redis_client.set(
+        f"authentication_challenge:{user.id}",
+        options.challenge,
+        ex=CHALLENGE_TIMEOUT,
+    )
+    return options_to_json(options)
+
+
+@router.post("/authentication/verify", response_model=AttendanceRecordResponse)
+def authentication_verify(
+    response_data: AuthenticationResponseBase, db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == response_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.AUTH_VERIFY_USER_NOT_FOUND,
+        )
+    session = (
+        db.query(AttendanceSession)
+        .filter(AttendanceSession.id == response_data.session_id)
+        .first()
+    )
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
+        )
+    challenge_bytes = redis_client.get(f"authentication_challenge:{user.id}")
+    if not challenge_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
+        )
+    challenge = challenge_bytes.decode()  # type: ignore
+    user_credential = db.query(Credential).filter(Credential.user_id == user.id).first()
+    if user_credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_NO_CREDENTIAL
+        )
+
+    user_public_key = user_credential.public_key
+    user_sign_count = user_credential.sign_count
+
+    try:
+        authentication_verification = verify_authentication_response(
+            credential=response_data.credential,
+            expected_challenge=challenge,
+            expected_origin=ORIGIN,
+            expected_rp_id=RP_ID,
+            credential_public_key=bytes.fromhex(user_public_key),
+            credential_current_sign_count=user_sign_count,
+        )
+        user_credential.sign_count = authentication_verification.new_sign_count
+        new_uuid = str(uuid.uuid4())
+        while True:
+            record = (
+                db.query(AttendanceRecord)
+                .filter(AttendanceRecord.id == new_uuid)
+                .first()
+            )
+            if record is None:
+                break
+            new_uuid = str(uuid.uuid4())
+        # TODO: Verification methods are not sent by the client but determined
+        # by the backend. Work on adding more stuff in AttendanceRecord
+        new_record = AttendanceRecord(
+            id=new_uuid,
+            session_id=response_data.session_id,
+            user_id=user.id,
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            # verification_methods=response_data.verification_methods,
+            status=AttendanceRecordStatus.PRESENT,
+        )
+        db.add(new_record)
+        db.commit()
+        redis_client.delete(f"authentication_challenge:{user.id}")
+        db.refresh(new_record)
+        logger.info(
+            Logs.RECORD_ADDED.format(
+                user_id=new_record.user_id, record_id=new_record.id
+            )
+        )
+        return new_record
+    except InvalidAuthenticationResponse as e:
+        logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
+        )
+
+
+# Login
+@router.post("/login/options")
+def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == options_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
+        )
+
+    options = generate_authentication_options(
+        rp_id=RP_ID,
+        timeout=CHALLENGE_TIMEOUT * 1000,
+    )
+
+    redis_client.set(
+        f"login_challenge:{user.id}",
+        options.challenge,
+        ex=CHALLENGE_TIMEOUT,
+    )
+    return options_to_json(options)
+
+
+@router.post("/login/verify", response_model=LoginSessionBase)
+def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == response_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.AUTH_VERIFY_USER_NOT_FOUND,
+        )
+    challenge_bytes = redis_client.get(f"login_challenge:{user.id}")
+    if not challenge_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
+        )
+    challenge = challenge_bytes.decode()  # type: ignore
+    user_credential = db.query(Credential).filter(Credential.user_id == user.id).first()
+    if user_credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_NO_CREDENTIAL
+        )
+
+    user_public_key = user_credential.public_key
+    user_sign_count = user_credential.sign_count
+
+    try:
+        authentication_verification = verify_authentication_response(
+            credential=response_data.credential,
+            expected_challenge=challenge,
+            expected_origin=ORIGIN,
+            expected_rp_id=RP_ID,
+            credential_public_key=bytes.fromhex(user_public_key),
+            credential_current_sign_count=user_sign_count,
+        )
+        user_credential.sign_count = authentication_verification.new_sign_count
+        redis_client.delete(f"login_challenge:{user.id}")
+        login_response = create_login_session(user_id=user.id, timeout=LOGIN_TIMEOUT)
+        logger.info(
+            Logs.LOGIN_SUCCESSFUL.format(full_name=user.full_name, user_id=user.id)
+        )
+        return login_response
+    except InvalidAuthenticationResponse as e:
+        logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
+        )
+
+
+# Logout
+@router.post("/logout")
+def logout(options_data: LogoutOptionsBase, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == options_data.user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
+        )
+    session_token = redis_client.get(f"session_token:{options_data.session_token}")
+    if not session_token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.LOGIN_SESSION_NOT_FOUND,
+        )
+    if session_token.decode() != options_data.user_id:  # type: ignore
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.SESSION_USER_MISMATCH,
+        )
+    redis_client.delete(f"session_token:{options_data.session_token}")
+
+    return {"message": Messages.LOGOUT_SUCCESSFUL}

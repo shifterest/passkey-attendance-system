@@ -30,6 +30,11 @@ class Messages:
     AUTH_NO_PENDING = "No pending authentication"
     AUTH_NO_CREDENTIAL = "No credential found for user"
     AUTH_VERIFY_FAILED = "Authentication verification failed"
+    LOGIN_SESSION_NOT_FOUND = "Login session not found"
+    SESSION_USER_MISMATCH = "Login session user mismatch"
+    LOGOUT_SUCCESSFUL = "Logout successful"
+    OPERATOR_ALREADY_EXISTS = "Operator already exists"
+    OPERATOR_BOOTSTRAP_FAILED = "Failed to bootstrap operator"
 
 
 class Logs:
@@ -41,8 +46,14 @@ class Logs:
     ENROLLMENT_EDITED = "Updated enrollment: {enrollment_id}"
     SESSION_ADDED = "Added session: {session_id}"
     SESSION_EDITED = "Updated session: {session_id}"
-    RECORD_ADDED = "Added record: {record_id} for user {user_id}"
+    RECORD_ADDED = "Added record: {record_id} for user {full_name} (ID: {user_id})"
     RECORD_EDITED = "Updated record: {record_id}"
     CREDENTIAL_ADDED = "Added credential: {credential_id} for user {user_id}"
     REGISTER_VERIFY_FAILED = "Registration verification failed: {error}"
     AUTH_VERIFY_FAILED = "Authentication verification failed: {error}"
+    LOGIN_SUCCESSFUL = "Logged in user: {full_name} (ID: {user_id})"
+    OPERATOR_CREATED = "Created operator: {user_id}"
+    ADMIN_PROMOTED_TO_OPERATOR = (
+        "Promoted admin to operator: {full_name} (ID: {user_id})"
+    )
+    OPERATOR_BOOTSTRAP_FAILED = "Failed to bootstrap operator: {error}"

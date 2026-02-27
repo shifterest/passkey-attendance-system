@@ -1,0 +1,125 @@
+import logging
+import uuid
+
+from api.messages import Logs, Messages
+from api.schemas import AttendanceRecordResponse
+from db.database import AttendanceRecord, get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/records", tags=["records"])
+
+
+@router.get("/", response_model=list[AttendanceRecordResponse])
+def get_all_records(db: Session = Depends(get_db)):
+    records = db.query(AttendanceRecord).all()
+    return records
+
+
+@router.get("/by-session/{session_id}", response_model=list[AttendanceRecordResponse])
+def get_records_by_session(session_id: str, db: Session = Depends(get_db)):
+    records = (
+        db.query(AttendanceRecord)
+        .filter(AttendanceRecord.session_id == session_id)
+        .all()
+    )
+    return records
+
+
+@router.get("/by-user/{user_id}", response_model=list[AttendanceRecordResponse])
+def get_records_by_user(user_id: str, db: Session = Depends(get_db)):
+    records = (
+        db.query(AttendanceRecord).filter(AttendanceRecord.user_id == user_id).all()
+    )
+    return records
+
+
+@router.get(
+    "/by-session/{session_id}/by-user/{user_id}/",
+    response_model=list[AttendanceRecordResponse],
+)
+def get_records_by_session_and_user(
+    session_id: str, user_id: str, db: Session = Depends(get_db)
+):
+    records = (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.session_id == session_id,
+            AttendanceRecord.user_id == user_id,
+        )
+        .all()
+    )
+    return records
+
+
+@router.get("/{record_id}", response_model=AttendanceRecordResponse)
+def get_record(record_id: str, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.RECORD_NOT_FOUND
+        )
+    return record
+
+
+@router.post("/", response_model=AttendanceRecordResponse)
+def create_record(record_data: dict, db: Session = Depends(get_db)):
+    return {"message": "Records can only be created via authentication verify endpoint"}
+    session = (
+        db.query(AttendanceSession)
+        .filter(AttendanceSession.id == record_data["session_id"])
+        .first()
+    )
+    user = db.query(User).filter(User.id == record_data["user_id"]).first()
+    if session is None:
+        return {"message": "Error adding record: session not found"}
+    if user is None:
+        return {"message": "Error adding record: user not found"}
+    new_uuid = str(uuid.uuid4())
+    while True:
+        record = (
+            db.query(AttendanceRecord).filter(AttendanceRecord.id == new_uuid).first()
+        )
+        if record is None:
+            break
+        new_uuid = str(uuid.uuid4())
+    new_record = AttendanceRecord(
+        id=new_uuid,
+        session_id=record_data["session_id"],
+        user_id=record_data["user_id"],
+        timestamp=record_data["timestamp"],
+        verification_methods=record_data["verification_methods"],
+        status=record_data["status"],
+    )
+    db.add(new_record)
+    db.commit()
+    db.refresh(new_record)
+    logger.info(f"Added record: {new_record.id}")
+    return new_record
+
+
+@router.put("/{record_id}", response_model=AttendanceRecordResponse)
+def update_record(record_id: str, updated_data: dict, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.RECORD_NOT_FOUND
+        )
+    for key, value in updated_data.items():
+        setattr(record, key, value)
+    db.commit()
+    logger.info(Logs.RECORD_EDITED.format(record_id=record.id))
+    return record
+
+
+@router.delete("/{record_id}")
+def delete_record(record_id: str, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.RECORD_NOT_FOUND
+        )
+    db.delete(record)
+    db.commit()
+    return {"message": Messages.RECORD_DELETED}
