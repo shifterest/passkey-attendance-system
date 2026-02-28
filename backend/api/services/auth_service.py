@@ -1,17 +1,16 @@
-import uuid
+import secrets
 
-from api.api import redis_client
+from api.redis import redis_client
 from api.schemas import LoginSessionBase
-from db.database import get_db
 
 
 def create_login_session(user_id: str, timeout: int):
-    session_token = str(uuid.uuid4())
+    session_token = secrets.token_urlsafe(32)
     while True:
-        record = redis_client.get(f"session_token:{session_token}")
-        if not record:  # type: ignore
+        record_bytes = redis_client.get(f"session_token:{session_token}")
+        if not record_bytes:
             break
-        session_token = str(uuid.uuid4())
+        session_token = secrets.token_urlsafe(32)
     redis_client.set(f"session_token:{session_token}", user_id, ex=timeout)
     expires_in = redis_client.ttl(f"session_token:{session_token}")
     return LoginSessionBase(

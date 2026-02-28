@@ -1,9 +1,10 @@
 import logging
 
 import fastapi
-import redis
-from api.config import *
-from api.routes import (
+from starlette.middleware.cors import CORSMiddleware
+
+from .config import BACKEND_PORT, FRONTEND_PORT
+from .routes import (
     auth,
     bootstrap,
     classes,
@@ -15,8 +16,17 @@ from api.routes import (
 )
 
 logger = logging.getLogger(__name__)
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
 app = fastapi.FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        f"http://localhost:{FRONTEND_PORT}",
+        f"http://localhost:{BACKEND_PORT}",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router)
 app.include_router(bootstrap.router)

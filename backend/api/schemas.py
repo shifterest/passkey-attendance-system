@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import Enum
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 # Users
@@ -13,6 +13,8 @@ class UserRole(str, Enum):
 
 
 class UserBase(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     role: UserRole
     full_name: str
     email: EmailStr
@@ -20,10 +22,14 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    model_config = ConfigDict(use_enum_values=True)
+
     pass
 
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     role: UserRole | None = None
     full_name: str | None = None
     email: EmailStr | None = None
@@ -159,6 +165,8 @@ class AttendanceRecordVerificationMethods(str, Enum):
 
 
 class AttendanceRecordBase(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     session_id: str
     user_id: str
     is_flagged: bool
@@ -169,10 +177,14 @@ class AttendanceRecordBase(BaseModel):
 
 
 class AttendanceRecordCreate(AttendanceRecordBase):
+    model_config = ConfigDict(use_enum_values=True)
+
     pass
 
 
 class AttendanceRecordUpdate(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     session_id: str | None = None
     user_id: str | None = None
     timestamp: datetime | None = None

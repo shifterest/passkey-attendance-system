@@ -12,6 +12,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bootstrap", tags=["bootstrap"])
 
 
+@router.get("/status")
+def bootstrap_status(db: Session = Depends(get_db)):
+    # TODO: Detect flag instead of operator presence. This is good for now
+    operator = db.query(User).filter(User.role == UserRole.OPERATOR).first()
+    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+    if operator is None and admin is None:
+        return True
+    else:
+        return False
+
+
 @router.post("/operator")
 def initialize_operator(db: Session = Depends(get_db)):
     # Check if operator exists
@@ -40,7 +51,8 @@ def initialize_operator(db: Session = Depends(get_db)):
             db.refresh(new_operator)
             logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
         # Auto-login (?)
-        # TODO: Maybe there's a better way?
+        # TODO: Maybe there's a better way? Allow the backend to be started with
+        # a flag/env var that allows bootstrapping
         return create_login_session(user_id=new_operator.id, timeout=1800)
     except Exception as e:
         logger.error(Logs.OPERATOR_BOOTSTRAP_FAILED.format(error=str(e)))

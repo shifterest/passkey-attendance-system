@@ -1,6 +1,5 @@
 import logging
 
-from api.messages import Logs, Messages
 from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)

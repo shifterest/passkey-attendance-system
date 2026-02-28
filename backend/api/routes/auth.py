@@ -2,27 +2,27 @@ import datetime
 import logging
 import uuid
 
-from api.config import *
-from api.api import redis_client
+import api.config
 from api.messages import Logs, Messages
+from api.redis import redis_client
 from api.schemas import (
     AttendanceRecordResponse,
     AttendanceRecordStatus,
     AuthenticationOptionsBase,
     AuthenticationResponseBase,
     CredentialResponse,
-    LoginSessionBase,
     LoginOptionsBase,
     LoginResponseBase,
+    LoginSessionBase,
     LogoutOptionsBase,
     RegistrationOptionsBase,
     RegistrationResponseBase,
 )
+from api.services.auth_service import create_login_session
 from db.database import AttendanceRecord, AttendanceSession, Credential, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from webauthn import (
-    base64url_to_bytes,
     generate_authentication_options,
     generate_registration_options,
     options_to_json,
@@ -33,8 +33,6 @@ from webauthn.helpers.exceptions import (
     InvalidAuthenticationResponse,
     InvalidRegistrationResponse,
 )
-
-from backend.api.services.auth_service import create_login_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -52,18 +50,18 @@ def register_options(
         )
 
     options = generate_registration_options(
-        rp_id=RP_ID,
-        rp_name=RP_NAME,
+        rp_id=api.config.RP_ID,
+        rp_name=api.config.RP_NAME,
         user_id=bytes(user.id, "utf-8"),
         user_name=user.email,
         user_display_name=user.full_name,
-        timeout=CHALLENGE_TIMEOUT * 1000,
+        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
     )
 
     redis_client.set(
         f"registration_challenge:{user.id}",
         options.challenge,
-        ex=CHALLENGE_TIMEOUT,
+        ex=api.config.CHALLENGE_TIMEOUT,
     )
     return options_to_json(options)
 
@@ -89,8 +87,8 @@ def register_verify(
         registration_verification = verify_registration_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=ORIGIN,
-            expected_rp_id=RP_ID,
+            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
+            expected_rp_id=api.config.RP_ID,
         )
         new_uuid = str(uuid.uuid4())
         while True:
@@ -136,14 +134,14 @@ def authentication_options(
         )
 
     options = generate_authentication_options(
-        rp_id=RP_ID,
-        timeout=CHALLENGE_TIMEOUT * 1000,
+        rp_id=api.config.RP_ID,
+        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
     )
 
     redis_client.set(
         f"authentication_challenge:{user.id}",
         options.challenge,
-        ex=CHALLENGE_TIMEOUT,
+        ex=api.config.CHALLENGE_TIMEOUT,
     )
     return options_to_json(options)
 
@@ -187,8 +185,8 @@ def authentication_verify(
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=ORIGIN,
-            expected_rp_id=RP_ID,
+            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
+            expected_rp_id=api.config.RP_ID,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
         )
@@ -240,14 +238,14 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
         )
 
     options = generate_authentication_options(
-        rp_id=RP_ID,
-        timeout=CHALLENGE_TIMEOUT * 1000,
+        rp_id=api.config.RP_ID,
+        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
     )
 
     redis_client.set(
         f"login_challenge:{user.id}",
         options.challenge,
-        ex=CHALLENGE_TIMEOUT,
+        ex=api.config.CHALLENGE_TIMEOUT,
     )
     return options_to_json(options)
 
@@ -279,14 +277,16 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=ORIGIN,
-            expected_rp_id=RP_ID,
+            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
+            expected_rp_id=api.config.RP_ID,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
         )
         user_credential.sign_count = authentication_verification.new_sign_count
         redis_client.delete(f"login_challenge:{user.id}")
-        login_response = create_login_session(user_id=user.id, timeout=LOGIN_TIMEOUT)
+        login_response = create_login_session(
+            user_id=user.id, timeout=api.config.LOGIN_TIMEOUT
+        )
         logger.info(
             Logs.LOGIN_SUCCESSFUL.format(full_name=user.full_name, user_id=user.id)
         )
@@ -306,13 +306,16 @@ def logout(options_data: LogoutOptionsBase, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
-    session_token = redis_client.get(f"session_token:{options_data.session_token}")
-    if not session_token:
+    session_token_bytes = redis_client.get(
+        f"session_token:{options_data.session_token}"
+    )
+    if not session_token_bytes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.LOGIN_SESSION_NOT_FOUND,
         )
-    if session_token.decode() != options_data.user_id:  # type: ignore
+    session_token = session_token_bytes.decode()  # type: ignore
+    if session_token != options_data.user_id:  # type: ignore
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.SESSION_USER_MISMATCH,

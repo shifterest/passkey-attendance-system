@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from api.messages import Logs, Messages
 from api.schemas import AttendanceRecordResponse
@@ -66,37 +65,37 @@ def get_record(record_id: str, db: Session = Depends(get_db)):
 @router.post("/", response_model=AttendanceRecordResponse)
 def create_record(record_data: dict, db: Session = Depends(get_db)):
     return {"message": "Records can only be created via authentication verify endpoint"}
-    session = (
-        db.query(AttendanceSession)
-        .filter(AttendanceSession.id == record_data["session_id"])
-        .first()
-    )
-    user = db.query(User).filter(User.id == record_data["user_id"]).first()
-    if session is None:
-        return {"message": "Error adding record: session not found"}
-    if user is None:
-        return {"message": "Error adding record: user not found"}
-    new_uuid = str(uuid.uuid4())
-    while True:
-        record = (
-            db.query(AttendanceRecord).filter(AttendanceRecord.id == new_uuid).first()
-        )
-        if record is None:
-            break
-        new_uuid = str(uuid.uuid4())
-    new_record = AttendanceRecord(
-        id=new_uuid,
-        session_id=record_data["session_id"],
-        user_id=record_data["user_id"],
-        timestamp=record_data["timestamp"],
-        verification_methods=record_data["verification_methods"],
-        status=record_data["status"],
-    )
-    db.add(new_record)
-    db.commit()
-    db.refresh(new_record)
-    logger.info(f"Added record: {new_record.id}")
-    return new_record
+    # session = (
+    #     db.query(AttendanceSession)
+    #     .filter(AttendanceSession.id == record_data["session_id"])
+    #     .first()
+    # )
+    # user = db.query(User).filter(User.id == record_data["user_id"]).first()
+    # if session is None:
+    #     return {"message": "Error adding record: session not found"}
+    # if user is None:
+    #     return {"message": "Error adding record: user not found"}
+    # new_uuid = str(uuid.uuid4())
+    # while True:
+    #     record = (
+    #         db.query(AttendanceRecord).filter(AttendanceRecord.id == new_uuid).first()
+    #     )
+    #     if record is None:
+    #         break
+    #     new_uuid = str(uuid.uuid4())
+    # new_record = AttendanceRecord(
+    #     id=new_uuid,
+    #     session_id=record_data["session_id"],
+    #     user_id=record_data["user_id"],
+    #     timestamp=record_data["timestamp"],
+    #     verification_methods=record_data["verification_methods"],
+    #     status=record_data["status"],
+    # )
+    # db.add(new_record)
+    # db.commit()
+    # db.refresh(new_record)
+    # logger.info(f"Added record: {new_record.id}")
+    # return new_record
 
 
 @router.put("/{record_id}", response_model=AttendanceRecordResponse)
