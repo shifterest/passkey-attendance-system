@@ -4,7 +4,7 @@ import uuid
 from api.messages import Logs, Messages
 from api.schemas import ClassCreate, ClassResponse, ClassUpdate, UserRole
 from db.database import Class, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -99,4 +99,4 @@ def delete_class(class_id: str, db: Session = Depends(get_db)):
         )
     db.delete(class_)
     db.commit()
-    return {"message": Messages.CLASS_DELETED}
+    return Response(status_code=204)

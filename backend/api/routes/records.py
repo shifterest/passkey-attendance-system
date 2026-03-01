@@ -1,9 +1,9 @@
 import logging
 
 from api.messages import Logs, Messages
-from api.schemas import AttendanceRecordResponse
+from api.schemas import AttendanceRecordResponse, AttendanceRecordUpdate
 from db.database import AttendanceRecord, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -62,9 +62,12 @@ def get_record(record_id: str, db: Session = Depends(get_db)):
     return record
 
 
-@router.post("/", response_model=AttendanceRecordResponse)
-def create_record(record_data: dict, db: Session = Depends(get_db)):
-    return {"message": "Records can only be created via authentication verify endpoint"}
+@router.post("/")
+def create_record():
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Records can only be created via the authentication verify endpoint",
+    )
     # session = (
     #     db.query(AttendanceSession)
     #     .filter(AttendanceSession.id == record_data["session_id"])
@@ -99,13 +102,15 @@ def create_record(record_data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/{record_id}", response_model=AttendanceRecordResponse)
-def update_record(record_id: str, updated_data: dict, db: Session = Depends(get_db)):
+def update_record(
+    record_id: str, updated_data: AttendanceRecordUpdate, db: Session = Depends(get_db)
+):
     record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.RECORD_NOT_FOUND
         )
-    for key, value in updated_data.items():
+    for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(record, key, value)
     db.commit()
     logger.info(Logs.RECORD_EDITED.format(record_id=record.id))
@@ -121,4 +126,4 @@ def delete_record(record_id: str, db: Session = Depends(get_db)):
         )
     db.delete(record)
     db.commit()
-    return {"message": Messages.RECORD_DELETED}
+    return Response(status_code=204)

@@ -1,6 +1,7 @@
 import logging
 import uuid
 
+from api.config import settings
 from api.messages import Logs, Messages
 from api.schemas import UserRole
 from api.services.auth_service import create_login_session
@@ -28,7 +29,10 @@ def initialize_operator(db: Session = Depends(get_db)):
     # Check if operator exists
     operator = db.query(User).filter(User.role == UserRole.OPERATOR).first()
     if operator is not None:
-        return {"message": Messages.OPERATOR_ALREADY_EXISTS}
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.OPERATOR_ALREADY_EXISTS,
+        )
     # Check if an admin exists
     new_operator = db.query(User).filter(User.role == UserRole.ADMIN).first()
     try:
@@ -44,7 +48,7 @@ def initialize_operator(db: Session = Depends(get_db)):
                 id=str(uuid.uuid4()),
                 role=UserRole.OPERATOR,
                 full_name="Operator",
-                email="operator@attendance.softeng.com",
+                email=f"operator@{settings.rp_id}",
             )
             db.add(new_operator)
             db.commit()

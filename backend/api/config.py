@@ -1,15 +1,35 @@
-import os
+from pydantic import computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dotenv import load_dotenv
 
-load_dotenv()
-load_dotenv(".env.local", override=True)
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(".env", ".env.local"),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
-BACKEND_PORT = int(os.getenv("BACKEND_PORT", 8000))
-FRONTEND_PORT = int(os.getenv("FRONTEND_PORT", 3000))
-CHALLENGE_TIMEOUT = int(os.getenv("CHALLENGE_TIMEOUT", 180))
-LOGIN_TIMEOUT = int(os.getenv("LOGIN_TIMEOUT", 1800))
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-RP_ID = os.getenv("RP_ID", "attendance.softeng.com")
-RP_NAME = os.getenv("RP_NAME", "Passkey Attendance System")
+    # Hosts and ports
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    backend_port: int = 8000
+    frontend_port: int = 3000
+
+    # Timeouts
+    challenge_timeout: int = 180
+    login_timeout: int = 1800
+    registration_timeout: int = 180
+
+    # Constants
+    rp_id: str = "attendance.softeng.com"
+    rp_name: str = "Passkey Attendance System"
+    protocol: str = "pas"
+
+    @computed_field
+    @property
+    def expected_origin(self) -> str:
+        return f"http://localhost:{self.frontend_port}"
+
+
+settings = Settings()

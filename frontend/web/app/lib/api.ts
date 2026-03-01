@@ -8,6 +8,20 @@ export type UserDto = {
 	school_id: string | null;
 };
 
+export type UserExtendedDto = {
+	id: string;
+	full_name: string;
+	role: string;
+	ongoing_class: string | null;
+	in_class: boolean;
+	school_id: string | null;
+	email: string;
+	records: number;
+	flagged: number;
+	enrollments: number;
+	registered: boolean;
+};
+
 export type ClassDto = {
 	id: string;
 	teacher_id: string | null;
@@ -38,5 +52,9 @@ export function getBootstrapOperator() {
 }
 
 export function getUser(userId: string) {
-	return request<UserDto>(`/users/${userId}`);
+	return request<UserExtendedDto>(`/users/${userId}`);
+}
+
+export function getStudents() {
+	return request<UserExtendedDto[]>(`/students`);
 }

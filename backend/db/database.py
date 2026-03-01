@@ -1,5 +1,5 @@
-import datetime
 import logging
+from datetime import datetime
 
 from sqlalchemy import JSON, ForeignKey, create_engine
 from sqlalchemy.orm import (
@@ -41,7 +41,7 @@ class User(Base):
     role: Mapped[str]
     full_name: Mapped[str]
     email: Mapped[str]
-    school_id: Mapped[int | None] = mapped_column(None)
+    school_id: Mapped[str | None] = mapped_column(None)
     credentials: Mapped["Credential"] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
@@ -59,7 +59,7 @@ class Credential(Base):
     public_key: Mapped[str]
     credential_id: Mapped[str]
     sign_count: Mapped[int]
-    registered_at: Mapped[datetime.datetime]
+    registered_at: Mapped[datetime]
     user: Mapped["User"] = relationship(back_populates="credentials")
 
 
@@ -93,8 +93,8 @@ class AttendanceSession(Base):
     __tablename__ = "attendance_sessions"
     id: Mapped[str] = mapped_column(primary_key=True)
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
-    start_time: Mapped[datetime.datetime]
-    end_time: Mapped[datetime.datetime]
+    start_time: Mapped[datetime]
+    end_time: Mapped[datetime]
     status: Mapped[str]
     dynamic_token: Mapped[str]
     attended_class: Mapped["Class"] = relationship(back_populates="attendance_sessions")
@@ -108,7 +108,7 @@ class AttendanceRecord(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     is_flagged: Mapped[bool]
     flag_reason: Mapped[str | None] = mapped_column(None)
-    timestamp: Mapped[datetime.datetime]
+    timestamp: Mapped[datetime]
     verification_methods: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str]
     session: Mapped["AttendanceSession"] = relationship(back_populates="records")

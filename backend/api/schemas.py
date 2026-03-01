@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, EmailStr
+from typing_extensions import Literal
 
 
 # Users
@@ -18,7 +19,7 @@ class UserBase(BaseModel):
     role: UserRole
     full_name: str
     email: EmailStr
-    school_id: int | None = None
+    school_id: str | None = None
 
 
 class UserCreate(UserBase):
@@ -33,11 +34,24 @@ class UserUpdate(BaseModel):
     role: UserRole | None = None
     full_name: str | None = None
     email: EmailStr | None = None
-    school_id: int | None = None
+    school_id: str | None = None
 
 
 class UserResponse(UserBase):
     id: str
+
+    class Config:
+        from_attributes = True
+
+
+class UserStudentResponse(UserBase):
+    id: str
+    ongoing_class: str | None = None
+    in_class: bool
+    records: int
+    flagged: int
+    enrollments: int
+    registered: bool
 
     class Config:
         from_attributes = True
@@ -73,21 +87,35 @@ class CredentialResponse(CredentialBase):
 
 
 # Classes
+class Schedule(BaseModel):
+    day: Literal[
+        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+    ]
+    start_time: time
+    end_time: time
+
+
 class ClassBase(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     course_code: str
     course_name: str
-    schedule: list[dict]
+    schedule: list[Schedule]
 
 
 class ClassCreate(ClassBase):
+    model_config = ConfigDict(use_enum_values=True)
+
     teacher_id: str
 
 
 class ClassUpdate(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     teacher_id: str | None = None
     course_code: str | None = None
     course_name: str | None = None
-    schedule: list[dict] | None = None
+    schedule: list[Schedule] | None = None
 
 
 class ClassResponse(ClassBase):
@@ -202,11 +230,21 @@ class AttendanceRecordResponse(AttendanceRecordBase):
 # Registration
 class RegistrationOptionsBase(BaseModel):
     user_id: str
+    registration_token: str
 
 
 class RegistrationResponseBase(BaseModel):
     user_id: str
+    registration_token: str
+    device_id: str
     credential: dict
+
+
+class RegistrationSessionBase(BaseModel):
+    user_id: str
+    registration_token: str
+    expires_in: int
+    url: str
 
 
 # Authentication

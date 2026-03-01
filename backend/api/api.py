@@ -3,8 +3,9 @@ import logging
 import fastapi
 from starlette.middleware.cors import CORSMiddleware
 
-from .config import BACKEND_PORT, FRONTEND_PORT
+from .config import settings
 from .routes import (
+    admin,
     auth,
     bootstrap,
     classes,
@@ -12,6 +13,7 @@ from .routes import (
     enrollments,
     records,
     sessions,
+    students,
     users,
 )
 
@@ -20,14 +22,15 @@ app = fastapi.FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        f"http://localhost:{FRONTEND_PORT}",
-        f"http://localhost:{BACKEND_PORT}",
+        f"http://localhost:{settings.frontend_port}",
+        f"http://localhost:{settings.backend_port}",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(bootstrap.router)
 app.include_router(classes.router)
@@ -35,4 +38,5 @@ app.include_router(credentials.router)
 app.include_router(enrollments.router)
 app.include_router(records.router)
 app.include_router(sessions.router)
+app.include_router(students.router)
 app.include_router(users.router)

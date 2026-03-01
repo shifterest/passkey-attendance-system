@@ -1,51 +1,13 @@
 "use client";
 
-import {
-	closestCenter,
-	DndContext,
-	KeyboardSensor,
-	MouseSensor,
-	TouchSensor,
-	useSensor,
-	useSensors,
-	type DragEndEvent,
-	type UniqueIdentifier,
-} from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-	arrayMove,
-	SortableContext,
-	useSortable,
-	verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-	flexRender,
-	getCoreRowModel,
-	getFacetedRowModel,
-	getFacetedUniqueValues,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
-	type ColumnDef,
-	type ColumnFiltersState,
-	type Row,
-	type SortingState,
-	type VisibilityState,
-} from "@tanstack/react-table";
-import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { toast } from "sonner";
-import { z } from "zod";
-
+import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+	type ChartConfig,
 	ChartContainer,
 	ChartTooltip,
 	ChartTooltipContent,
-	type ChartConfig,
 } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -62,7 +24,9 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -85,8 +49,27 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+	closestCenter,
+	DndContext,
+	type DragEndEvent,
+	KeyboardSensor,
+	MouseSensor,
+	TouchSensor,
+	type UniqueIdentifier,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+	arrayMove,
+	SortableContext,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
 	IconChevronDown,
 	IconChevronLeft,
@@ -98,27 +81,69 @@ import {
 	IconCircleFilled,
 	IconCircleXFilled,
 	IconDotsVertical,
-	IconGripVertical,
+	IconFilter,
 	IconLayoutColumns,
-	IconLoader,
-	IconPlus,
 	IconTrendingUp,
 } from "@tabler/icons-react";
+import {
+	type ColumnDef,
+	type ColumnFiltersState,
+	type FilterFn,
+	flexRender,
+	getCoreRowModel,
+	getFacetedRowModel,
+	getFacetedUniqueValues,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	type Row,
+	type SortingState,
+	useReactTable,
+	type VisibilityState,
+} from "@tanstack/react-table";
+import * as React from "react";
+import { useState } from "react";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { z } from "zod";
 
 export const schema = z.object({
-	id: z.number(),
+	id: z.string(),
 	full_name: z.string(),
 	role: z.string(),
-	status: z.boolean(),
 	ongoing_class: z.string().nullable(),
 	in_class: z.boolean(),
-	school_id: z.string(),
+	school_id: z.string().nullable(),
 	email: z.string(),
 	records: z.number(),
 	flagged: z.number(),
 	enrollments: z.number(),
 	registered: z.boolean(),
 });
+
+const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
+const REGISTERED_FILTER_VALUES = [true, false] as const;
+const IN_CLASS_FILTER_VALUES = [true, false] as const;
+
+function getDefaultColumnFilters(): ColumnFiltersState {
+	return [
+		{ id: "role", value: [...ROLE_FILTER_VALUES] },
+		{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
+		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
+	];
+}
+
+const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
+	row,
+	columnId,
+	filterValue,
+) => {
+	if (!Array.isArray(filterValue)) {
+		return true;
+	}
+
+	const cellValue = row.getValue(columnId);
+	return filterValue.includes(cellValue);
+};
 
 const columns: ColumnDef<z.infer<typeof schema>>[] = [
 	{
@@ -137,7 +162,7 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 			</div>
 		),
 		cell: ({ row }) => (
-			<div className="flex items-center justify-center">
+			<div className="w-8 flex items-center justify-center">
 				<Checkbox
 					checked={row.getIsSelected()}
 					onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -158,42 +183,31 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 	},
 	{
 		accessorKey: "role",
+		filterFn: includesSomeFilter,
 		header: "Role",
 		cell: ({ row }) => (
-			<div className="w-32">
-				<Badge variant="outline" className="text-muted-foreground px-1.5">
+			<div>
+				<Badge
+					variant="outline"
+					className="text-muted-foreground px-1.5 capitalize"
+				>
 					{row.original.role}
 				</Badge>
 			</div>
 		),
 	},
 	{
-		accessorKey: "status",
-		header: "Status",
-		cell: ({ row }) => (
-			<div className="w-32">
-				<Badge variant="outline" className="text-muted-foreground px-1.5">
-					{row.original.status ? (
-						<IconCircleFilled className="fill-green-500 dark:fill-green-400" />
-					) : (
-						<IconCircle className="fill-gray-500 dark:fill-gray-400" />
-					)}
-					{row.original.status ? "Online" : "Offline"}
-				</Badge>
-			</div>
-		),
-	},
-	{
 		accessorKey: "ongoing_class",
-		header: "Ongoing Class",
+		header: "Ongoing class",
 		cell: ({ row }) =>
 			row.original.ongoing_class ? row.original.ongoing_class : "—",
 	},
 	{
 		accessorKey: "in_class",
+		filterFn: includesSomeFilter,
 		header: "In class",
 		cell: ({ row }) => (
-			<div className="w-32">
+			<div>
 				<Badge variant="outline" className="text-muted-foreground px-1.5">
 					{row.original.in_class ? (
 						<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
@@ -238,7 +252,8 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 	},
 	{
 		accessorKey: "registered",
-		header: "Registered",
+		filterFn: includesSomeFilter,
+		header: "Registration",
 		cell: ({ row }) => (
 			<Badge variant="outline" className="text-muted-foreground px-1.5">
 				{row.original.registered ? (
@@ -246,13 +261,13 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 				) : (
 					<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
 				)}
-				{row.original.registered ? "Registered" : "Not registered"}
+				{row.original.registered ? "Registered" : "Unregistered"}
 			</Badge>
 		),
 	},
 	{
 		id: "actions",
-		cell: () => (
+		cell: ({ row }) => (
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					render={
@@ -267,9 +282,13 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 					<span className="sr-only">Open menu</span>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-32">
-					<DropdownMenuItem>Register</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem variant="destructive">Unregister</DropdownMenuItem>
+					{row.original.registered ? (
+						<DropdownMenuItem variant="destructive">
+							Unregister
+						</DropdownMenuItem>
+					) : (
+						<DropdownMenuItem>Register</DropdownMenuItem>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 		),
@@ -308,7 +327,7 @@ export function DataTable({
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-		[],
+		getDefaultColumnFilters,
 	);
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
@@ -325,6 +344,8 @@ export function DataTable({
 		() => data?.map(({ id }) => id) || [],
 		[data],
 	);
+	const [globalFilter, setGlobalFilter] = useState("");
+
 	const table = useReactTable({
 		data,
 		columns,
@@ -334,6 +355,15 @@ export function DataTable({
 			rowSelection,
 			columnFilters,
 			pagination,
+			globalFilter,
+		},
+		globalFilterFn: (row) => {
+			const query = globalFilter.toLowerCase();
+			return (
+				String(row.original.full_name).toLowerCase().includes(query) ||
+				String(row.original.school_id).toLowerCase().includes(query) ||
+				String(row.original.email).toLowerCase().includes(query)
+			);
 		},
 		getRowId: (row) => row.id.toString(),
 		enableRowSelection: true,
@@ -349,6 +379,51 @@ export function DataTable({
 		getFacetedRowModel: getFacetedRowModel(),
 		getFacetedUniqueValues: getFacetedUniqueValues(),
 	});
+
+	// Vibecoded so we'll learn about this later
+	function toggleFilterValue(
+		columnId: string,
+		value: string | boolean,
+		checked: boolean,
+	) {
+		setColumnFilters((previousFilters) => {
+			const existingFilter = previousFilters.find(
+				(filter) => filter.id === columnId,
+			);
+			const existingValues = Array.isArray(existingFilter?.value)
+				? (existingFilter.value as Array<string | boolean>)
+				: [];
+
+			if (
+				!checked &&
+				existingValues.includes(value) &&
+				existingValues.length === 1
+			) {
+				return previousFilters;
+			}
+
+			const nextValues = checked
+				? Array.from(new Set([...existingValues, value]))
+				: existingValues.filter((item) => item !== value);
+
+			const otherFilters = previousFilters.filter(
+				(filter) => filter.id !== columnId,
+			);
+
+			return [...otherFilters, { id: columnId, value: nextValues }];
+		});
+	}
+
+	function isFilterValueChecked(columnId: string, value: string | boolean) {
+		const existingFilter = columnFilters.find(
+			(filter) => filter.id === columnId,
+		);
+		const values = Array.isArray(existingFilter?.value)
+			? (existingFilter.value as Array<string | boolean>)
+			: [];
+
+		return values.includes(value);
+	}
 	function handleDragEnd(event: DragEndEvent) {
 		const { active, over } = event;
 		if (active && over && active.id !== over.id) {
@@ -360,7 +435,6 @@ export function DataTable({
 		}
 	}
 	return (
-		// TODO: Replace selector with search bar
 		<Tabs
 			defaultValue="outline"
 			className="w-full flex-col justify-start gap-6"
@@ -369,42 +443,101 @@ export function DataTable({
 				<Label htmlFor="view-selector" className="sr-only">
 					View
 				</Label>
-				<Select
-					defaultValue="outline"
-					items={[
-						{ label: "Outline", value: "outline" },
-						{ label: "Past Performance", value: "past-performance" },
-						{ label: "Key Personnel", value: "key-personnel" },
-						{ label: "Focus Documents", value: "focus-documents" },
-					]}
-				>
-					<SelectTrigger
-						className="flex w-fit @4xl/main:hidden"
-						size="sm"
-						id="view-selector"
-					>
-						<SelectValue placeholder="Select a view" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectGroup>
-							<SelectItem value="outline">Outline</SelectItem>
-							<SelectItem value="past-performance">Past Performance</SelectItem>
-							<SelectItem value="key-personnel">Key Personnel</SelectItem>
-							<SelectItem value="focus-documents">Focus Documents</SelectItem>
-						</SelectGroup>
-					</SelectContent>
-				</Select>
-				<TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
-					<TabsTrigger value="outline">Outline</TabsTrigger>
-					<TabsTrigger value="past-performance">
-						Past Performance <Badge variant="secondary">3</Badge>
-					</TabsTrigger>
-					<TabsTrigger value="key-personnel">
-						Key Personnel <Badge variant="secondary">2</Badge>
-					</TabsTrigger>
-					<TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
-				</TabsList>
+				<SearchForm onSearch={(query) => setGlobalFilter(query)} />
 				<div className="flex items-center gap-2">
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
+						>
+							<IconFilter data-icon="inline-start" />
+							Filter
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-48">
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Role</DropdownMenuLabel>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("role", "student")}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("role", "student", checked);
+									}}
+								>
+									Students
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("role", "teacher")}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("role", "teacher", checked);
+									}}
+								>
+									Teachers
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("role", "admin")}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("role", "admin", checked);
+									}}
+								>
+									Admins
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("role", "operator")}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("role", "operator", checked);
+									}}
+								>
+									Operators
+								</DropdownMenuCheckboxItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Registration</DropdownMenuLabel>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("registered", true)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("registered", true, checked);
+									}}
+								>
+									Registered
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("registered", false)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("registered", false, checked);
+									}}
+								>
+									Unregistered
+								</DropdownMenuCheckboxItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>In class</DropdownMenuLabel>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("in_class", true)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("in_class", true, checked);
+									}}
+								>
+									In class
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("in_class", false)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("in_class", false, checked);
+									}}
+								>
+									Not in class
+								</DropdownMenuCheckboxItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={() => setColumnFilters(getDefaultColumnFilters())}
+							>
+								Reset filters
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							render={<Button variant="outline" size="sm" />}
@@ -425,13 +558,21 @@ export function DataTable({
 									return (
 										<DropdownMenuCheckboxItem
 											key={column.id}
-											className="capitalize"
 											checked={column.getIsVisible()}
 											onCheckedChange={(value) =>
 												column.toggleVisibility(!!value)
 											}
 										>
-											{column.id}
+											{column.id
+												.replace(/_/g, " ")
+												.replace(/\bid\b/g, "ID")
+												.split(" ")
+												.map((w) =>
+													w === "ID"
+														? w
+														: w.charAt(0).toUpperCase() + w.slice(1),
+												)
+												.join(" ")}
 										</DropdownMenuCheckboxItem>
 									);
 								})}
@@ -577,21 +718,6 @@ export function DataTable({
 						</div>
 					</div>
 				</div>
-			</TabsContent>
-			<TabsContent
-				value="past-performance"
-				className="flex flex-col px-4 lg:px-6"
-			>
-				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-			</TabsContent>
-			<TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-			</TabsContent>
-			<TabsContent
-				value="focus-documents"
-				className="flex flex-col px-4 lg:px-6"
-			>
-				<div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
 			</TabsContent>
 		</Tabs>
 	);

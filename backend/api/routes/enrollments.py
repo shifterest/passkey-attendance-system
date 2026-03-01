@@ -8,7 +8,7 @@ from api.schemas import (
     ClassEnrollmentUpdate,
 )
 from db.database import Class, ClassEnrollment, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -132,4 +132,4 @@ def delete_enrollment(enrollment_id: str, db: Session = Depends(get_db)):
         )
     db.delete(enrollment)
     db.commit()
-    return {"message": Messages.ENROLLMENT_DELETED}
+    return Response(status_code=204)

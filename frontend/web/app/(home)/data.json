@@ -12,7 +12,7 @@
     "flagged": 2,
     "rectified": 1,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 2,
@@ -27,7 +27,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 3,
@@ -42,7 +42,7 @@
     "flagged": 3,
     "rectified": 2,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 4,
@@ -57,7 +57,7 @@
     "flagged": 1,
     "rectified": 1,
     "enrollments": 4,
-    "registered": true
+    "registration": true
   },
   {
     "id": 5,
@@ -72,7 +72,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 3,
-    "registered": true
+    "registration": true
   },
   {
     "id": 6,
@@ -87,7 +87,7 @@
     "flagged": 5,
     "rectified": 3,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 7,
@@ -102,7 +102,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 8,
@@ -117,7 +117,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 2,
-    "registered": true
+    "registration": true
   },
   {
     "id": 9,
@@ -132,7 +132,7 @@
     "flagged": 2,
     "rectified": 1,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 10,
@@ -147,7 +147,7 @@
     "flagged": 1,
     "rectified": 0,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 11,
@@ -162,7 +162,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 0,
-    "registered": true
+    "registration": true
   },
   {
     "id": 12,
@@ -177,7 +177,7 @@
     "flagged": 4,
     "rectified": 2,
     "enrollments": 4,
-    "registered": false
+    "registration": false
   },
   {
     "id": 13,
@@ -192,7 +192,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   },
   {
     "id": 14,
@@ -207,7 +207,7 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 4,
-    "registered": true
+    "registration": true
   },
   {
     "id": 15,
@@ -222,6 +222,6 @@
     "flagged": 0,
     "rectified": 0,
     "enrollments": 5,
-    "registered": true
+    "registration": true
   }
 ]

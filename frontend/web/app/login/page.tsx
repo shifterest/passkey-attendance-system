@@ -70,7 +70,7 @@ export default function LoginPage() {
 			localStorage.setItem("session_token", data.session_token);
 			// TODO: Implement token expiration handling
 			localStorage.setItem("expires_in", data.expires_in);
-			router.push("/home");
+			router.push("/dashboard");
 		} catch (error) {
 			console.error("Failed to bootstrap", error);
 		} finally {

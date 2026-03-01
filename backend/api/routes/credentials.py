@@ -1,9 +1,9 @@
 import logging
 
 from api.messages import Messages
-from api.schemas import CredentialCreate, CredentialResponse, CredentialUpdate
+from api.schemas import CredentialResponse, CredentialUpdate
 from db.database import Credential, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -33,9 +33,12 @@ def get_credential(credential_id: str, db: Session = Depends(get_db)):
 
 
 # Credentials can only be created via registration endpoint
-@router.post("/", response_model=CredentialResponse)
-def create_credential(credential_data: CredentialCreate, db: Session = Depends(get_db)):
-    return {"message": "Credentials can only be created via registration endpoint"}
+@router.post("/")
+def create_credential():
+    raise HTTPException(
+        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        detail="Credentials can only be created via the registration endpoint",
+    )
     # user = db.query(User).filter(User.id == credential_data.user_id).first()
     # if user is None:
     #     return {"message": "Error adding credential: user not found"}
@@ -68,7 +71,9 @@ def update_credential(
 ):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
-        return {"message": "Credential not found"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIAL_NOT_FOUND
+        )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(credential, key, value)
     db.commit()
@@ -85,4 +90,4 @@ def delete_credential(credential_id: str, db: Session = Depends(get_db)):
         )
     db.delete(credential)
     db.commit()
-    return {"message": Messages.CREDENTIAL_DELETED}
+    return Response(status_code=204)

@@ -1,4 +1,4 @@
-import { DataTable } from "@/components/custom/data-table-user";
+import { DataTable } from "@/components/custom/data-table-student";
 
 import data from "../data.json";
 

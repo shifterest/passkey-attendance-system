@@ -8,22 +8,20 @@ from api.schemas import (
     AttendanceSessionUpdate,
 )
 from db.database import AttendanceSession, Class, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-@router.get("/sessions", response_model=list[AttendanceSessionResponse])
+@router.get("/", response_model=list[AttendanceSessionResponse])
 def get_all_sessions(db: Session = Depends(get_db)):
     sessions = db.query(AttendanceSession).all()
     return sessions
 
 
-@router.get(
-    "/sessions/by-class/{class_id}", response_model=list[AttendanceSessionResponse]
-)
+@router.get("/by-class/{class_id}", response_model=list[AttendanceSessionResponse])
 def get_sessions_by_class(class_id: str, db: Session = Depends(get_db)):
     sessions = (
         db.query(AttendanceSession).filter(AttendanceSession.class_id == class_id).all()
@@ -31,7 +29,7 @@ def get_sessions_by_class(class_id: str, db: Session = Depends(get_db)):
     return sessions
 
 
-@router.get("/sessions/{session_id}", response_model=AttendanceSessionResponse)
+@router.get("/{session_id}", response_model=AttendanceSessionResponse)
 def get_session(session_id: str, db: Session = Depends(get_db)):
     session = (
         db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
@@ -43,7 +41,7 @@ def get_session(session_id: str, db: Session = Depends(get_db)):
     return session
 
 
-@router.post("/sessions", response_model=AttendanceSessionResponse)
+@router.post("/", response_model=AttendanceSessionResponse)
 def create_session(
     session_data: AttendanceSessionCreate, db: Session = Depends(get_db)
 ):
@@ -76,7 +74,7 @@ def create_session(
     return new_session
 
 
-@router.put("/sessions/{session_id}", response_model=AttendanceSessionResponse)
+@router.put("/{session_id}", response_model=AttendanceSessionResponse)
 def update_session(
     session_id: str,
     updated_data: AttendanceSessionUpdate,
@@ -96,7 +94,7 @@ def update_session(
     return session
 
 
-@router.delete("/sessions/{session_id}")
+@router.delete("/{session_id}")
 def delete_session(session_id: str, db: Session = Depends(get_db)):
     session = (
         db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
@@ -107,4 +105,4 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
         )
     db.delete(session)
     db.commit()
-    return {"message": Messages.SESSION_DELETED}
+    return Response(status_code=204)

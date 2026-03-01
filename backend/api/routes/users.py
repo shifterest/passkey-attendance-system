@@ -2,9 +2,13 @@ import logging
 import uuid
 
 from api.messages import Logs, Messages
-from api.schemas import UserCreate, UserResponse, UserUpdate
+from api.schemas import (
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from db.database import User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -74,4 +78,4 @@ def delete_user(user_id: str, db: Session = Depends(get_db)):
         )
     db.delete(user)
     db.commit()
-    return {"message": Messages.USER_DELETED}
+    return Response(status_code=204)

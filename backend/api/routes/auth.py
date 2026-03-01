@@ -1,8 +1,8 @@
-import datetime
 import logging
 import uuid
+from datetime import datetime, timezone
 
-import api.config
+from api.config import settings
 from api.messages import Logs, Messages
 from api.redis import redis_client
 from api.schemas import (
@@ -46,22 +46,38 @@ def register_options(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.REGISTER_USER_NOT_FOUND,
+            detail=Messages.USER_NOT_FOUND,
+        )
+
+    user_id_bytes = redis_client.get(
+        f"registration_token:{options_data.registration_token}"
+    )
+    if not user_id_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.REGISTRATION_TOKEN_INVALID,
+        )
+    user_id = user_id_bytes.decode()  # type: ignore
+
+    if user_id != user.id:  # type: ignore
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
         )
 
     options = generate_registration_options(
-        rp_id=api.config.RP_ID,
-        rp_name=api.config.RP_NAME,
+        rp_id=settings.rp_id,
+        rp_name=settings.rp_name,
         user_id=bytes(user.id, "utf-8"),
         user_name=user.email,
         user_display_name=user.full_name,
-        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
+        timeout=settings.challenge_timeout * 1000,
     )
 
     redis_client.set(
         f"registration_challenge:{user.id}",
         options.challenge,
-        ex=api.config.CHALLENGE_TIMEOUT,
+        ex=settings.challenge_timeout,
     )
     return options_to_json(options)
 
@@ -74,8 +90,25 @@ def register_verify(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.REGISTER_VERIFY_USER_NOT_FOUND,
+            detail=Messages.USER_NOT_FOUND,
         )
+
+    user_id_bytes = redis_client.get(
+        f"registration_token:{response_data.registration_token}"
+    )
+    if not user_id_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.REGISTRATION_TOKEN_INVALID,
+        )
+    user_id = user_id_bytes.decode()  # type: ignore
+
+    if user_id != user.id:  # type: ignore
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
+        )
+
     challenge_bytes = redis_client.get(f"registration_challenge:{user.id}")
     if not challenge_bytes:
         raise HTTPException(
@@ -87,8 +120,8 @@ def register_verify(
         registration_verification = verify_registration_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
-            expected_rp_id=api.config.RP_ID,
+            expected_origin=settings.expected_origin,
+            expected_rp_id=settings.rp_id,
         )
         new_uuid = str(uuid.uuid4())
         while True:
@@ -99,10 +132,11 @@ def register_verify(
         new_credential = Credential(
             id=new_uuid,
             user_id=user.id,
+            device_id=response_data.device_id,
             public_key=registration_verification.credential_public_key.hex(),
             credential_id=registration_verification.credential_id.hex(),
             sign_count=0,
-            registered_at=datetime.datetime.now(datetime.timezone.utc),
+            registered_at=datetime.now(timezone.utc),
         )
         db.add(new_credential)
         db.commit()
@@ -115,6 +149,7 @@ def register_verify(
         )
         return new_credential
     except InvalidRegistrationResponse as e:
+        redis_client.delete(f"registration_challenge:{user.id}")
         logger.error(Logs.REGISTER_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -134,14 +169,14 @@ def authentication_options(
         )
 
     options = generate_authentication_options(
-        rp_id=api.config.RP_ID,
-        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
+        rp_id=settings.rp_id,
+        timeout=settings.challenge_timeout * 1000,
     )
 
     redis_client.set(
         f"authentication_challenge:{user.id}",
         options.challenge,
-        ex=api.config.CHALLENGE_TIMEOUT,
+        ex=settings.challenge_timeout,
     )
     return options_to_json(options)
 
@@ -154,7 +189,7 @@ def authentication_verify(
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.AUTH_VERIFY_USER_NOT_FOUND,
+            detail=Messages.USER_NOT_FOUND,
         )
     session = (
         db.query(AttendanceSession)
@@ -185,8 +220,8 @@ def authentication_verify(
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
-            expected_rp_id=api.config.RP_ID,
+            expected_origin=settings.expected_origin,
+            expected_rp_id=settings.rp_id,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
         )
@@ -207,8 +242,9 @@ def authentication_verify(
             id=new_uuid,
             session_id=response_data.session_id,
             user_id=user.id,
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
-            # verification_methods=response_data.verification_methods,
+            timestamp=datetime.now(timezone.utc),
+            is_flagged=False,
+            verification_methods=[],
             status=AttendanceRecordStatus.PRESENT,
         )
         db.add(new_record)
@@ -217,11 +253,14 @@ def authentication_verify(
         db.refresh(new_record)
         logger.info(
             Logs.RECORD_ADDED.format(
-                user_id=new_record.user_id, record_id=new_record.id
+                full_name=user.full_name,
+                user_id=new_record.user_id,
+                record_id=new_record.id,
             )
         )
         return new_record
     except InvalidAuthenticationResponse as e:
+        redis_client.delete(f"authentication_challenge:{user.id}")
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
@@ -229,6 +268,7 @@ def authentication_verify(
 
 
 # Login
+# TODO: do /login/options/{user_id}
 @router.post("/login/options")
 def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == options_data.user_id).first()
@@ -238,14 +278,14 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
         )
 
     options = generate_authentication_options(
-        rp_id=api.config.RP_ID,
-        timeout=api.config.CHALLENGE_TIMEOUT * 1000,
+        rp_id=settings.rp_id,
+        timeout=settings.challenge_timeout * 1000,
     )
 
     redis_client.set(
         f"login_challenge:{user.id}",
         options.challenge,
-        ex=api.config.CHALLENGE_TIMEOUT,
+        ex=settings.challenge_timeout,
     )
     return options_to_json(options)
 
@@ -256,7 +296,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.AUTH_VERIFY_USER_NOT_FOUND,
+            detail=Messages.USER_NOT_FOUND,
         )
     challenge_bytes = redis_client.get(f"login_challenge:{user.id}")
     if not challenge_bytes:
@@ -277,21 +317,22 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=f"http://localhost:{api.config.FRONTEND_PORT}",
-            expected_rp_id=api.config.RP_ID,
+            expected_origin=settings.expected_origin,
+            expected_rp_id=settings.rp_id,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
         )
         user_credential.sign_count = authentication_verification.new_sign_count
         redis_client.delete(f"login_challenge:{user.id}")
         login_response = create_login_session(
-            user_id=user.id, timeout=api.config.LOGIN_TIMEOUT
+            user_id=user.id, timeout=settings.login_timeout
         )
         logger.info(
             Logs.LOGIN_SUCCESSFUL.format(full_name=user.full_name, user_id=user.id)
         )
         return login_response
     except InvalidAuthenticationResponse as e:
+        redis_client.delete(f"login_challenge:{user.id}")
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED

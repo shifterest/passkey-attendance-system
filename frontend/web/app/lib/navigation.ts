@@ -23,30 +23,30 @@ export type NavGroup = {
 
 export const navigation = {
 	information: [
-		{ title: "Dashboard", url: "/home/dashboard", icon: "dashboard" },
-		{ title: "Logs", url: "/home/logs", icon: "logs" },
+		{ title: "Dashboard", url: "/dashboard", icon: "dashboard" },
+		{ title: "Logs", url: "/logs", icon: "logs" },
 	] satisfies NavItem[],
 	management: [
 		{
 			name: "Users",
-			url: "/home/users",
+			url: "/users",
 			icon: "users",
 			items: [
 				{
 					title: "Students",
-					url: "/home/users?filter=student",
+					url: "/students",
 					icon: "students",
 				},
 				{
 					title: "Teachers",
-					url: "/home/users?filter=teacher",
+					url: "/teachers",
 					icon: "teachers",
 				},
-				{ title: "Admins", url: "/home/users?filter=admin", icon: "admins" },
+				{ title: "Admins", url: "/admins", icon: "admins" },
 			],
 		},
-		{ name: "Classes", url: "/home/classes", icon: "classes" },
-		{ name: "Records", url: "/home/records", icon: "records" },
+		{ name: "Classes", url: "/classes", icon: "classes" },
+		{ name: "Records", url: "/records", icon: "records" },
 	] satisfies NavGroup[],
 };
 
@@ -59,8 +59,6 @@ export function getPageTitle(pathname: string): string {
 		const subItem = group.items?.find((item) => item.url === pathname);
 		if (subItem) return subItem.title;
 	}
-
-	if (pathname === "/home") return "Dashboard";
 
 	return "Dashboard";
 }
