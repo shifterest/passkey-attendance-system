@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
 	return (
+		// TODO: Fix these stupid skeletons
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 			<div className="flex flex-col gap-4 px-4 lg:px-6">
 				<div className="flex items-center gap-2">
