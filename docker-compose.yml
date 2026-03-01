@@ -1,0 +1,55 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      # Match with NEXT_PUBLIC_ORIGIN
+      FRONTEND_PORT: ${FRONTEND_PORT:-80}
+      # Change this to frontend domain
+      ORIGIN: ${ORIGIN:-http://localhost}
+
+      CHALLENGE_TIMEOUT: ${CHALLENGE_TIMEOUT:-180}
+      LOGIN_TIMEOUT: ${LOGIN_TIMEOUT:-1800}
+      REGISTRATION_TIMEOUT: ${REGISTRATION_TIMEOUT:-180}
+
+      # Change this to domain
+      RP_ID: ${RP_ID:-attendance.softeng.com}
+      RP_NAME: ${RP_NAME:-Passkey Attendance System}
+      PROTOCOL: ${PROTOCOL:-pas}
+    volumes:
+      - sqlite_data:/app/db
+    ports:
+        # Match with NEXT_PUBLIC_API_ORIGIN
+      - "${BACKEND_PORT:-8000}:8000"  
+
+  web:
+    build:
+      context: ./frontend/web
+      args:
+        # Match with backend port
+        NEXT_PUBLIC_API_ORIGIN: ${NEXT_PUBLIC_API_ORIGIN:-http://localhost:8000}
+        # Change this to domain
+        NEXT_PUBLIC_RP_ID: ${RP_ID:-attendance.softeng.com}
+        # Match with frontend port
+        NEXT_PUBLIC_ORIGIN: ${NEXT_PUBLIC_ORIGIN:-http://localhost}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      PORT: "3000"
+    ports:
+      - "${FRONTEND_PORT:-80}:3000"
+
+volumes:
+  redis_data:
+  sqlite_data:

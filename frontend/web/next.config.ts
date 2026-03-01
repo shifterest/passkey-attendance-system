@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Standalone output produces a self-contained server.js + only the files
+  // needed at runtime — no full node_modules in the production image.
+  output: "standalone",
 };
 
 export default nextConfig;

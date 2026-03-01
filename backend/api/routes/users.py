@@ -31,6 +31,9 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
     return user
 
 
+# TODO: Implement get users by filter
+
+
 @router.post("/", response_model=UserResponse)
 def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
     new_uuid = str(uuid.uuid4())

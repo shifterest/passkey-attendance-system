@@ -132,7 +132,7 @@ const chartConfig = {
 	},
 	flagged: {
 		label: "Flagged",
-		color: "var(--primary)",
+		color: "#FF746F",
 	},
 } satisfies ChartConfig;
 

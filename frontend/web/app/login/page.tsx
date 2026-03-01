@@ -169,7 +169,7 @@ export default function LoginPage() {
 									</Button>
 									<Button variant="outline">
 										<IconPassword data-icon="inline-start" />
-										Login with password and OTP
+										Login with password and 2FA
 									</Button>
 									<FieldDescription className="text-center">
 										{/* TODO: Add dialog to proceed to MIS office for account registration*/}

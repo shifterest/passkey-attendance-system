@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite db file
+db/
+
+# Logs
+*.log
+
+# Local env overrides
+.env.local
+
+# Dev/tooling artifacts
+.git/
+.gitignore

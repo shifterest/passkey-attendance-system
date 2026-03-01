@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// TODO: Use user id in loading state
 export function NavUser() {
 	const { isMobile } = useSidebar();
 	const [loading, setLoading] = useState(true);

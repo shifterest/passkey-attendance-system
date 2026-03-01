@@ -12,9 +12,9 @@ class Settings(BaseSettings):
 
     # Hosts and ports
     redis_host: str = "localhost"
-    redis_port: int = 6379
     backend_port: int = 8000
     frontend_port: int = 3000
+    origin: str | None = None
 
     # Timeouts
     challenge_timeout: int = 180
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def expected_origin(self) -> str:
-        return f"http://localhost:{self.frontend_port}"
+        return self.origin or f"http://localhost:{self.frontend_port}"
 
 
 settings = Settings()

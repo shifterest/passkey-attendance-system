@@ -158,7 +158,7 @@ def register_verify(
 
 
 # Authentication
-@router.post("/authentication/options")
+@router.post("/authenticate/options")
 def authentication_options(
     options_data: AuthenticationOptionsBase, db: Session = Depends(get_db)
 ):
@@ -181,7 +181,7 @@ def authentication_options(
     return options_to_json(options)
 
 
-@router.post("/authentication/verify", response_model=AttendanceRecordResponse)
+@router.post("/authenticate/verify", response_model=AttendanceRecordResponse)
 def authentication_verify(
     response_data: AuthenticationResponseBase, db: Session = Depends(get_db)
 ):
@@ -268,7 +268,6 @@ def authentication_verify(
 
 
 # Login
-# TODO: do /login/options/{user_id}
 @router.post("/login/options")
 def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == options_data.user_id).first()
