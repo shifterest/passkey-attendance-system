@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     registration_timeout: int = 180
 
     # Constants
-    rp_id: str = "attendance.softeng.com"
+    rp_id: str = "attendance.whatta.top"
     rp_name: str = "Passkey Attendance System"
     protocol: str = "pas"
 

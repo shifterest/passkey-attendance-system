@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class SessionStore {
   static late final SharedPreferencesWithCache prefs;
@@ -6,7 +7,12 @@ class SessionStore {
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
       cacheOptions: const SharedPreferencesWithCacheOptions(
-        allowList: <String>{'userId', 'sessionToken', 'sessionExpiry'},
+        allowList: <String>{
+          'deviceId',
+          'userId',
+          'sessionToken',
+          'sessionExpiry',
+        },
       ),
     );
   }
@@ -24,6 +30,15 @@ class SessionStore {
           .add(Duration(seconds: int.parse(expiresIn)))
           .toIso8601String(),
     );
+  }
+
+  static Future<String> getDeviceId() async {
+    String? deviceId = prefs.getString('deviceId');
+    if (deviceId == null) {
+      deviceId = const Uuid().v4();
+      await prefs.setString('deviceId', deviceId);
+    }
+    return deviceId;
   }
 
   static Future<bool> isSessionValid() async {
@@ -46,6 +61,7 @@ class SessionStore {
   }
 
   static Future<void> clearSession() async {
-    await prefs.clear();
+    await prefs.remove("sessionToken");
+    await prefs.remove("sessionExpiry");
   }
 }

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 
 import 'config/config.dart';
-import 'services/session_store.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/session_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  debugPaintSizeEnabled = false;
   await Config.init();
   await SessionStore.init();
   runApp(const MyApp());

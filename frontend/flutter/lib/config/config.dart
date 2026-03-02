@@ -9,7 +9,7 @@ class Config {
     await dotenv.load(fileName: ".env");
 
     apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000';
-    rpId = dotenv.env['RP_ID'] ?? 'attendance.softeng.com';
+    rpId = dotenv.env['RP_ID'] ?? 'attendance.whatta.top';
     rpName = dotenv.env['RP_NAME'] ?? 'Passkey Attendance System';
   }
 }
