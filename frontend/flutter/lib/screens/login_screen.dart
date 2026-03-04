@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -61,7 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ] else ...[
                             FilledButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                GoRouter.of(context).push('/register');
+                              },
                               icon: const Icon(Icons.key),
                               label: const Text('Register a new passkey'),
                             ),

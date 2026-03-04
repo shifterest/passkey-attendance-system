@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+from api.config import settings
 from sqlalchemy import JSON, ForeignKey, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 # except:
 #     logger.info("Failed to connect to database.")
 
-engine = create_engine("sqlite+pysqlite:///db/attendance.db", echo=True)
+engine = create_engine(settings.database_url, echo=True)
 
 
 class Base(DeclarativeBase):

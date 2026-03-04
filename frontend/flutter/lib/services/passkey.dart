@@ -4,9 +4,9 @@ import 'package:passkeys/types.dart';
 // Registration
 Future<Map<String, dynamic>> register(
   Map<String, dynamic> optionsJson,
-  String userId,
-  String registrationToken,
-  String deviceId,
+  String? userId,
+  String? registrationToken,
+  String? deviceId,
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();
@@ -27,8 +27,8 @@ Future<Map<String, dynamic>> register(
 // Authentication
 Future<Map<String, dynamic>> authenticate(
   Map<String, dynamic> optionsJson,
-  String userId,
-  String sessionId,
+  String? userId,
+  String? sessionId,
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();
@@ -48,7 +48,7 @@ Future<Map<String, dynamic>> authenticate(
 // Login
 Future<Map<String, dynamic>> login(
   Map<String, dynamic> optionsJson,
-  String userId,
+  String? userId,
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();

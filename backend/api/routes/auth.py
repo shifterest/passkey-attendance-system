@@ -20,7 +20,7 @@ from api.schemas import (
 )
 from api.services.auth_service import create_login_session
 from db.database import AttendanceRecord, AttendanceSession, Credential, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from webauthn import (
     generate_authentication_options,
@@ -120,7 +120,7 @@ def register_verify(
         registration_verification = verify_registration_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=settings.expected_origin,
+            expected_origin=settings.origin,
             expected_rp_id=settings.rp_id,
         )
         new_uuid = str(uuid.uuid4())
@@ -143,7 +143,7 @@ def register_verify(
         redis_client.delete(f"registration_challenge:{user.id}")
         db.refresh(new_credential)
         logger.info(
-            Logs.CREDENTIAL_ADDED.format(
+            Logs.USER_REGISTERED.format(
                 user_id=new_credential.user_id, credential_id=new_credential.id
             )
         )
@@ -220,7 +220,7 @@ def authentication_verify(
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=settings.expected_origin,
+            expected_origin=settings.origin,
             expected_rp_id=settings.rp_id,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
@@ -316,7 +316,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         authentication_verification = verify_authentication_response(
             credential=response_data.credential,
             expected_challenge=challenge,
-            expected_origin=settings.expected_origin,
+            expected_origin=settings.origin,
             expected_rp_id=settings.rp_id,
             credential_public_key=bytes.fromhex(user_public_key),
             credential_current_sign_count=user_sign_count,
@@ -362,4 +362,4 @@ def logout(options_data: LogoutOptionsBase, db: Session = Depends(get_db)):
         )
     redis_client.delete(f"session_token:{options_data.session_token}")
 
-    return {"message": Messages.LOGOUT_SUCCESSFUL}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

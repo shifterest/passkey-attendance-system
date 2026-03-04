@@ -1,25 +1,13 @@
 "use client";
 
+import { getRegistrationSession } from "@/app/lib/webauthn";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
+	type ChartConfig
 } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Drawer,
-	DrawerClose,
-	DrawerContent,
-	DrawerDescription,
-	DrawerFooter,
-	DrawerHeader,
-	DrawerTitle,
-	DrawerTrigger,
-} from "@/components/ui/drawer";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -30,7 +18,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -40,7 +27,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
 	Table,
 	TableBody,
@@ -50,7 +36,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
 import {
 	closestCenter,
 	DndContext,
@@ -78,12 +63,10 @@ import {
 	IconChevronsRight,
 	IconCircle,
 	IconCircleCheckFilled,
-	IconCircleFilled,
 	IconCircleXFilled,
 	IconDotsVertical,
 	IconFilter,
-	IconLayoutColumns,
-	IconTrendingUp,
+	IconLayoutColumns
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -103,8 +86,9 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 import { useState } from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { z } from "zod";
+import { RegistrationQrDialog } from "./registration-qr-dialog";
+import { RegistrationSessionDto } from "@/app/lib/api";
 
 export const schema = z.object({
 	id: z.string(),
@@ -124,13 +108,49 @@ const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
 const REGISTERED_FILTER_VALUES = [true, false] as const;
 const IN_CLASS_FILTER_VALUES = [true, false] as const;
 
-function getDefaultColumnFilters(): ColumnFiltersState {
-	return [
-		{ id: "role", value: [...ROLE_FILTER_VALUES] },
-		{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
-		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
-	];
-}
+const chartData = [
+	{
+		month: "January",
+		desktop: 186,
+		mobile: 80,
+	},
+	{
+		month: "February",
+		desktop: 305,
+		mobile: 200,
+	},
+	{
+		month: "March",
+		desktop: 237,
+		mobile: 120,
+	},
+	{
+		month: "April",
+		desktop: 73,
+		mobile: 190,
+	},
+	{
+		month: "May",
+		desktop: 209,
+		mobile: 130,
+	},
+	{
+		month: "June",
+		desktop: 214,
+		mobile: 140,
+	},
+] as const;
+
+const chartConfig = {
+	desktop: {
+		label: "Desktop",
+		color: "var(--primary)",
+	},
+	mobile: {
+		label: "Mobile",
+		color: "var(--primary)",
+	},
+} satisfies ChartConfig;
 
 const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
 	row,
@@ -145,156 +165,175 @@ const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
 	return filterValue.includes(cellValue);
 };
 
-const columns: ColumnDef<z.infer<typeof schema>>[] = [
-	{
-		id: "select",
-		header: ({ table }) => (
-			<div className="flex items-center justify-center">
-				<Checkbox
-					checked={table.getIsAllPageRowsSelected()}
-					indeterminate={
-						table.getIsSomePageRowsSelected() &&
-						!table.getIsAllPageRowsSelected()
-					}
-					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-					aria-label="Select all"
-				/>
-			</div>
-		),
-		cell: ({ row }) => (
-			<div className="w-8 flex items-center justify-center">
-				<Checkbox
-					checked={row.getIsSelected()}
-					onCheckedChange={(value) => row.toggleSelected(!!value)}
-					aria-label="Select row"
-				/>
-			</div>
-		),
-		enableSorting: false,
-		enableHiding: false,
-	},
-	{
-		accessorKey: "full_name",
-		header: "Full name",
-		cell: ({ row }) => {
-			return <TableCellViewer item={row.original} />;
+function columns(setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>) => void): ColumnDef<z.infer<typeof schema>>[] {
+	return [
+		{
+			id: "select",
+			header: ({ table }) => (
+				<div className="flex items-center justify-center">
+					<Checkbox
+						checked={table.getIsAllPageRowsSelected()}
+						indeterminate={
+							table.getIsSomePageRowsSelected() &&
+							!table.getIsAllPageRowsSelected()
+						}
+						onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+						aria-label="Select all"
+					/>
+				</div>
+			),
+			cell: ({ row }) => (
+				<div className="w-8 flex items-center justify-center">
+					<Checkbox
+						checked={row.getIsSelected()}
+						onCheckedChange={(value) => row.toggleSelected(!!value)}
+						aria-label="Select row"
+					/>
+				</div>
+			),
+			enableSorting: false,
+			enableHiding: false,
 		},
-		enableHiding: false,
-	},
-	{
-		accessorKey: "role",
-		filterFn: includesSomeFilter,
-		header: "Role",
-		cell: ({ row }) => (
-			<div>
-				<Badge
-					variant="outline"
-					className="text-muted-foreground px-1.5 capitalize"
-				>
-					{row.original.role}
-				</Badge>
-			</div>
-		),
-	},
-	{
-		accessorKey: "ongoing_class",
-		header: "Ongoing class",
-		cell: ({ row }) =>
-			row.original.ongoing_class ? row.original.ongoing_class : "—",
-	},
-	{
-		accessorKey: "in_class",
-		filterFn: includesSomeFilter,
-		header: "In class",
-		cell: ({ row }) => (
-			<div>
+		{
+			accessorKey: "full_name",
+			header: "Full name",
+			// cell: ({ row }) => {
+			// 	return <TableCellViewer item={row.original} />;
+			// },
+			enableHiding: false,
+		},
+		{
+			accessorKey: "role",
+			filterFn: includesSomeFilter,
+			header: "Role",
+			cell: ({ row }) => (
+				<div>
+					<Badge
+						variant="outline"
+						className="text-muted-foreground px-1.5 capitalize"
+					>
+						{row.original.role}
+					</Badge>
+				</div>
+			),
+		},
+		{
+			accessorKey: "ongoing_class",
+			header: "Ongoing class",
+			cell: ({ row }) =>
+				row.original.ongoing_class ? row.original.ongoing_class : "—",
+		},
+		{
+			accessorKey: "in_class",
+			filterFn: includesSomeFilter,
+			header: "In class",
+			cell: ({ row }) => (
+				<div>
+					<Badge variant="outline" className="text-muted-foreground px-1.5">
+						{row.original.in_class ? (
+							<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
+						) : row.original.ongoing_class ? (
+							<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
+						) : (
+							<IconCircle className="fill-gray-500 dark:fill-gray-400" />
+						)}
+						{row.original.in_class
+							? "In class"
+							: row.original.ongoing_class
+								? "Not in class"
+								: "No ongoing class"}
+					</Badge>
+				</div>
+			),
+		},
+		{
+			accessorKey: "school_id",
+			header: "School ID",
+			cell: ({ row }) => row.original.school_id,
+		},
+		{
+			accessorKey: "email",
+			header: "Email",
+			cell: ({ row }) => row.original.email,
+		},
+		{
+			accessorKey: "records",
+			header: "Records",
+			cell: ({ row }) => row.original.records,
+		},
+		{
+			accessorKey: "flagged",
+			header: "Flagged",
+			cell: ({ row }) => row.original.flagged,
+		},
+		{
+			accessorKey: "enrollments",
+			header: "Enrollments",
+			cell: ({ row }) => row.original.enrollments,
+		},
+		{
+			accessorKey: "registered",
+			filterFn: includesSomeFilter,
+			header: "Registration",
+			cell: ({ row }) => (
 				<Badge variant="outline" className="text-muted-foreground px-1.5">
-					{row.original.in_class ? (
-						<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-					) : row.original.ongoing_class ? (
-						<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
-					) : (
-						<IconCircle className="fill-gray-500 dark:fill-gray-400" />
-					)}
-					{row.original.in_class
-						? "In class"
-						: row.original.ongoing_class
-							? "Not in class"
-							: "No ongoing class"}
-				</Badge>
-			</div>
-		),
-	},
-	{
-		accessorKey: "school_id",
-		header: "School ID",
-		cell: ({ row }) => row.original.school_id,
-	},
-	{
-		accessorKey: "email",
-		header: "Email",
-		cell: ({ row }) => row.original.email,
-	},
-	{
-		accessorKey: "records",
-		header: "Records",
-		cell: ({ row }) => row.original.records,
-	},
-	{
-		accessorKey: "flagged",
-		header: "Flagged",
-		cell: ({ row }) => row.original.flagged,
-	},
-	{
-		accessorKey: "enrollments",
-		header: "Enrollments",
-		cell: ({ row }) => row.original.enrollments,
-	},
-	{
-		accessorKey: "registered",
-		filterFn: includesSomeFilter,
-		header: "Registration",
-		cell: ({ row }) => (
-			<Badge variant="outline" className="text-muted-foreground px-1.5">
-				{row.original.registered ? (
-					<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-				) : (
-					<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
-				)}
-				{row.original.registered ? "Registered" : "Unregistered"}
-			</Badge>
-		),
-	},
-	{
-		id: "actions",
-		cell: ({ row }) => (
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							variant="ghost"
-							className="data-open:bg-muted text-muted-foreground flex size-8"
-							size="icon"
-						/>
-					}
-				>
-					<IconDotsVertical />
-					<span className="sr-only">Open menu</span>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-32">
 					{row.original.registered ? (
-						<DropdownMenuItem variant="destructive">
-							Unregister
-						</DropdownMenuItem>
+						<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
 					) : (
-						<DropdownMenuItem>Register</DropdownMenuItem>
+						<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
 					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
-		),
-	},
-];
-function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
+					{row.original.registered ? "Registered" : "Unregistered"}
+				</Badge>
+			),
+		},
+		{
+			id: "actions",
+			cell: ({ row }) => (
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						render={
+							<Button
+								variant="ghost"
+								className="data-open:bg-muted text-muted-foreground flex size-8"
+								size="icon"
+							/>
+						}
+					>
+						<IconDotsVertical />
+						<span className="sr-only">Open menu</span>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-64">
+						{row.original.registered ? (
+							<>
+								<DropdownMenuItem onClick={async () => { setRegistrationQrDialogState(row); }}>
+									Regenerate registration QR
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem variant="destructive">
+									Unregister
+								</DropdownMenuItem>
+							</>
+						) : (
+							<DropdownMenuItem onClick={async () => { setRegistrationQrDialogState(row); }}>
+								Generate registration QR
+							</DropdownMenuItem>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			),
+		},
+	];
+}
+
+const getDefaultColumnFilters = (): ColumnFiltersState => {
+	return [
+		{ id: "role", value: [...ROLE_FILTER_VALUES] },
+		{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
+		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
+	];
+}
+
+const UserRow = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
 	const { transform, transition, setNodeRef, isDragging } = useSortable({
 		id: row.original.id,
 	});
@@ -317,11 +356,214 @@ function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
 		</TableRow>
 	);
 }
-export function DataTable({
+
+// function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
+// 	const isMobile = useIsMobile();
+// 	return (
+// 		// TODO: Work on drawer content
+// 		<Drawer direction={isMobile ? "bottom" : "right"}>
+// 			<DrawerTrigger
+// 				render={
+// 					<Button
+// 						variant="link"
+// 						className="text-foreground w-fit px-0 text-left"
+// 					/>
+// 				}
+// 			>
+// 				{item.full_name}
+// 			</DrawerTrigger>
+// 			<DrawerContent>
+// 				<DrawerHeader className="gap-1">
+// 					<DrawerTitle>{item.full_name}</DrawerTitle>
+// 					<DrawerDescription>
+// 						Showing total attendance records in the last 3 months
+// 					</DrawerDescription>
+// 				</DrawerHeader>
+// 				<div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
+// 					{!isMobile && (
+// 						<>
+// 							<ChartContainer config={chartConfig}>
+// 								<AreaChart
+// 									accessibilityLayer
+// 									data={chartData}
+// 									margin={{
+// 										left: 0,
+// 										right: 10,
+// 									}}
+// 								>
+// 									<CartesianGrid vertical={false} />
+// 									<XAxis
+// 										dataKey="month"
+// 										tickLine={false}
+// 										axisLine={false}
+// 										tickMargin={8}
+// 										tickFormatter={(value) => value.slice(0, 3)}
+// 										hide
+// 									/>
+// 									<ChartTooltip
+// 										cursor={false}
+// 										content={<ChartTooltipContent indicator="dot" />}
+// 									/>
+// 									<Area
+// 										dataKey="mobile"
+// 										type="natural"
+// 										fill="var(--color-mobile)"
+// 										fillOpacity={0.6}
+// 										stroke="var(--color-mobile)"
+// 										stackId="a"
+// 									/>
+// 									<Area
+// 										dataKey="desktop"
+// 										type="natural"
+// 										fill="var(--color-desktop)"
+// 										fillOpacity={0.4}
+// 										stroke="var(--color-desktop)"
+// 										stackId="a"
+// 									/>
+// 								</AreaChart>
+// 							</ChartContainer>
+// 							<Separator />
+// 							<div className="grid gap-2">
+// 								<div className="flex gap-2 leading-none font-medium">
+// 									Trending up by 5.2% this month{" "}
+// 									<IconTrendingUp className="size-4" />
+// 								</div>
+// 								<div className="text-muted-foreground">
+// 									Showing total visitors for the last 6 months. This is just
+// 									some random text to test the layout. It spans multiple lines
+// 									and should wrap around.
+// 								</div>
+// 							</div>
+// 							<Separator />
+// 						</>
+// 					)}
+// 					<form className="flex flex-col gap-4">
+// 						<div className="flex flex-col gap-3">
+// 							<Label htmlFor="header">Header</Label>
+// 							<Input id="header" defaultValue={item.full_name} />
+// 						</div>
+// 						<div className="grid grid-cols-2 gap-4">
+// 							<div className="flex flex-col gap-3">
+// 								<Label htmlFor="type">Type</Label>
+// 								<Select
+// 									defaultValue={item.type}
+// 									items={[
+// 										{ label: "Table of Contents", value: "Table of Contents" },
+// 										{ label: "Executive Summary", value: "Executive Summary" },
+// 										{
+// 											label: "Technical Approach",
+// 											value: "Technical Approach",
+// 										},
+// 										{ label: "Design", value: "Design" },
+// 										{ label: "Capabilities", value: "Capabilities" },
+// 										{ label: "Focus Documents", value: "Focus Documents" },
+// 										{ label: "Narrative", value: "Narrative" },
+// 										{ label: "Cover Page", value: "Cover Page" },
+// 									]}
+// 								>
+// 									<SelectTrigger id="type" className="w-full">
+// 										<SelectValue placeholder="Select a type" />
+// 									</SelectTrigger>
+// 									<SelectContent>
+// 										<SelectGroup>
+// 											<SelectItem value="Table of Contents">
+// 												Table of Contents
+// 											</SelectItem>
+// 											<SelectItem value="Executive Summary">
+// 												Executive Summary
+// 											</SelectItem>
+// 											<SelectItem value="Technical Approach">
+// 												Technical Approach
+// 											</SelectItem>
+// 											<SelectItem value="Design">Design</SelectItem>
+// 											<SelectItem value="Capabilities">Capabilities</SelectItem>
+// 											<SelectItem value="Focus Documents">
+// 												Focus Documents
+// 											</SelectItem>
+// 											<SelectItem value="Narrative">Narrative</SelectItem>
+// 											<SelectItem value="Cover Page">Cover Page</SelectItem>
+// 										</SelectGroup>
+// 									</SelectContent>
+// 								</Select>
+// 							</div>
+// 							<div className="flex flex-col gap-3">
+// 								<Label htmlFor="status">Status</Label>
+// 								<Select
+// 									defaultValue={item.status}
+// 									items={[
+// 										{ label: "Done", value: "Done" },
+// 										{ label: "In Progress", value: "In Progress" },
+// 										{ label: "Not Started", value: "Not Started" },
+// 									]}
+// 								>
+// 									<SelectTrigger id="status" className="w-full">
+// 										<SelectValue placeholder="Select a status" />
+// 									</SelectTrigger>
+// 									<SelectContent>
+// 										<SelectGroup>
+// 											<SelectItem value="Done">Done</SelectItem>
+// 											<SelectItem value="In Progress">In Progress</SelectItem>
+// 											<SelectItem value="Not Started">Not Started</SelectItem>
+// 										</SelectGroup>
+// 									</SelectContent>
+// 								</Select>
+// 							</div>
+// 						</div>
+// 						<div className="grid grid-cols-2 gap-4">
+// 							<div className="flex flex-col gap-3">
+// 								<Label htmlFor="target">Target</Label>
+// 								<Input id="target" defaultValue={item.target} />
+// 							</div>
+// 							<div className="flex flex-col gap-3">
+// 								<Label htmlFor="limit">Limit</Label>
+// 								<Input id="limit" defaultValue={item.limit} />
+// 							</div>
+// 						</div>
+// 						<div className="flex flex-col gap-3">
+// 							<Label htmlFor="reviewer">Reviewer</Label>
+// 							<Select
+// 								defaultValue={item.reviewer}
+// 								items={[
+// 									{ label: "Eddie Lake", value: "Eddie Lake" },
+// 									{ label: "Jamik Tashpulatov", value: "Jamik Tashpulatov" },
+// 									{ label: "Emily Whalen", value: "Emily Whalen" },
+// 								]}
+// 							>
+// 								<SelectTrigger id="reviewer" className="w-full">
+// 									<SelectValue placeholder="Select a reviewer" />
+// 								</SelectTrigger>
+// 								<SelectContent>
+// 									<SelectGroup>
+// 										<SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
+// 										<SelectItem value="Jamik Tashpulatov">
+// 											Jamik Tashpulatov
+// 										</SelectItem>
+// 										<SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
+// 									</SelectGroup>
+// 								</SelectContent>
+// 							</Select>
+// 						</div>
+// 					</form>
+// 				</div>
+// 				<DrawerFooter>
+// 					<Button>Submit</Button>
+// 					<DrawerClose render={<Button variant="outline" />}></DrawerClose>
+// 				</DrawerFooter>
+// 			</DrawerContent>
+// 		</Drawer>
+// 	);
+// }
+
+export function DataTableStudent({
 	data: initialData,
 }: {
 	data: z.infer<typeof schema>[];
 }) {
+	// Registration QR dialog
+	const [open, setOpen] = useState(false);
+	const [session, setSession] = useState<RegistrationSessionDto | null>(null);
+	const [fullName, setFullName] = useState<string | undefined>(undefined);
+
 	const [data, setData] = React.useState(() => initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -334,6 +576,7 @@ export function DataTable({
 		pageIndex: 0,
 		pageSize: 10,
 	});
+
 	const sortableId = React.useId();
 	const sensors = useSensors(
 		useSensor(MouseSensor, {}),
@@ -346,9 +589,19 @@ export function DataTable({
 	);
 	const [globalFilter, setGlobalFilter] = useState("");
 
+	const setRegistrationQrDialogState = async (row: Row<z.infer<typeof schema>>) => {
+		if (open) {
+			setOpen(false);
+			return;
+		};
+		setSession(await getRegistrationSession(row.original.id));
+		setFullName(row.original.full_name);
+		setOpen(true);
+	}
+
 	const table = useReactTable({
 		data,
-		columns,
+		columns: columns(setRegistrationQrDialogState),
 		state: {
 			sorting,
 			columnVisibility,
@@ -381,11 +634,11 @@ export function DataTable({
 	});
 
 	// Vibecoded so we'll learn about this later
-	function toggleFilterValue(
+	const toggleFilterValue = (
 		columnId: string,
 		value: string | boolean,
 		checked: boolean,
-	) {
+	) => {
 		setColumnFilters((previousFilters) => {
 			const existingFilter = previousFilters.find(
 				(filter) => filter.id === columnId,
@@ -414,7 +667,7 @@ export function DataTable({
 		});
 	}
 
-	function isFilterValueChecked(columnId: string, value: string | boolean) {
+	const isFilterValueChecked = (columnId: string, value: string | boolean) => {
 		const existingFilter = columnFilters.find(
 			(filter) => filter.id === columnId,
 		);
@@ -424,7 +677,8 @@ export function DataTable({
 
 		return values.includes(value);
 	}
-	function handleDragEnd(event: DragEndEvent) {
+
+	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
 		if (active && over && active.id !== over.id) {
 			setData((data) => {
@@ -434,11 +688,13 @@ export function DataTable({
 			});
 		}
 	}
+
 	return (
 		<Tabs
 			defaultValue="outline"
 			className="w-full flex-col justify-start gap-6"
 		>
+			<RegistrationQrDialog open={open} onOpenChange={setOpen} session={session} fullName={fullName} />
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<Label htmlFor="view-selector" className="sr-only">
 					View
@@ -602,9 +858,9 @@ export function DataTable({
 													{header.isPlaceholder
 														? null
 														: flexRender(
-																header.column.columnDef.header,
-																header.getContext(),
-															)}
+															header.column.columnDef.header,
+															header.getContext(),
+														)}
 												</TableHead>
 											);
 										})}
@@ -618,7 +874,7 @@ export function DataTable({
 										strategy={verticalListSortingStrategy}
 									>
 										{table.getRowModel().rows.map((row) => (
-											<DraggableRow key={row.id} row={row} />
+											<UserRow key={row.id} row={row} />
 										))}
 									</SortableContext>
 								) : (
@@ -722,242 +978,5 @@ export function DataTable({
 		</Tabs>
 	);
 }
-const chartData = [
-	{
-		month: "January",
-		desktop: 186,
-		mobile: 80,
-	},
-	{
-		month: "February",
-		desktop: 305,
-		mobile: 200,
-	},
-	{
-		month: "March",
-		desktop: 237,
-		mobile: 120,
-	},
-	{
-		month: "April",
-		desktop: 73,
-		mobile: 190,
-	},
-	{
-		month: "May",
-		desktop: 209,
-		mobile: 130,
-	},
-	{
-		month: "June",
-		desktop: 214,
-		mobile: 140,
-	},
-];
-const chartConfig = {
-	desktop: {
-		label: "Desktop",
-		color: "var(--primary)",
-	},
-	mobile: {
-		label: "Mobile",
-		color: "var(--primary)",
-	},
-} satisfies ChartConfig;
 
-function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
-	const isMobile = useIsMobile();
-	return (
-		// TODO: Work on drawer content
-		<Drawer direction={isMobile ? "bottom" : "right"}>
-			<DrawerTrigger
-				render={
-					<Button
-						variant="link"
-						className="text-foreground w-fit px-0 text-left"
-					/>
-				}
-			>
-				{item.full_name}
-			</DrawerTrigger>
-			<DrawerContent>
-				<DrawerHeader className="gap-1">
-					<DrawerTitle>{item.full_name}</DrawerTitle>
-					<DrawerDescription>
-						Showing total attendance records in the last 3 months
-					</DrawerDescription>
-				</DrawerHeader>
-				<div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-					{!isMobile && (
-						<>
-							<ChartContainer config={chartConfig}>
-								<AreaChart
-									accessibilityLayer
-									data={chartData}
-									margin={{
-										left: 0,
-										right: 10,
-									}}
-								>
-									<CartesianGrid vertical={false} />
-									<XAxis
-										dataKey="month"
-										tickLine={false}
-										axisLine={false}
-										tickMargin={8}
-										tickFormatter={(value) => value.slice(0, 3)}
-										hide
-									/>
-									<ChartTooltip
-										cursor={false}
-										content={<ChartTooltipContent indicator="dot" />}
-									/>
-									<Area
-										dataKey="mobile"
-										type="natural"
-										fill="var(--color-mobile)"
-										fillOpacity={0.6}
-										stroke="var(--color-mobile)"
-										stackId="a"
-									/>
-									<Area
-										dataKey="desktop"
-										type="natural"
-										fill="var(--color-desktop)"
-										fillOpacity={0.4}
-										stroke="var(--color-desktop)"
-										stackId="a"
-									/>
-								</AreaChart>
-							</ChartContainer>
-							<Separator />
-							<div className="grid gap-2">
-								<div className="flex gap-2 leading-none font-medium">
-									Trending up by 5.2% this month{" "}
-									<IconTrendingUp className="size-4" />
-								</div>
-								<div className="text-muted-foreground">
-									Showing total visitors for the last 6 months. This is just
-									some random text to test the layout. It spans multiple lines
-									and should wrap around.
-								</div>
-							</div>
-							<Separator />
-						</>
-					)}
-					<form className="flex flex-col gap-4">
-						<div className="flex flex-col gap-3">
-							<Label htmlFor="header">Header</Label>
-							<Input id="header" defaultValue={item.full_name} />
-						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="type">Type</Label>
-								<Select
-									defaultValue={item.type}
-									items={[
-										{ label: "Table of Contents", value: "Table of Contents" },
-										{ label: "Executive Summary", value: "Executive Summary" },
-										{
-											label: "Technical Approach",
-											value: "Technical Approach",
-										},
-										{ label: "Design", value: "Design" },
-										{ label: "Capabilities", value: "Capabilities" },
-										{ label: "Focus Documents", value: "Focus Documents" },
-										{ label: "Narrative", value: "Narrative" },
-										{ label: "Cover Page", value: "Cover Page" },
-									]}
-								>
-									<SelectTrigger id="type" className="w-full">
-										<SelectValue placeholder="Select a type" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectGroup>
-											<SelectItem value="Table of Contents">
-												Table of Contents
-											</SelectItem>
-											<SelectItem value="Executive Summary">
-												Executive Summary
-											</SelectItem>
-											<SelectItem value="Technical Approach">
-												Technical Approach
-											</SelectItem>
-											<SelectItem value="Design">Design</SelectItem>
-											<SelectItem value="Capabilities">Capabilities</SelectItem>
-											<SelectItem value="Focus Documents">
-												Focus Documents
-											</SelectItem>
-											<SelectItem value="Narrative">Narrative</SelectItem>
-											<SelectItem value="Cover Page">Cover Page</SelectItem>
-										</SelectGroup>
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="status">Status</Label>
-								<Select
-									defaultValue={item.status}
-									items={[
-										{ label: "Done", value: "Done" },
-										{ label: "In Progress", value: "In Progress" },
-										{ label: "Not Started", value: "Not Started" },
-									]}
-								>
-									<SelectTrigger id="status" className="w-full">
-										<SelectValue placeholder="Select a status" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectGroup>
-											<SelectItem value="Done">Done</SelectItem>
-											<SelectItem value="In Progress">In Progress</SelectItem>
-											<SelectItem value="Not Started">Not Started</SelectItem>
-										</SelectGroup>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="target">Target</Label>
-								<Input id="target" defaultValue={item.target} />
-							</div>
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="limit">Limit</Label>
-								<Input id="limit" defaultValue={item.limit} />
-							</div>
-						</div>
-						<div className="flex flex-col gap-3">
-							<Label htmlFor="reviewer">Reviewer</Label>
-							<Select
-								defaultValue={item.reviewer}
-								items={[
-									{ label: "Eddie Lake", value: "Eddie Lake" },
-									{ label: "Jamik Tashpulatov", value: "Jamik Tashpulatov" },
-									{ label: "Emily Whalen", value: "Emily Whalen" },
-								]}
-							>
-								<SelectTrigger id="reviewer" className="w-full">
-									<SelectValue placeholder="Select a reviewer" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectGroup>
-										<SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-										<SelectItem value="Jamik Tashpulatov">
-											Jamik Tashpulatov
-										</SelectItem>
-										<SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
-									</SelectGroup>
-								</SelectContent>
-							</Select>
-						</div>
-					</form>
-				</div>
-				<DrawerFooter>
-					<Button>Submit</Button>
-					<DrawerClose render={<Button variant="outline" />}></DrawerClose>
-				</DrawerFooter>
-			</DrawerContent>
-		</Drawer>
-	);
-}
+

@@ -75,6 +75,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Disable Flutter deep linking -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<!-- Camera stuff -->
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to scan registration QR codes</string>

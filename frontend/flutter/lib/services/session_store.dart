@@ -32,6 +32,10 @@ class SessionStore {
     );
   }
 
+  static Future<void> saveUserId(String userId) async {
+    await prefs.setString('userId', userId);
+  }
+
   static Future<String> getDeviceId() async {
     String? deviceId = prefs.getString('deviceId');
     if (deviceId == null) {

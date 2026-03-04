@@ -40,6 +40,15 @@ export type AttendanceRecordDto = {
 	status: string;
 };
 
+export type RegistrationSessionDto = {
+	user_id: string;
+	registration_token: string;
+	expires_in: number;
+	url: string;
+}
+
+export type 
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	if (!API_ORIGIN) throw new Error("NEXT_PUBLIC_API_ORIGIN is not set");
 	const res = await fetch(`${API_ORIGIN}${path}`, init);
@@ -57,4 +66,12 @@ export function getUser(userId: string) {
 
 export function getStudents() {
 	return request<UserExtendedDto[]>(`/students`);
+}
+
+export function registerUser(userId: string) {
+	return request<RegistrationSessionDto>(`/admin/register/${userId}`);
+}
+
+export function unregisterUser(userId: string) {
+	return request(`/admin/unregister/${userId}`);
 }

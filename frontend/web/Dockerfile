@@ -13,11 +13,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_ORIGIN=http://localhost:8000
-ARG NEXT_PUBLIC_RP_ID=attendance.softeng.com
-ARG NEXT_PUBLIC_ORIGIN=http://localhost
 ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
-ENV NEXT_PUBLIC_RP_ID=$NEXT_PUBLIC_RP_ID
-ENV NEXT_PUBLIC_ORIGIN=$NEXT_PUBLIC_ORIGIN
 
 RUN pnpm build
 

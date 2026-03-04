@@ -27,7 +27,7 @@ def get_credential(credential_id: str, db: Session = Depends(get_db)):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIAL_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIALS_NOT_FOUND
         )
     return credential
 
@@ -72,7 +72,7 @@ def update_credential(
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIAL_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIALS_NOT_FOUND
         )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(credential, key, value)
@@ -86,7 +86,7 @@ def delete_credential(credential_id: str, db: Session = Depends(get_db)):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIAL_NOT_FOUND
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CREDENTIALS_NOT_FOUND
         )
     db.delete(credential)
     db.commit()

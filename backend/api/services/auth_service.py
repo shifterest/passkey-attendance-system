@@ -28,7 +28,7 @@ def create_registration_session(user_id: str, timeout: int):
             break
         token = secrets.token_urlsafe(32)
     redis_client.set(f"registration_token:{token}", user_id, ex=timeout)
-    url = f"{settings.protocol}://register?token={token}&user_id={user_id}"
+    url = f"{settings.registration_protocol}://register?token={token}&user_id={user_id}"
     return RegistrationSessionBase(
         user_id=user_id, registration_token=token, expires_in=timeout, url=url
     )

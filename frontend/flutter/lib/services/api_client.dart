@@ -15,6 +15,8 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 204) {
+        return {};
       } else {
         throw Exception(
           'Failed to GET (${response.statusCode}): ${response.body}',
@@ -35,6 +37,8 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 204) {
+        return {};
       } else {
         throw Exception(
           'Failed to POST (${response.statusCode}): ${response.body}',
@@ -55,6 +59,8 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 204) {
+        return {};
       } else {
         throw Exception(
           'Failed to PUT (${response.statusCode}): ${response.body}',
@@ -75,6 +81,8 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else if (response.statusCode == 204) {
+        return {};
       } else {
         throw Exception(
           'Failed to DELETE (${response.statusCode}): ${response.body}',

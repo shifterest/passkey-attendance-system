@@ -3,7 +3,7 @@ import '../config/config.dart';
 
 class AuthApi {
   // Registration
-  Future<Map<String, dynamic>> registerOptions(
+  static Future<Map<String, dynamic>> registerOptions(
     String userId,
     String registrationToken,
   ) async {
@@ -15,7 +15,7 @@ class AuthApi {
     });
   }
 
-  Future<Map<String, dynamic>> registerVerify(
+  static Future<Map<String, dynamic>> registerVerify(
     Map<String, dynamic> response,
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
@@ -24,13 +24,13 @@ class AuthApi {
   }
 
   // Authentication
-  Future<Map<String, dynamic>> authenticateOptions(String userId) async {
+  static Future<Map<String, dynamic>> authenticateOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     return client.post('/auth/authenticate/options', {'user_id': userId});
   }
 
-  Future<Map<String, dynamic>> authenticateVerify(
+  static Future<Map<String, dynamic>> authenticateVerify(
     Map<String, dynamic> response,
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
@@ -39,13 +39,13 @@ class AuthApi {
   }
 
   // Login and logout
-  Future<Map<String, dynamic>> loginOptions(String userId) async {
+  static Future<Map<String, dynamic>> loginOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     return client.post('/auth/login/options', {'user_id': userId});
   }
 
-  Future<Map<String, dynamic>> loginVerify(
+  static Future<Map<String, dynamic>> loginVerify(
     Map<String, dynamic> response,
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
@@ -53,7 +53,7 @@ class AuthApi {
     return client.post('/auth/login/verify', response);
   }
 
-  Future<Map<String, dynamic>> logout(
+  static Future<Map<String, dynamic>> logout(
     String userId,
     String sessionToken,
   ) async {

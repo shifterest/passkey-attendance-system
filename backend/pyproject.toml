@@ -3,7 +3,7 @@ name = "passkey-attendance-system"
 version = "0.1.0"
 description = "A FIDO2 Passkey Attendance System Using Two-Factor Proximity and Credential-Based Authentication"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.133.1",

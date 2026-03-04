@@ -9,8 +9,8 @@ class Messages:
     USER_NOT_STUDENT = "User is not a student"
 
     # Credentials
-    CREDENTIAL_NOT_FOUND = "Credential not found"
-    CREDENTIAL_DELETED = "Credential deleted"
+    CREDENTIALS_NOT_FOUND = "Credentials not found"
+    CREDENTIAL_DELETED = "User unregistered"
 
     # Classes
     CLASS_NOT_FOUND = "Class not found"
@@ -76,11 +76,16 @@ class Logs:
     RECORD_EDITED = "Updated record: {record_id}"
 
     # Registration and authentication
-    CREDENTIAL_ADDED = "Added credential: {credential_id} for user {user_id}"
+    USER_REGISTERED = (
+        "User registered: added credential {credential_id} for user {user_id}"
+    )
     REGISTER_VERIFY_FAILED = "Registration verification failed: {error}"
     AUTH_VERIFY_FAILED = "Authentication verification failed: {error}"
     REGISTER_SESSION_CREATED = (
         "Created registration session for user {full_name} (ID: {user_id})"
+    )
+    USER_UNREGISTERED = (
+        "User unregistered: deleted credentials for user {full_name} (ID: {user_id})"
     )
 
     # Login/logout
