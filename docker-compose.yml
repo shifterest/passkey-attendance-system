@@ -7,6 +7,7 @@ services:
       - redis_data:/data
 
   backend:
+    container_name: pas-backend
     build: ./backend
     restart: unless-stopped
     depends_on:
@@ -22,6 +23,7 @@ services:
       - "8000:8000"
 
   web:
+    container_name: pas-frontend
     build:
       context: ./frontend/web
       args:
