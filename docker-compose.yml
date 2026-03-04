@@ -6,13 +6,20 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   backend:
     container_name: pas-backend
     build: ./backend
     restart: unless-stopped
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: sqlite+pysqlite:///sqlite/attendance.db

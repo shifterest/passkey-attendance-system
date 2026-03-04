@@ -2,7 +2,7 @@ import redis
 
 from .config import settings
 
-redis_client = redis.Redis.from_url(settings.redis_url)
+redis_client = redis.Redis.from_url(settings.redis_url, retry_on_timeout=True)
 
 try:
     redis_client.ping()
