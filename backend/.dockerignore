@@ -7,7 +7,7 @@ __pycache__/
 .ruff_cache/
 
 # SQLite db file
-db/
+sqlite/
 
 # Logs
 *.log

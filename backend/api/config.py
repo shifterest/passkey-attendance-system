@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Infrastructure
     redis_url: str = "redis://localhost:6379"
-    database_url: str = "sqlite+pysqlite:///db/attendance.db"
+    database_url: str = "sqlite+pysqlite:///sqlite/attendance.db"
 
     # WebAuthn
     origin: str = "http://localhost:3000"

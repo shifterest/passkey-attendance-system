@@ -15,13 +15,13 @@ services:
       - redis
     environment:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:///db/attendance.db}
+      DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:///sqlite/attendance.db}
       ORIGIN: ${ORIGIN:-http://localhost}
       RP_ID: ${RP_ID:-attendance.softeng.com}
       RP_NAME: ${RP_NAME:-Passkey Attendance System}
       REGISTRATION_PROTOCOL: ${REGISTRATION_PROTOCOL:-shifterest-pas}
     volumes:
-      - sqlite_data:/app/db
+      - sqlite_data:/app/sqlite
     ports:
       - "8000:8000"
 
