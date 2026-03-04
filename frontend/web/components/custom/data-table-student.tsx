@@ -1,5 +1,6 @@
 "use client";
 
+import { RegistrationSessionDto } from "@/app/lib/api";
 import { getRegistrationSession } from "@/app/lib/webauthn";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +40,6 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
 	closestCenter,
 	DndContext,
-	type DragEndEvent,
 	KeyboardSensor,
 	MouseSensor,
 	TouchSensor,
@@ -49,10 +49,9 @@ import {
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
-	arrayMove,
 	SortableContext,
 	useSortable,
-	verticalListSortingStrategy,
+	verticalListSortingStrategy
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -88,7 +87,6 @@ import * as React from "react";
 import { useState } from "react";
 import { z } from "zod";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
-import { RegistrationSessionDto } from "@/app/lib/api";
 
 export const schema = z.object({
 	id: z.string(),
@@ -334,15 +332,14 @@ const getDefaultColumnFilters = (): ColumnFiltersState => {
 }
 
 const UserRow = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
-	const { transform, transition, setNodeRef, isDragging } = useSortable({
+	const { transform, transition, setNodeRef } = useSortable({
 		id: row.original.id,
 	});
 	return (
 		<TableRow
 			data-state={row.getIsSelected() && "selected"}
-			data-dragging={isDragging}
 			ref={setNodeRef}
-			className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
+			className="relative z-0"
 			style={{
 				transform: CSS.Transform.toString(transform),
 				transition: transition,
@@ -678,17 +675,6 @@ export function DataTableStudent({
 		return values.includes(value);
 	}
 
-	const handleDragEnd = (event: DragEndEvent) => {
-		const { active, over } = event;
-		if (active && over && active.id !== over.id) {
-			setData((data) => {
-				const oldIndex = dataIds.indexOf(active.id);
-				const newIndex = dataIds.indexOf(over.id);
-				return arrayMove(data, oldIndex, newIndex);
-			});
-		}
-	}
-
 	return (
 		<Tabs
 			defaultValue="outline"
@@ -844,7 +830,6 @@ export function DataTableStudent({
 					<DndContext
 						collisionDetection={closestCenter}
 						modifiers={[restrictToVerticalAxis]}
-						onDragEnd={handleDragEnd}
 						sensors={sensors}
 						id={sortableId}
 					>

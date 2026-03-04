@@ -1,4 +1,12 @@
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN;
+const CLIENT_API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN;
+const SERVER_API_ORIGIN = process.env.API_ORIGIN_SERVER ?? CLIENT_API_ORIGIN;
+
+// window only exists if this function is called in the browser
+// That means that getApiOrigin will return SERVER_API_ORIGIN when called outside one
+// We learn something new every day
+function getApiOrigin() {
+	return typeof window === "undefined" ? SERVER_API_ORIGIN : CLIENT_API_ORIGIN;
+}
 
 export type UserDto = {
 	id: string;
@@ -47,11 +55,16 @@ export type RegistrationSessionDto = {
 	url: string;
 }
 
-export type 
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-	if (!API_ORIGIN) throw new Error("NEXT_PUBLIC_API_ORIGIN is not set");
-	const res = await fetch(`${API_ORIGIN}${path}`, init);
+	const apiOrigin = getApiOrigin();
+	if (!apiOrigin) throw new Error("API origin is not set");
+	const requestInit: RequestInit | undefined =
+	// Same browser check!
+		typeof window === "undefined"
+			// no-store ensures data freshness so that any server requests are up to date
+			? { ...init, cache: (init?.cache ?? "no-store") as RequestCache }
+			: init;
+	const res = await fetch(`${apiOrigin}${path}`, requestInit);
 	if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
 	return res.json() as Promise<T>;
 }
