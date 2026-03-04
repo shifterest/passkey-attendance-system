@@ -2,3 +2,5 @@
 .github/
 
 scratchboard/
+
+docker-compose.local.yml

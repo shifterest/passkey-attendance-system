@@ -15,9 +15,9 @@ class Settings(BaseSettings):
 
     # WebAuthn
     origin: str = "http://localhost:3000"
-    rp_id: str = "attendance.softeng.com"
+    rp_id: str = "attendance.whatta.top"
     rp_name: str = "Passkey Attendance System"
-    registration_protocol: str = "pas"
+    registration_protocol: str = "shifterest-pas"
 
     # Timeouts
     challenge_timeout: int = 180

@@ -14,12 +14,12 @@ services:
     depends_on:
       - redis
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      DATABASE_URL: ${DATABASE_URL:-sqlite+pysqlite:///sqlite/attendance.db}
-      ORIGIN: ${ORIGIN:-http://localhost}
-      RP_ID: ${RP_ID:-attendance.softeng.com}
-      RP_NAME: ${RP_NAME:-Passkey Attendance System}
-      REGISTRATION_PROTOCOL: ${REGISTRATION_PROTOCOL:-shifterest-pas}
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: sqlite+pysqlite:///sqlite/attendance.db
+      ORIGIN: https://attendance.whatta.top
+      RP_ID: attendance.whatta.top
+      RP_NAME: Passkey Attendance System
+      REGISTRATION_PROTOCOL: shifterest-pas
     volumes:
       - sqlite_data:/app/sqlite
     ports:
@@ -30,15 +30,15 @@ services:
     build:
       context: ./frontend/web
       args:
-        NEXT_PUBLIC_API_ORIGIN: ${NEXT_PUBLIC_API_ORIGIN:-http://localhost:8000}
+        NEXT_PUBLIC_API_ORIGIN: https://api.attendance.whatta.top
     restart: unless-stopped
     depends_on:
       - backend
     environment:
       PORT: "3000"
-      API_ORIGIN_SERVER: ${API_ORIGIN_SERVER:-http://backend:8000}
+      API_ORIGIN_SERVER: http://backend:8000
     ports:
-      - "80:3000"
+      - "3000:3000"
 
 volumes:
   redis_data:
