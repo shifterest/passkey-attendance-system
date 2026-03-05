@@ -6,7 +6,7 @@ class ApiClient {
 
   ApiClient(this.apiBaseUrl);
 
-  Future<Map<String, dynamic>> get(String path, Map body) async {
+  Future<dynamic> get(String path, Map body) async {
     try {
       final response = await http.get(
         Uri.parse('$apiBaseUrl$path'),
@@ -14,7 +14,12 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        dynamic decodedResponse = jsonDecode(response.body);
+        if (decodedResponse is String) {
+          return jsonDecode(decodedResponse);
+        } else {
+          return decodedResponse;
+        }
       } else if (response.statusCode == 204) {
         return {};
       } else {
@@ -27,7 +32,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> post(String path, Map body) async {
+  Future<dynamic> post(String path, Map body) async {
     try {
       final response = await http.post(
         Uri.parse('$apiBaseUrl$path'),
@@ -36,7 +41,12 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        dynamic decodedResponse = jsonDecode(response.body);
+        if (decodedResponse is String) {
+          return jsonDecode(decodedResponse);
+        } else {
+          return decodedResponse;
+        }
       } else if (response.statusCode == 204) {
         return {};
       } else {
@@ -49,7 +59,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> put(String path, Map body) async {
+  Future<dynamic> put(String path, Map body) async {
     try {
       final response = await http.put(
         Uri.parse('$apiBaseUrl$path'),
@@ -58,7 +68,12 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        dynamic decodedResponse = jsonDecode(response.body);
+        if (decodedResponse is String) {
+          return jsonDecode(decodedResponse);
+        } else {
+          return decodedResponse;
+        }
       } else if (response.statusCode == 204) {
         return {};
       } else {
@@ -71,7 +86,7 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>> delete(String path, Map body) async {
+  Future<dynamic> delete(String path, Map body) async {
     try {
       final response = await http.delete(
         Uri.parse('$apiBaseUrl$path'),
@@ -80,7 +95,12 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        dynamic decodedResponse = jsonDecode(response.body);
+        if (decodedResponse is String) {
+          return jsonDecode(decodedResponse);
+        } else {
+          return decodedResponse;
+        }
       } else if (response.statusCode == 204) {
         return {};
       } else {

@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -79,7 +80,7 @@ def register_options(
         options.challenge,
         ex=settings.challenge_timeout,
     )
-    return options_to_json(options)
+    return json.loads(options_to_json(options))
 
 
 @router.post("/register/verify", response_model=CredentialResponse)
@@ -178,7 +179,7 @@ def authentication_options(
         options.challenge,
         ex=settings.challenge_timeout,
     )
-    return options_to_json(options)
+    return json.loads(options_to_json(options))
 
 
 @router.post("/authenticate/verify", response_model=AttendanceRecordResponse)
@@ -286,7 +287,7 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
         options.challenge,
         ex=settings.challenge_timeout,
     )
-    return options_to_json(options)
+    return json.loads(options_to_json(options))
 
 
 @router.post("/login/verify", response_model=LoginSessionBase)

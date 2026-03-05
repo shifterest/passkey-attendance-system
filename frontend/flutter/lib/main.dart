@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
-import 'package:passkey_attendance_system/screens/register_screen.dart';
+import 'package:passkey_attendance_system/screens/registration_screen.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -36,7 +36,7 @@ final _router = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const AuthWrapper()),
     GoRoute(
       path: '/register',
-      builder: (context, state) => RegisterScreen(
+      builder: (context, state) => RegistrationScreen(
         registrationToken: state.uri.queryParameters['token'] ?? '',
         userId: state.uri.queryParameters['user_id'] ?? '',
       ),
