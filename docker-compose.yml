@@ -2,6 +2,7 @@ services:
 
   redis:
     image: redis:8
+    container_name: pas-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -11,6 +12,8 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+    networks:
+      - pas-network
 
   backend:
     container_name: pas-backend
@@ -30,6 +33,8 @@ services:
       - sqlite_data:/app/sqlite
     ports:
       - "8000:8000"
+    networks:
+      - pas-network
 
   web:
     container_name: pas-frontend
@@ -49,3 +54,7 @@ services:
 volumes:
   redis_data:
   sqlite_data:
+
+networks:
+  pas-network:
+    internal: true
