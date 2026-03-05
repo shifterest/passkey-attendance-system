@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "top.whatta.attendance",
+      "sha256_cert_fingerprints": [
+        "DE:68:36:88:1F:89:B6:49:D5:4D:60:10:4B:CD:6B:48:83:15:21:68:63:D8:E2:7F:3E:35:27:FB:FD:F7:D7:7E"
+      ]
+    }
+  }
+]
