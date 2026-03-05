@@ -53,16 +53,16 @@ export type RegistrationSessionDto = {
 	registration_token: string;
 	expires_in: number;
 	url: string;
-}
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const apiOrigin = getApiOrigin();
 	if (!apiOrigin) throw new Error("API origin is not set");
 	const requestInit: RequestInit | undefined =
-	// Same browser check!
+		// Same browser check!
 		typeof window === "undefined"
-			// no-store ensures data freshness so that any server requests are up to date
-			? { ...init, cache: (init?.cache ?? "no-store") as RequestCache }
+			? // no-store ensures data freshness so that any server requests are up to date
+				{ ...init, cache: (init?.cache ?? "no-store") as RequestCache }
 			: init;
 	const res = await fetch(`${apiOrigin}${path}`, requestInit);
 	if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
@@ -82,9 +82,11 @@ export function getStudents() {
 }
 
 export function registerUser(userId: string) {
-	return request<RegistrationSessionDto>(`/admin/register/${userId}`);
+	return request<RegistrationSessionDto>(`/admin/register/${userId}`, {
+		method: "POST",
+	});
 }
 
 export function unregisterUser(userId: string) {
-	return request(`/admin/unregister/${userId}`);
+	return request(`/admin/unregister/${userId}`, { method: "POST" });
 }

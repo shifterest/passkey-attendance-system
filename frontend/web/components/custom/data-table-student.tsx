@@ -5,9 +5,7 @@ import { getRegistrationSession } from "@/app/lib/webauthn";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	type ChartConfig
-} from "@/components/ui/chart";
+import { type ChartConfig } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenu,
@@ -51,7 +49,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
 	SortableContext,
 	useSortable,
-	verticalListSortingStrategy
+	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -65,7 +63,7 @@ import {
 	IconCircleXFilled,
 	IconDotsVertical,
 	IconFilter,
-	IconLayoutColumns
+	IconLayoutColumns,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -163,7 +161,9 @@ const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
 	return filterValue.includes(cellValue);
 };
 
-function columns(setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>) => void): ColumnDef<z.infer<typeof schema>>[] {
+function columns(
+	setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>) => void,
+): ColumnDef<z.infer<typeof schema>>[] {
 	return [
 		{
 			id: "select",
@@ -175,7 +175,9 @@ function columns(setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>
 							table.getIsSomePageRowsSelected() &&
 							!table.getIsAllPageRowsSelected()
 						}
-						onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+						onCheckedChange={(value) =>
+							table.toggleAllPageRowsSelected(!!value)
+						}
 						aria-label="Select all"
 					/>
 				</div>
@@ -303,7 +305,11 @@ function columns(setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>
 					<DropdownMenuContent align="end" className="w-64">
 						{row.original.registered ? (
 							<>
-								<DropdownMenuItem onClick={async () => { setRegistrationQrDialogState(row); }}>
+								<DropdownMenuItem
+									onClick={async () => {
+										setRegistrationQrDialogState(row);
+									}}
+								>
 									Regenerate registration QR
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
@@ -312,7 +318,11 @@ function columns(setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>
 								</DropdownMenuItem>
 							</>
 						) : (
-							<DropdownMenuItem onClick={async () => { setRegistrationQrDialogState(row); }}>
+							<DropdownMenuItem
+								onClick={async () => {
+									setRegistrationQrDialogState(row);
+								}}
+							>
 								Generate registration QR
 							</DropdownMenuItem>
 						)}
@@ -329,7 +339,7 @@ const getDefaultColumnFilters = (): ColumnFiltersState => {
 		{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
 		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
 	];
-}
+};
 
 const UserRow = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
 	const { transform, transition, setNodeRef } = useSortable({
@@ -352,7 +362,7 @@ const UserRow = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
 			))}
 		</TableRow>
 	);
-}
+};
 
 // function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
 // 	const isMobile = useIsMobile();
@@ -586,15 +596,17 @@ export function DataTableStudent({
 	);
 	const [globalFilter, setGlobalFilter] = useState("");
 
-	const setRegistrationQrDialogState = async (row: Row<z.infer<typeof schema>>) => {
+	const setRegistrationQrDialogState = async (
+		row: Row<z.infer<typeof schema>>,
+	) => {
 		if (open) {
 			setOpen(false);
 			return;
-		};
+		}
 		setSession(await getRegistrationSession(row.original.id));
 		setFullName(row.original.full_name);
 		setOpen(true);
-	}
+	};
 
 	const table = useReactTable({
 		data,
@@ -662,7 +674,7 @@ export function DataTableStudent({
 
 			return [...otherFilters, { id: columnId, value: nextValues }];
 		});
-	}
+	};
 
 	const isFilterValueChecked = (columnId: string, value: string | boolean) => {
 		const existingFilter = columnFilters.find(
@@ -673,14 +685,19 @@ export function DataTableStudent({
 			: [];
 
 		return values.includes(value);
-	}
+	};
 
 	return (
 		<Tabs
 			defaultValue="outline"
 			className="w-full flex-col justify-start gap-6"
 		>
-			<RegistrationQrDialog open={open} onOpenChange={setOpen} session={session} fullName={fullName} />
+			<RegistrationQrDialog
+				open={open}
+				onOpenChange={setOpen}
+				session={session}
+				fullName={fullName}
+			/>
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<Label htmlFor="view-selector" className="sr-only">
 					View
@@ -843,9 +860,9 @@ export function DataTableStudent({
 													{header.isPlaceholder
 														? null
 														: flexRender(
-															header.column.columnDef.header,
-															header.getContext(),
-														)}
+																header.column.columnDef.header,
+																header.getContext(),
+															)}
 												</TableHead>
 											);
 										})}
@@ -865,7 +882,7 @@ export function DataTableStudent({
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={columns.length}
+											colSpan={columns(setRegistrationQrDialogState).length}
 											className="h-24 text-center"
 										>
 											No results.
@@ -963,5 +980,3 @@ export function DataTableStudent({
 		</Tabs>
 	);
 }
-
-
