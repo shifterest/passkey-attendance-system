@@ -41,7 +41,7 @@ services:
     build:
       context: ./frontend/web
       args:
-        NEXT_PUBLIC_API_ORIGIN: https://attendance.whatta.top/api
+        NEXT_PUBLIC_API_ORIGIN: https://api-attendance.whatta.top
     restart: unless-stopped
     depends_on:
       - backend
