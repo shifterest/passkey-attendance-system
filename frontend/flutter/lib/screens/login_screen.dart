@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 

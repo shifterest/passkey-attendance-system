@@ -9,12 +9,12 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/register/options', {
+    dynamic registrationOptions = await client.post('/auth/register/options', {
       'user_id': userId,
       'registration_token': registrationToken,
     });
-    if (options is Map<String, dynamic>) {
-      return options;
+    if (registrationOptions is Map<String, dynamic>) {
+      return registrationOptions;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -25,9 +25,12 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/register/verify', response);
-    if (options is Map<String, dynamic>) {
-      return options;
+    dynamic registrationResponse = await client.post(
+      '/auth/register/verify',
+      response,
+    );
+    if (registrationResponse is Map<String, dynamic>) {
+      return registrationResponse;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -37,11 +40,12 @@ class AuthApi {
   static Future<Map<String, dynamic>> authenticateOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/authenticate/options', {
-      'user_id': userId,
-    });
-    if (options is Map<String, dynamic>) {
-      return options;
+    dynamic authenticationOptions = await client.post(
+      '/auth/authenticate/options',
+      {'user_id': userId},
+    );
+    if (authenticationOptions is Map<String, dynamic>) {
+      return authenticationOptions;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -52,9 +56,12 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/authenticate/verify', response);
-    if (options is Map<String, dynamic>) {
-      return options;
+    dynamic authenticateResponse = await client.post(
+      '/auth/authenticate/verify',
+      response,
+    );
+    if (authenticateResponse is Map<String, dynamic>) {
+      return authenticateResponse;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -64,11 +71,11 @@ class AuthApi {
   static Future<Map<String, dynamic>> loginOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/login/options', {
+    dynamic loginOptions = await client.post('/auth/login/options', {
       'user_id': userId,
     });
-    if (options is Map<String, dynamic>) {
-      return options;
+    if (loginOptions is Map<String, dynamic>) {
+      return loginOptions;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -79,9 +86,9 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/login/verify', response);
-    if (options is Map<String, dynamic>) {
-      return options;
+    dynamic loginResponse = await client.post('/auth/login/verify', response);
+    if (loginResponse is Map<String, dynamic>) {
+      return loginResponse;
     } else {
       throw Exception('Invalid response from server');
     }
@@ -93,12 +100,12 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic options = await client.post('/auth/logout', {
+    dynamic logoutResponse = await client.post('/auth/logout', {
       'user_id': userId,
       'session_token': sessionToken,
     });
-    if (options is Map<String, dynamic>) {
-      return options;
+    if (logoutResponse is Map<String, dynamic>) {
+      return logoutResponse;
     } else {
       throw Exception('Invalid response from server');
     }

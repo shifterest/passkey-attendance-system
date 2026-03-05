@@ -105,14 +105,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       _status = 'Initiating registration with server...';
     });
 
-    print("testagain");
-
     final optionsJson = await AuthApi.registerOptions(
       widget.userId,
       widget.registrationToken,
     );
-
-    print(2);
 
     setState(() {
       _status = 'Creating passkey...';
@@ -125,8 +121,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       widget.registrationToken,
       deviceId,
     );
-
-    print(4);
 
     setState(() {
       _status = 'Verifying passkey with server...';
@@ -145,12 +139,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: 8,
                 children: [
                   CircularProgressIndicator(),
                   Text(
                     _status,
                     style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.left,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),

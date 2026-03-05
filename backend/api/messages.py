@@ -43,6 +43,7 @@ class Messages:
     REGISTER_VERIFY_FAILED = "Registration verification failed"
     REGISTRATION_TOKEN_INVALID = "Registration token is invalid or expired"
     REGISTRATION_TOKEN_USER_MISMATCH = "Registration token does not match user"
+    INVALID_CHALLENGE_DATA = "Invalid challenge data"
 
     # Login/logout
     LOGIN_SESSION_NOT_FOUND = "Login session not found"

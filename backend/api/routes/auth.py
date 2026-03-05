@@ -115,15 +115,20 @@ def register_verify(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=Messages.REGISTER_NO_PENDING
         )
-    challenge = challenge_bytes.decode()  # type: ignore
 
     try:
-        registration_verification = verify_registration_response(
-            credential=response_data.credential,
-            expected_challenge=challenge,
-            expected_origin=settings.origin,
-            expected_rp_id=settings.rp_id,
-        )
+        if isinstance(challenge_bytes, bytes):
+            registration_verification = verify_registration_response(
+                credential=response_data.credential,
+                expected_challenge=challenge_bytes,
+                expected_origin=settings.origin,
+                expected_rp_id=settings.rp_id,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=Messages.INVALID_CHALLENGE_DATA,
+            )
         new_uuid = str(uuid.uuid4())
         while True:
             credential = db.query(Credential).filter(Credential.id == new_uuid).first()
@@ -207,7 +212,6 @@ def authentication_verify(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
         )
-    challenge = challenge_bytes.decode()  # type: ignore
     user_credential = db.query(Credential).filter(Credential.user_id == user.id).first()
     if user_credential is None:
         raise HTTPException(
@@ -218,14 +222,20 @@ def authentication_verify(
     user_sign_count = user_credential.sign_count
 
     try:
-        authentication_verification = verify_authentication_response(
-            credential=response_data.credential,
-            expected_challenge=challenge,
-            expected_origin=settings.origin,
-            expected_rp_id=settings.rp_id,
-            credential_public_key=bytes.fromhex(user_public_key),
-            credential_current_sign_count=user_sign_count,
-        )
+        if isinstance(challenge_bytes, bytes):
+            authentication_verification = verify_authentication_response(
+                credential=response_data.credential,
+                expected_challenge=challenge_bytes,
+                expected_origin=settings.origin,
+                expected_rp_id=settings.rp_id,
+                credential_public_key=bytes.fromhex(user_public_key),
+                credential_current_sign_count=user_sign_count,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=Messages.INVALID_CHALLENGE_DATA,
+            )
         user_credential.sign_count = authentication_verification.new_sign_count
         new_uuid = str(uuid.uuid4())
         while True:
@@ -303,7 +313,6 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
         )
-    challenge = challenge_bytes.decode()  # type: ignore
     user_credential = db.query(Credential).filter(Credential.user_id == user.id).first()
     if user_credential is None:
         raise HTTPException(
@@ -314,14 +323,20 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
     user_sign_count = user_credential.sign_count
 
     try:
-        authentication_verification = verify_authentication_response(
-            credential=response_data.credential,
-            expected_challenge=challenge,
-            expected_origin=settings.origin,
-            expected_rp_id=settings.rp_id,
-            credential_public_key=bytes.fromhex(user_public_key),
-            credential_current_sign_count=user_sign_count,
-        )
+        if isinstance(challenge_bytes, bytes):
+            authentication_verification = verify_authentication_response(
+                credential=response_data.credential,
+                expected_challenge=challenge_bytes,
+                expected_origin=settings.origin,
+                expected_rp_id=settings.rp_id,
+                credential_public_key=bytes.fromhex(user_public_key),
+                credential_current_sign_count=user_sign_count,
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=Messages.INVALID_CHALLENGE_DATA,
+            )
         user_credential.sign_count = authentication_verification.new_sign_count
         redis_client.delete(f"login_challenge:{user.id}")
         login_response = create_login_session(

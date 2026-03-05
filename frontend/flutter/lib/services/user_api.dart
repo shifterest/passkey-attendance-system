@@ -5,7 +5,12 @@ class UserApi {
   Future<Map<String, dynamic>> getUser(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    return client.get('/users/$userId', {});
+    dynamic user = await client.get('/users/$userId', {});
+    if (user is Map<String, dynamic>) {
+      return user;
+    } else {
+      throw Exception('Invalid response from server');
+    }
   }
 
   Future<Map<String, dynamic>> updateUser(
@@ -14,6 +19,11 @@ class UserApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    return client.put('/users/$userId', updatedData);
+    dynamic updatedUser = await client.put('/users/$userId', updatedData);
+    if (updatedUser is Map<String, dynamic>) {
+      return updatedUser;
+    } else {
+      throw Exception('Invalid response from server');
+    }
   }
 }
