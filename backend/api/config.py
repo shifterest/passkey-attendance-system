@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+pysqlite:///sqlite/attendance.db"
 
     # WebAuthn
-    origin: str = "http://localhost:3000"
+    web_origin: str = "http://localhost:3000"
+    app_origin: str = "android:apk-key-hash:3mg2iB-JtknVTWAQS81rSIMVIWhj2OJ_PjUn-_33134"
     rp_id: str = "attendance.whatta.top"
     rp_name: str = "Passkey Attendance System"
     registration_protocol: str = "shifterest-pas"

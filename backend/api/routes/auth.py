@@ -121,7 +121,7 @@ def register_verify(
             registration_verification = verify_registration_response(
                 credential=response_data.credential,
                 expected_challenge=challenge_bytes,
-                expected_origin=settings.origin,
+                expected_origin=[settings.web_origin, settings.app_origin],
                 expected_rp_id=settings.rp_id,
             )
         else:
@@ -226,7 +226,7 @@ def authentication_verify(
             authentication_verification = verify_authentication_response(
                 credential=response_data.credential,
                 expected_challenge=challenge_bytes,
-                expected_origin=settings.origin,
+                expected_origin=[settings.web_origin, settings.app_origin],
                 expected_rp_id=settings.rp_id,
                 credential_public_key=bytes.fromhex(user_public_key),
                 credential_current_sign_count=user_sign_count,
@@ -327,7 +327,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             authentication_verification = verify_authentication_response(
                 credential=response_data.credential,
                 expected_challenge=challenge_bytes,
-                expected_origin=settings.origin,
+                expected_origin=[settings.web_origin, settings.app_origin],
                 expected_rp_id=settings.rp_id,
                 credential_public_key=bytes.fromhex(user_public_key),
                 credential_current_sign_count=user_sign_count,
