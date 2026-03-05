@@ -32,6 +32,7 @@ import {
 import { Field, FieldDescription } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 
+// TODO: Throw error if can't connect to API
 export default function LoginPage() {
 	const router = useRouter();
 	const [isBootstrapMode, setIsBootstrapMode] = useState(false);

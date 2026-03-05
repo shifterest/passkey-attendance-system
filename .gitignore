@@ -1,6 +1,9 @@
+# IDE
 .vscode/
 .github/
 
+# Local deployment
+docker-compose.local.yml
+
 scratchboard/
 
-docker-compose.local.yml
