@@ -5,18 +5,18 @@ import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/session_store.dart';
 
-class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({
+class AuthenticationScreen extends StatefulWidget {
+  const AuthenticationScreen({
     super.key,
     required this.userId,
-    required this.registrationToken,
+    this.login = false,
   });
 
   final String userId;
-  final String registrationToken;
+  final bool login;
 
   @override
-  State<RegistrationScreen> createState() => _RegistrationScreenState();
+  State<AuthenticationScreen> createState() => _AuthenticationScreenState();
 }
 
 Future<void> _showErrorDialog(BuildContext context, String? error) {
@@ -26,7 +26,7 @@ Future<void> _showErrorDialog(BuildContext context, String? error) {
       return AlertDialog(
         title: const Text('Error'),
         content: Text(
-          'Something went wrong during registration. Please try again.'
+          'Something went wrong during authentication. Please try again.'
           '\n\n$error',
         ),
         actions: <Widget>[
@@ -46,34 +46,35 @@ Future<void> _showErrorDialog(BuildContext context, String? error) {
   );
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
-  bool _isRegistering = false;
+class _AuthenticationScreenState extends State<AuthenticationScreen> {
+  bool _isAuthenticating = false;
   String _status = '';
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _startRegistration();
+    _startAuthentication();
   }
 
-  Future<void> _startRegistration() async {
+  Future<void> _startAuthentication() async {
     setState(() {
-      _isRegistering = true;
+      _isAuthenticating = true;
     });
 
     try {
       setState(() {
-        _status = 'Registering...';
+        _status = widget.login ? 'Logging in...' : 'Authenticating...';
       });
 
-      await _register();
+      await _authenticate();
       if (!mounted) return;
 
-      // TODO: Add a router here or something, or not
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+      if (widget.login) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -85,44 +86,42 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         });
       }
     } finally {
-      if (mounted) setState(() => _isRegistering = false);
+      if (mounted) setState(() => _isAuthenticating = false);
     }
   }
 
-  Future<bool> _register() async {
+  Future<bool> _authenticate() async {
     setState(() {
-      _status = 'Initiating registration with server...';
+      _status =
+          'Initiating ${widget.login ? 'login' : 'authentication'} with server...';
     });
 
-    final optionsJson = await AuthApi.registerOptions(
-      widget.userId,
-      widget.registrationToken,
-    );
+    dynamic optionsJson;
+    if (widget.login) {
+      optionsJson = await AuthApi.loginOptions(widget.userId);
+    } else {
+      optionsJson = await AuthApi.authenticateOptions(widget.userId);
+    }
 
-    setState(() {
-      _status = 'Creating passkey...';
-    });
-
+    // TODO: Will need this later
     final deviceId = await SessionStore.getDeviceId();
-    final credentialJson = await passkey.register(
-      optionsJson,
-      widget.userId,
-      widget.registrationToken,
-      deviceId,
-    );
+    final credentialJson = await passkey.login(optionsJson, widget.userId);
 
     setState(() {
       _status = 'Verifying passkey with server...';
     });
 
-    await AuthApi.registerVerify(credentialJson);
-    await SessionStore.saveUserId(widget.userId);
+    if (widget.login) {
+      await AuthApi.loginVerify(credentialJson);
+    } else {
+      await AuthApi.authenticateVerify(credentialJson);
+    }
     return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    return (_isRegistering
+    return (_isAuthenticating
         ? Scaffold(
             body: Center(
               child: Column(

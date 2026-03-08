@@ -25,7 +25,8 @@ services:
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: sqlite+pysqlite:///sqlite/attendance.db
-      ORIGIN: https://attendance.whatta.top
+      WEB_ORIGIN: https://attendance.whatta.top
+      APP_ORIGIN: android:apk-key-hash:3mg2iB-JtknVTWAQS81rSIMVIWhj2OJ_PjUn-_33134
       RP_ID: attendance.whatta.top
       RP_NAME: Passkey Attendance System
       REGISTRATION_PROTOCOL: shifterest-pas
