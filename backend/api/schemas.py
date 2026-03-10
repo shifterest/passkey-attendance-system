@@ -185,9 +185,9 @@ class AttendanceRecordStatus(str, Enum):
 
 class AttendanceRecordVerificationMethods(str, Enum):
     DEVICE = "device"
-    FIDO2 = "fido2"
+    PASSKEY = "passkey"
     BLUETOOTH = "bluetooth"
-    WIFI = "wifi"
+    NETWORK = "network"
     GPS = "gps"
     MANUAL = "manual"
 
@@ -197,10 +197,11 @@ class AttendanceRecordBase(BaseModel):
 
     session_id: str
     user_id: str
-    is_flagged: bool
+    is_flagged: bool = False
     flag_reason: str | None = None
     timestamp: datetime
     verification_methods: list[AttendanceRecordVerificationMethods]
+    assurance_score: int
     status: AttendanceRecordStatus
 
 
@@ -215,6 +216,8 @@ class AttendanceRecordUpdate(BaseModel):
 
     session_id: str | None = None
     user_id: str | None = None
+    is_flagged: bool | None = None
+    flag_reason: str | None = None
     timestamp: datetime | None = None
     verification_methods: list[AttendanceRecordVerificationMethods] | None = None
     status: AttendanceRecordStatus | None = None
@@ -236,7 +239,7 @@ class RegistrationOptionsBase(BaseModel):
 class RegistrationResponseBase(BaseModel):
     user_id: str
     registration_token: str
-    device_id: str
+    device_signature: str
     credential: dict
 
 
@@ -256,7 +259,8 @@ class AuthenticationResponseBase(BaseModel):
     user_id: str
     session_id: str
     credential: dict
-    # verification_methods: list[AttendanceRecordVerificationMethods]
+    device_signature: str
+    device_id: str
 
 
 # Login

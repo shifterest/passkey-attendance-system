@@ -111,6 +111,7 @@ class AttendanceRecord(Base):
     flag_reason: Mapped[str | None] = mapped_column(None)
     timestamp: Mapped[datetime]
     verification_methods: Mapped[list[str]] = mapped_column(JSON)
+    assurance_score: Mapped[int]
     status: Mapped[str]
     session: Mapped["AttendanceSession"] = relationship(back_populates="records")
 

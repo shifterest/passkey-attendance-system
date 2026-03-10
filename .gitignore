@@ -1,6 +1,5 @@
 # IDE
 .vscode/
-.github/
 
 # Local deployment
 docker-compose.local.yml
