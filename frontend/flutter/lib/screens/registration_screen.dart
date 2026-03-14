@@ -103,12 +103,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       _status = 'Creating passkey...';
     });
 
-    final deviceId = await SessionStore.getDeviceId();
     final credentialJson = await passkey.register(
       optionsJson,
       widget.userId,
       widget.registrationToken,
-      deviceId,
     );
 
     setState(() {

@@ -1,40 +1,5 @@
 "use client";
 
-import { RegistrationSessionDto } from "@/app/lib/api";
-import { getRegistrationSession } from "@/app/lib/webauthn";
-import { SearchForm } from "@/components/custom/search-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { type ChartConfig } from "@/components/ui/chart";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
 	closestCenter,
 	DndContext,
@@ -81,9 +46,45 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useState } from "react";
 import { z } from "zod";
+import { getUser, type RegistrationSessionDto } from "@/app/lib/api";
+import { getRegistrationSession } from "@/app/lib/webauthn";
+import { SearchForm } from "@/components/custom/search-form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import type { ChartConfig } from "@/components/ui/chart";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
 
 export const schema = z.object({
@@ -104,7 +105,7 @@ const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
 const REGISTERED_FILTER_VALUES = [true, false] as const;
 const IN_CLASS_FILTER_VALUES = [true, false] as const;
 
-const chartData = [
+export const chartData = [
 	{
 		month: "January",
 		desktop: 186,
@@ -137,7 +138,7 @@ const chartData = [
 	},
 ] as const;
 
-const chartConfig = {
+export const chartConfig = {
 	desktop: {
 		label: "Desktop",
 		color: "var(--primary)",
@@ -566,12 +567,17 @@ export function DataTableStudent({
 }: {
 	data: z.infer<typeof schema>[];
 }) {
+	const router = useRouter();
+
 	// Registration QR dialog
 	const [open, setOpen] = useState(false);
 	const [session, setSession] = useState<RegistrationSessionDto | null>(null);
 	const [fullName, setFullName] = useState<string | undefined>(undefined);
+	const [registrationUserId, setRegistrationUserId] = useState<string | null>(
+		null,
+	);
 
-	const [data, setData] = React.useState(() => initialData);
+	const data = initialData;
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({});
@@ -596,17 +602,61 @@ export function DataTableStudent({
 	);
 	const [globalFilter, setGlobalFilter] = useState("");
 
+	const closeRegistrationQrDialog = React.useCallback(() => {
+		setOpen(false);
+		setSession(null);
+		setFullName(undefined);
+		setRegistrationUserId(null);
+	}, []);
+
 	const setRegistrationQrDialogState = async (
 		row: Row<z.infer<typeof schema>>,
 	) => {
 		if (open) {
-			setOpen(false);
+			closeRegistrationQrDialog();
 			return;
 		}
 		setSession(await getRegistrationSession(row.original.id));
 		setFullName(row.original.full_name);
+		setRegistrationUserId(row.original.id);
 		setOpen(true);
 	};
+
+	const setRegistrationQrDialogOpenState = React.useCallback(
+		(nextOpen: boolean) => {
+			if (nextOpen) {
+				setOpen(true);
+				return;
+			}
+
+			closeRegistrationQrDialog();
+		},
+		[closeRegistrationQrDialog],
+	);
+
+	React.useEffect(() => {
+		if (!open || registrationUserId === null) {
+			return;
+		}
+
+		const intervalId = window.setInterval(async () => {
+			try {
+				const latestUser = await getUser(registrationUserId);
+				if (!latestUser.registered) {
+					return;
+				}
+
+				setRegistrationQrDialogOpenState(false);
+				router.refresh();
+			} catch {
+				return;
+			}
+		}, 2000);
+
+		return () => {
+			window.clearInterval(intervalId);
+		};
+	}, [open, registrationUserId, router, setRegistrationQrDialogOpenState]);
 
 	const table = useReactTable({
 		data,
@@ -694,7 +744,7 @@ export function DataTableStudent({
 		>
 			<RegistrationQrDialog
 				open={open}
-				onOpenChange={setOpen}
+				onOpenChange={setRegistrationQrDialogOpenState}
 				session={session}
 				fullName={fullName}
 			/>

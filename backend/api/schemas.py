@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from enum import Enum
 
+from api.contracts.device import DeviceBindingFlow, DevicePayloadVersion
 from pydantic import BaseModel, ConfigDict, EmailStr
 from typing_extensions import Literal
 
@@ -23,13 +24,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     pass
 
 
 class UserUpdate(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     role: UserRole | None = None
     full_name: str | None = None
@@ -38,13 +39,14 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: str
 
 
 class UserStudentResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     ongoing_class: str | None = None
     in_class: bool
@@ -53,14 +55,11 @@ class UserStudentResponse(UserBase):
     enrollments: int
     registered: bool
 
-    class Config:
-        from_attributes = True
-
 
 # Credentials
 class CredentialBase(BaseModel):
     user_id: str
-    device_id: str
+    device_public_key: str
     public_key: str
     credential_id: str
     sign_count: int
@@ -68,10 +67,14 @@ class CredentialBase(BaseModel):
 
 
 class CredentialCreate(CredentialBase):
+    model_config = ConfigDict(extra="forbid")
+
     pass
 
 
 class CredentialUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str | None = None
     public_key: str | None = None
     credential_id: str | None = None
@@ -80,10 +83,9 @@ class CredentialUpdate(BaseModel):
 
 
 class CredentialResponse(CredentialBase):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: str
 
 
 # Classes
@@ -104,13 +106,13 @@ class ClassBase(BaseModel):
 
 
 class ClassCreate(ClassBase):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     teacher_id: str
 
 
 class ClassUpdate(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     teacher_id: str | None = None
     course_code: str | None = None
@@ -119,11 +121,10 @@ class ClassUpdate(BaseModel):
 
 
 class ClassResponse(ClassBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     teacher_id: str
-
-    class Config:
-        from_attributes = True
 
 
 # Class enrollments
@@ -133,23 +134,26 @@ class ClassEnrollmentBase(BaseModel):
 
 
 class ClassEnrollmentCreate(ClassEnrollmentBase):
+    model_config = ConfigDict(extra="forbid")
+
     pass
 
 
 class ClassEnrollmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     class_id: str | None = None
     student_id: str | None = None
 
 
 class ClassEnrollmentResponse(ClassEnrollmentBase):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: str
 
 
 # Attendance sessions
-class AttendanceSessionBase(BaseModel):
+class CheckInSessionBase(BaseModel):
     class_id: str
     start_time: datetime
     end_time: datetime
@@ -157,11 +161,15 @@ class AttendanceSessionBase(BaseModel):
     dynamic_token: str
 
 
-class AttendanceSessionCreate(AttendanceSessionBase):
+class CheckInSessionCreate(CheckInSessionBase):
+    model_config = ConfigDict(extra="forbid")
+
     pass
 
 
-class AttendanceSessionUpdate(BaseModel):
+class CheckInSessionUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     class_id: str | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
@@ -169,11 +177,10 @@ class AttendanceSessionUpdate(BaseModel):
     dynamic_token: str | None = None
 
 
-class AttendanceSessionResponse(AttendanceSessionBase):
-    id: str
+class CheckInSessionResponse(CheckInSessionBase):
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: str
 
 
 # Attendance records
@@ -206,13 +213,13 @@ class AttendanceRecordBase(BaseModel):
 
 
 class AttendanceRecordCreate(AttendanceRecordBase):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     pass
 
 
 class AttendanceRecordUpdate(BaseModel):
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     session_id: str | None = None
     user_id: str | None = None
@@ -224,62 +231,94 @@ class AttendanceRecordUpdate(BaseModel):
 
 
 class AttendanceRecordResponse(AttendanceRecordBase):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    id: str
 
 
 # Registration
 class RegistrationOptionsBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
     registration_token: str
 
 
 class RegistrationResponseBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
     registration_token: str
     device_signature: str
+    device_public_key: str
     credential: dict
 
 
 class RegistrationSessionBase(BaseModel):
     user_id: str
     registration_token: str
+    created_at: datetime
+    expires_at: datetime
     expires_in: int
     url: str
 
 
-# Authentication
-class AuthenticationOptionsBase(BaseModel):
+class DeviceBindingPayload(BaseModel):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    v: DevicePayloadVersion
+    flow: DeviceBindingFlow
+    user_id: str
+    session_id: str | None
+    credential_id: str | None
+    challenge: str
+    issued_at_ms: int
+
+
+# Check-in
+class CheckInOptionsBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
 
 
-class AuthenticationResponseBase(BaseModel):
+class CheckInResponseBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
     session_id: str
     credential: dict
     device_signature: str
-    device_id: str
+    device_public_key: str
 
 
 # Login
 class LoginOptionsBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
 
 
 class LoginResponseBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
     credential: dict
+    device_signature: str
+    device_public_key: str
 
 
 class LoginSessionBase(BaseModel):
     user_id: str
     session_token: str
+    created_at: datetime
+    expires_at: datetime
     expires_in: int
 
 
 # Logout
 class LogoutOptionsBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     user_id: str
     session_token: str

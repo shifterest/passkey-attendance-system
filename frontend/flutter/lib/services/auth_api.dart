@@ -41,7 +41,7 @@ class AuthApi {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     dynamic authenticationOptions = await client.post(
-      '/auth/authenticate/options',
+      '/auth/check-in/options',
       {'user_id': userId},
     );
     if (authenticationOptions is Map<String, dynamic>) {
@@ -51,13 +51,13 @@ class AuthApi {
     }
   }
 
-  static Future<Map<String, dynamic>> authenticateVerify(
+  static Future<Map<String, dynamic>> checkInVerify(
     Map<String, dynamic> response,
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     dynamic authenticateResponse = await client.post(
-      '/auth/authenticate/verify',
+      '/auth/check-in/verify',
       response,
     );
     if (authenticateResponse is Map<String, dynamic>) {

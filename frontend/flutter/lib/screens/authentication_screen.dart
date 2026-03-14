@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/screens/home_screen.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
-import 'package:passkey_attendance_system/services/session_store.dart';
 
 class AuthenticationScreen extends StatefulWidget {
   const AuthenticationScreen({
@@ -96,16 +95,28 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
           'Initiating ${widget.login ? 'login' : 'authentication'} with server...';
     });
 
-    dynamic optionsJson;
+    Map<String, dynamic> optionsJson;
     if (widget.login) {
       optionsJson = await AuthApi.loginOptions(widget.userId);
     } else {
       optionsJson = await AuthApi.authenticateOptions(widget.userId);
     }
 
-    // TODO: Will need this later
-    final deviceId = await SessionStore.getDeviceId();
-    final credentialJson = await passkey.login(optionsJson, widget.userId);
+    Map<String, dynamic> credentialJson;
+    if (widget.login) {
+      credentialJson = await passkey.login(optionsJson, widget.userId);
+    } else {
+      final sessionId = optionsJson['session_id'];
+      if (sessionId is! String || sessionId.isEmpty) {
+        throw Exception('Missing session_id in check-in options');
+      }
+
+      credentialJson = await passkey.checkIn(
+        optionsJson,
+        widget.userId,
+        sessionId,
+      );
+    }
 
     setState(() {
       _status = 'Verifying passkey with server...';
@@ -114,7 +125,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     if (widget.login) {
       await AuthApi.loginVerify(credentialJson);
     } else {
-      await AuthApi.authenticateVerify(credentialJson);
+      await AuthApi.checkInVerify(credentialJson);
     }
     return true;
   }

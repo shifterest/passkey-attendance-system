@@ -50,13 +50,17 @@ class User(Base):
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="student"
     )
+    registration_sessions: Mapped[list["RegistrationSession"]] = relationship(
+        back_populates="user"
+    )
+    login_sessions: Mapped[list["LoginSession"]] = relationship(back_populates="user")
 
 
 class Credential(Base):
     __tablename__ = "credentials"
     id: Mapped[str] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
-    device_id: Mapped[str]
+    device_public_key: Mapped[str]
     public_key: Mapped[str]
     credential_id: Mapped[str]
     sign_count: Mapped[int]
@@ -76,7 +80,7 @@ class Class(Base):
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="enrolled_class"
     )
-    attendance_sessions: Mapped[list["AttendanceSession"]] = relationship(
+    check_in_sessions: Mapped[list["CheckInSession"]] = relationship(
         back_populates="attended_class"
     )
 
@@ -90,22 +94,10 @@ class ClassEnrollment(Base):
     student: Mapped["User"] = relationship(back_populates="enrollments")
 
 
-class AttendanceSession(Base):
-    __tablename__ = "attendance_sessions"
-    id: Mapped[str] = mapped_column(primary_key=True)
-    class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
-    start_time: Mapped[datetime]
-    end_time: Mapped[datetime]
-    status: Mapped[str]
-    dynamic_token: Mapped[str]
-    attended_class: Mapped["Class"] = relationship(back_populates="attendance_sessions")
-    records: Mapped[list["AttendanceRecord"]] = relationship(back_populates="session")
-
-
 class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     id: Mapped[str] = mapped_column(primary_key=True)
-    session_id: Mapped[str] = mapped_column(ForeignKey("attendance_sessions.id"))
+    session_id: Mapped[str] = mapped_column(ForeignKey("check_in_sessions.id"))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     is_flagged: Mapped[bool]
     flag_reason: Mapped[str | None] = mapped_column(None)
@@ -113,7 +105,38 @@ class AttendanceRecord(Base):
     verification_methods: Mapped[list[str]] = mapped_column(JSON)
     assurance_score: Mapped[int]
     status: Mapped[str]
-    session: Mapped["AttendanceSession"] = relationship(back_populates="records")
+    session: Mapped["CheckInSession"] = relationship(back_populates="records")
+
+
+class RegistrationSession(Base):
+    __tablename__ = "registration_sessions"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime]
+    expires_at: Mapped[datetime]
+    user: Mapped["User"] = relationship(back_populates="registration_sessions")
+
+
+class LoginSession(Base):
+    __tablename__ = "login_sessions"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime]
+    expires_at: Mapped[datetime]
+    last_activity_at: Mapped[datetime | None] = mapped_column(None)
+    user: Mapped["User"] = relationship(back_populates="login_sessions")
+
+
+class CheckInSession(Base):
+    __tablename__ = "check_in_sessions"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
+    start_time: Mapped[datetime]
+    end_time: Mapped[datetime]
+    status: Mapped[str]
+    dynamic_token: Mapped[str]
+    attended_class: Mapped["Class"] = relationship(back_populates="check_in_sessions")
+    records: Mapped[list["AttendanceRecord"]] = relationship(back_populates="session")
 
 
 Base.metadata.create_all(bind=engine)

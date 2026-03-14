@@ -1,11 +1,12 @@
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from api.config import settings
 from api.messages import Logs, Messages
 from api.schemas import UserRole
 from api.services.auth_service import create_login_session
-from db.database import User, get_db
+from db.database import LoginSession, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -54,10 +55,21 @@ def initialize_operator(db: Session = Depends(get_db)):
             db.commit()
             db.refresh(new_operator)
             logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
+
+        new_session = LoginSession(
+            id=str(uuid.uuid4()),
+            user_id=new_operator.id,
+            created_at=datetime.now(timezone.utc),
+            expires_at=datetime.now(timezone.utc) + timedelta(seconds=1800),
+            last_activity_at=None,
+        )
+        db.add(new_session)
+        db.commit()
+
         # Auto-login (?)
         # TODO: Maybe there's a better way? Allow the backend to be started with
         # a flag/env var that allows bootstrapping
-        return create_login_session(user_id=new_operator.id, timeout=1800)
+        return create_login_session(new_session)
     except Exception as e:
         logger.error(Logs.OPERATOR_BOOTSTRAP_FAILED.format(error=str(e)))
         raise HTTPException(

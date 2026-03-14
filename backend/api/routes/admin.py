@@ -1,9 +1,11 @@
 import logging
+import uuid
+from datetime import datetime, timedelta, timezone
 
 from api.config import settings
 from api.messages import Logs, Messages
 from api.services.auth_service import create_registration_session
-from db.database import Credential, User, get_db
+from db.database import Credential, RegistrationSession, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -19,9 +21,27 @@ def register_user(user_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
 
-    response = create_registration_session(
-        user_id=user.id, timeout=settings.registration_timeout
+    new_uuid = str(uuid.uuid4())
+    while True:
+        record = (
+            db.query(RegistrationSession)
+            .filter(RegistrationSession.id == new_uuid)
+            .first()
+        )
+        if record is None:
+            break
+        new_uuid = str(uuid.uuid4())
+    new_session = RegistrationSession(
+        id=new_uuid,
+        user_id=user_id,
+        created_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(seconds=settings.registration_timeout),
     )
+    db.add(new_session)
+    db.commit()
+
+    response = create_registration_session(new_session)
 
     logger.info(
         Logs.REGISTER_SESSION_CREATED.format(full_name=user.full_name, user_id=user.id)

@@ -3,11 +3,11 @@ import uuid
 
 from api.messages import Logs, Messages
 from api.schemas import (
-    AttendanceSessionCreate,
-    AttendanceSessionResponse,
-    AttendanceSessionUpdate,
+    CheckInSessionCreate,
+    CheckInSessionResponse,
+    CheckInSessionUpdate,
 )
-from db.database import AttendanceSession, Class, get_db
+from db.database import CheckInSession, Class, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -15,25 +15,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-@router.get("/", response_model=list[AttendanceSessionResponse])
+@router.get("/", response_model=list[CheckInSessionResponse])
 def get_all_sessions(db: Session = Depends(get_db)):
-    sessions = db.query(AttendanceSession).all()
+    sessions = db.query(CheckInSession).all()
     return sessions
 
 
-@router.get("/by-class/{class_id}", response_model=list[AttendanceSessionResponse])
+@router.get("/by-class/{class_id}", response_model=list[CheckInSessionResponse])
 def get_sessions_by_class(class_id: str, db: Session = Depends(get_db)):
     sessions = (
-        db.query(AttendanceSession).filter(AttendanceSession.class_id == class_id).all()
+        db.query(CheckInSession).filter(CheckInSession.class_id == class_id).all()
     )
     return sessions
 
 
-@router.get("/{session_id}", response_model=AttendanceSessionResponse)
+@router.get("/{session_id}", response_model=CheckInSessionResponse)
 def get_session(session_id: str, db: Session = Depends(get_db)):
-    session = (
-        db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
-    )
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
@@ -41,10 +39,8 @@ def get_session(session_id: str, db: Session = Depends(get_db)):
     return session
 
 
-@router.post("/", response_model=AttendanceSessionResponse)
-def create_session(
-    session_data: AttendanceSessionCreate, db: Session = Depends(get_db)
-):
+@router.post("/", response_model=CheckInSessionResponse)
+def create_session(session_data: CheckInSessionCreate, db: Session = Depends(get_db)):
     class_ = db.query(Class).filter(Class.id == session_data.class_id).first()
     if class_ is None:
         raise HTTPException(
@@ -53,13 +49,11 @@ def create_session(
         )
     new_uuid = str(uuid.uuid4())
     while True:
-        session = (
-            db.query(AttendanceSession).filter(AttendanceSession.id == new_uuid).first()
-        )
+        session = db.query(CheckInSession).filter(CheckInSession.id == new_uuid).first()
         if session is None:
             break
         new_uuid = str(uuid.uuid4())
-    new_session = AttendanceSession(
+    new_session = CheckInSession(
         id=new_uuid,
         class_id=session_data.class_id,
         start_time=session_data.start_time,
@@ -74,15 +68,13 @@ def create_session(
     return new_session
 
 
-@router.put("/{session_id}", response_model=AttendanceSessionResponse)
+@router.put("/{session_id}", response_model=CheckInSessionResponse)
 def update_session(
     session_id: str,
-    updated_data: AttendanceSessionUpdate,
+    updated_data: CheckInSessionUpdate,
     db: Session = Depends(get_db),
 ):
-    session = (
-        db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
-    )
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
@@ -96,9 +88,7 @@ def update_session(
 
 @router.delete("/{session_id}")
 def delete_session(session_id: str, db: Session = Depends(get_db)):
-    session = (
-        db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
-    )
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND

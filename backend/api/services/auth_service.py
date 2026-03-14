@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timezone
 
 from api.config import settings
 from api.redis import redis_client
@@ -7,39 +8,63 @@ from api.schemas import (
     LoginSessionBase,
     RegistrationSessionBase,
 )
+from db.database import LoginSession, RegistrationSession
 
 
-def create_login_session(user_id: str, timeout: int):
+def create_login_session(session: LoginSession):
+    expires_delta = session.expires_at - datetime.now(timezone.utc)
+    expires_in = max(0, int(expires_delta.total_seconds()))
+
     token = secrets.token_urlsafe(32)
     while True:
-        record_bytes = redis_client.get(f"session_token:{token}")
-        if not record_bytes:
+        redis_session = redis_client.get(f"login_session_token:{token}")
+        if not redis_session:
             break
         token = secrets.token_urlsafe(32)
-    redis_client.set(f"session_token:{token}", user_id, ex=timeout)
+    redis_client.set(
+        f"login_session_token:{token}",
+        session.user_id,
+        ex=expires_delta,
+    )
+
     return LoginSessionBase(
-        user_id=user_id,
+        user_id=session.user_id,
         session_token=token,
-        expires_in=timeout,
+        created_at=session.created_at,
+        expires_at=session.expires_at,
+        expires_in=expires_in,
     )
 
 
-def create_registration_session(user_id: str, timeout: int):
+def create_registration_session(session: RegistrationSession):
+    expires_delta = session.expires_at - datetime.now(timezone.utc)
+    expires_in = max(0, int(expires_delta.total_seconds()))
+
     token = secrets.token_urlsafe(32)
     while True:
-        record_bytes = redis_client.get(f"registration_token:{token}")
+        record_bytes = redis_client.get(f"registration_session_token:{token}")
         if not record_bytes:
             break
         token = secrets.token_urlsafe(32)
-    redis_client.set(f"registration_token:{token}", user_id, ex=timeout)
-    url = f"{settings.registration_protocol}://register?token={token}&user_id={user_id}"
+    redis_client.set(
+        f"registration_session_token:{token}",
+        session.user_id,
+        ex=expires_delta,
+    )
+
+    url = f"{settings.registration_protocol}://register?token={token}&user_id={session.user_id}"
     return RegistrationSessionBase(
-        user_id=user_id, registration_token=token, expires_in=timeout, url=url
+        user_id=session.user_id,
+        registration_token=token,
+        created_at=session.created_at,
+        expires_at=session.expires_at,
+        expires_in=expires_in,
+        url=url,
     )
 
 
 def validate_registration_token(user_id: str, token: str):
-    user_id_bytes = redis_client.get(f"registration_token:{token}")
+    user_id_bytes = redis_client.get(f"registration_session_token:{token}")
     if not user_id_bytes:
         return False
     if user_id == user_id_bytes.decode():  # type: ignore
@@ -47,14 +72,7 @@ def validate_registration_token(user_id: str, token: str):
     return False
 
 
-# DEVICE = "device"
-#     PASSKEY = "passkey"
-#     BLUETOOTH = "bluetooth"
-#     NETWORK = "network"
-#     GPS = "gps"
-#     MANUAL = "manual"
-
-
+# TODO: Refine this shit
 def assurance_score_from_verification_methods(
     verification_methods: list[str] | None,
 ) -> int:

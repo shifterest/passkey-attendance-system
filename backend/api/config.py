@@ -25,5 +25,8 @@ class Settings(BaseSettings):
     login_timeout: int = 1800
     registration_timeout: int = 180
 
+    # Credential policy
+    max_active_credentials_per_user: int = 1
+
 
 settings = Settings()

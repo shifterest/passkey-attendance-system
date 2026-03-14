@@ -11,6 +11,7 @@ class Messages:
     # Credentials
     CREDENTIALS_NOT_FOUND = "Credentials not found"
     CREDENTIAL_DELETED = "User unregistered"
+    CREDENTIAL_LIMIT_REACHED = "Maximum active credentials reached for user"
 
     # Classes
     CLASS_NOT_FOUND = "Class not found"
@@ -37,6 +38,9 @@ class Messages:
     AUTH_NO_CREDENTIAL = "No credential found for user"
     AUTH_NO_PENDING = "No pending authentication"
     AUTH_VERIFY_FAILED = "Authentication verification failed"
+    DEVICE_VERIFY_FAILED = "Device signature verification failed"
+    DEVICE_PUBLIC_KEY_MISMATCH = "Device public key does not match enrolled credential"
+    AUTH_CREDENTIAL_MISMATCH = "Credential does not match enrolled credentials"
     AUTH_VERIFY_INVALID_METHODS = "Invalid verification methods"
     AUTH_VERIFY_SESSION_NOT_FOUND = "Session not found"
     REGISTER_NO_PENDING = "No pending registration"
