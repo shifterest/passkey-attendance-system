@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from api.config import settings
 from api.messages import Logs, Messages
 from api.services.auth_service import create_registration_session
+from api.services.session_service import require_role
 from db.database import Credential, RegistrationSession, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -14,7 +15,11 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.post("/register/{user_id}")
-def register_user(user_id: str, db: Session = Depends(get_db)):
+def register_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
@@ -50,7 +55,11 @@ def register_user(user_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/unregister/{user_id}")
-def unregister_user(user_id: str, db: Session = Depends(get_db)):
+def unregister_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(

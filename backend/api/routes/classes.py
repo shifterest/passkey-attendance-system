@@ -3,6 +3,7 @@ import uuid
 
 from api.messages import Logs, Messages
 from api.schemas import ClassCreate, ClassResponse, ClassUpdate, UserRole
+from api.services.session_service import require_role
 from db.database import Class, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -12,29 +13,52 @@ router = APIRouter(prefix="/classes", tags=["classes"])
 
 
 @router.get("/", response_model=list[ClassResponse])
-def get_all_classes(db: Session = Depends(get_db)):
+def get_all_classes(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     classes = db.query(Class).all()
     return classes
 
 
 @router.get("/by-teacher/{teacher_id}", response_model=list[ClassResponse])
-def get_all_classes_by_teacher(teacher_id: str, db: Session = Depends(get_db)):
+def get_all_classes_by_teacher(
+    teacher_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    if current_user.role == "teacher" and current_user.id != teacher_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
     classes = db.query(Class).filter(Class.teacher_id == teacher_id).all()
     return classes
 
 
 @router.get("/{class_id}", response_model=ClassResponse)
-def get_class(class_id: str, db: Session = Depends(get_db)):
+def get_class(
+    class_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
     class_ = db.query(Class).filter(Class.id == class_id).first()
     if class_ is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CLASS_NOT_FOUND
         )
+    if current_user.role == "teacher" and class_.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
     return class_
 
 
 @router.post("", response_model=ClassResponse)
-def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
+def create_class(
+    class_data: ClassCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     teacher = db.query(User).filter(User.id == class_data.teacher_id).first()
     if teacher is None:
         raise HTTPException(
@@ -58,6 +82,8 @@ def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
         course_code=class_data.course_code,
         course_name=class_data.course_name,
         schedule=class_data.schedule,
+        standard_assurance_threshold=class_data.standard_assurance_threshold,
+        high_assurance_threshold=class_data.high_assurance_threshold,
     )
     db.add(new_class)
     db.commit()
@@ -72,12 +98,19 @@ def create_class(class_data: ClassCreate, db: Session = Depends(get_db)):
 
 @router.put("/{class_id}", response_model=ClassResponse)
 def update_class(
-    class_id: str, updated_data: ClassUpdate, db: Session = Depends(get_db)
+    class_id: str,
+    updated_data: ClassUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
 ):
     class_ = db.query(Class).filter(Class.id == class_id).first()
     if class_ is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CLASS_NOT_FOUND
+        )
+    if current_user.role == "teacher" and class_.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
         )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(class_, key, value)
@@ -91,7 +124,11 @@ def update_class(
 
 
 @router.delete("/{class_id}")
-def delete_class(class_id: str, db: Session = Depends(get_db)):
+def delete_class(
+    class_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     class_ = db.query(Class).filter(Class.id == class_id).first()
     if class_ is None:
         raise HTTPException(

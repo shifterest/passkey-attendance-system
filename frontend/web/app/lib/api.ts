@@ -35,7 +35,13 @@ export type ClassDto = {
 	teacher_id: string | null;
 	course_code: string;
 	course_name: string;
-	schedule: Record<string, string>[];
+	schedule: {
+		days: string[];
+		start_time: string;
+		end_time: string;
+	}[];
+	standard_assurance_threshold: number;
+	high_assurance_threshold: number;
 };
 
 export type AttendanceRecordDto = {
@@ -45,6 +51,7 @@ export type AttendanceRecordDto = {
 	flag_reason: string | null;
 	timestamp: string;
 	verification_methods: string[];
+	assurance_score: number;
 	status: string;
 };
 

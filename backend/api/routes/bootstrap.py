@@ -1,60 +1,119 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import cast
 
 from api.config import settings
 from api.messages import Logs, Messages
+from api.redis import redis_client
 from api.schemas import UserRole
 from api.services.auth_service import create_login_session
 from db.database import LoginSession, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bootstrap", tags=["bootstrap"])
 
+BOOTSTRAP_COMPLETED_KEY = "bootstrap:completed"
+BOOTSTRAP_TOKEN_PREFIX = "bootstrap:token:"
+BOOTSTRAP_RATELIMIT_PREFIX = "bootstrap:ratelimit:"
+BOOTSTRAP_RATELIMIT_MAX = 5
+BOOTSTRAP_RATELIMIT_WINDOW = 60
+
+
+def _check_rate_limit(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    key = f"{BOOTSTRAP_RATELIMIT_PREFIX}{client_ip}"
+    redis_client.set(key, 0, ex=BOOTSTRAP_RATELIMIT_WINDOW, nx=True)
+    count = cast(int, redis_client.incr(key))
+    if count > BOOTSTRAP_RATELIMIT_MAX:
+        ttl = cast(int, redis_client.ttl(key))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=Messages.BOOTSTRAP_RATE_LIMITED,
+            headers={"Retry-After": str(max(ttl, 1))},
+        )
+
+
+def _bootstrap_initialized(db: Session) -> bool:
+    operator = db.query(User).filter(User.role == UserRole.OPERATOR).first()
+    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+    return operator is not None or admin is not None
+
+
+def _ensure_bootstrap_allowed(db: Session) -> None:
+    if not settings.bootstrap_enabled:
+        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="disabled"))
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=Messages.BOOTSTRAP_DISABLED,
+        )
+
+    if redis_client.get(BOOTSTRAP_COMPLETED_KEY):
+        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="already_completed"))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.BOOTSTRAP_ALREADY_COMPLETED,
+        )
+
+    if _bootstrap_initialized(db):
+        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="already_initialized"))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.BOOTSTRAP_ALREADY_INITIALIZED,
+        )
+
+
+def _validate_bootstrap_token(bootstrap_token: str | None) -> str:
+    if bootstrap_token is None or bootstrap_token.strip() == "":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.BOOTSTRAP_TOKEN_REQUIRED,
+        )
+
+    token_key = f"{BOOTSTRAP_TOKEN_PREFIX}{bootstrap_token.strip()}"
+    if not redis_client.get(token_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.BOOTSTRAP_TOKEN_INVALID,
+        )
+
+    return token_key
+
 
 @router.get("/status")
 def bootstrap_status(db: Session = Depends(get_db)):
-    # TODO: Detect flag instead of operator presence. This is good for now
-    operator = db.query(User).filter(User.role == UserRole.OPERATOR).first()
-    admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-    if operator is None and admin is None:
-        return True
-    else:
+    if not settings.bootstrap_enabled:
         return False
+    if redis_client.get(BOOTSTRAP_COMPLETED_KEY):
+        return False
+    return not _bootstrap_initialized(db)
 
 
 @router.post("/operator")
-def initialize_operator(db: Session = Depends(get_db)):
-    # Check if operator exists
-    operator = db.query(User).filter(User.role == UserRole.OPERATOR).first()
-    if operator is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=Messages.OPERATOR_ALREADY_EXISTS,
-        )
-    # Check if an admin exists
-    new_operator = db.query(User).filter(User.role == UserRole.ADMIN).first()
+def initialize_operator(
+    request: Request,
+    bootstrap_token: str | None = Header(default=None, alias="X-Bootstrap-Token"),
+    db: Session = Depends(get_db),
+):
+    logger.info(Logs.BOOTSTRAP_ATTEMPT)
+    _check_rate_limit(request)
+    _ensure_bootstrap_allowed(db)
+    token_key = _validate_bootstrap_token(bootstrap_token)
+
+    new_operator = User(
+        id=str(uuid.uuid4()),
+        role=UserRole.OPERATOR,
+        full_name="Operator",
+        email=f"operator@{settings.rp_id}",
+    )
+
     try:
-        if new_operator is not None:
-            logger.info(
-                Logs.ADMIN_PROMOTED_TO_OPERATOR.format(
-                    full_name=new_operator.full_name, user_id=new_operator.id
-                )
-            )
-        else:
-            # Create an operator if there's no operator nor admin
-            new_operator = User(
-                id=str(uuid.uuid4()),
-                role=UserRole.OPERATOR,
-                full_name="Operator",
-                email=f"operator@{settings.rp_id}",
-            )
-            db.add(new_operator)
-            db.commit()
-            db.refresh(new_operator)
-            logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
+        db.add(new_operator)
+        db.commit()
+        db.refresh(new_operator)
+        logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
 
         new_session = LoginSession(
             id=str(uuid.uuid4()),
@@ -66,10 +125,13 @@ def initialize_operator(db: Session = Depends(get_db)):
         db.add(new_session)
         db.commit()
 
-        # Auto-login (?)
-        # TODO: Maybe there's a better way? Allow the backend to be started with
-        # a flag/env var that allows bootstrapping
+        redis_client.delete(token_key)
+        redis_client.set(BOOTSTRAP_COMPLETED_KEY, "1")
+        logger.info(Logs.BOOTSTRAP_COMPLETED)
+
         return create_login_session(new_session)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(Logs.OPERATOR_BOOTSTRAP_FAILED.format(error=str(e)))
         raise HTTPException(

@@ -1,5 +1,7 @@
 from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 
+from api.config import settings
 from db.database import AttendanceRecord, ClassEnrollment, Credential
 from sqlalchemy.orm import Session
 
@@ -22,8 +24,9 @@ def get_student_details(user_id: str, db: Session):
     enrollments = len(classes)
     records = len(attendance_records)
     now = datetime.now(timezone.utc)
-    today_name = now.strftime("%A")
-    now_time = now.time()
+    local_now = now.astimezone(ZoneInfo(settings.server_timezone))
+    today_name = local_now.strftime("%A")
+    now_time = local_now.time()
     entry_start = None
     entry_end = None
 
@@ -31,10 +34,13 @@ def get_student_details(user_id: str, db: Session):
         class_ = class_enrollment.enrolled_class
 
         for entry in class_.schedule:
-            entry_day = entry["day"]
-            entry_start = entry["start_time"]
-            entry_end = entry["end_time"]
-            if entry_day != today_name:
+            days = entry.get("days")
+            if not isinstance(days, list) or today_name not in days:
+                continue
+
+            entry_start = entry.get("start_time")
+            entry_end = entry.get("end_time")
+            if entry_start is None or entry_end is None:
                 continue
 
             if isinstance(entry_start, str):

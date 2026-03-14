@@ -11,7 +11,7 @@ import {
 	IconUser,
 	IconUserEdit,
 } from "@tabler/icons-react";
-import * as React from "react";
+import type * as React from "react";
 import { useEffect, useState } from "react";
 import { getUser } from "@/app/lib/api";
 import { type IconItem, navigation } from "@/app/lib/navigation";

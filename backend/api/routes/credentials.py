@@ -2,7 +2,8 @@ import logging
 
 from api.messages import Messages
 from api.schemas import CredentialResponse, CredentialUpdate
-from db.database import Credential, get_db
+from api.services.session_service import require_role
+from db.database import Credential, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -11,19 +12,34 @@ router = APIRouter(prefix="/credentials", tags=["credentials"])
 
 
 @router.get("/", response_model=list[CredentialResponse])
-def get_all_credentials(db: Session = Depends(get_db)):
+def get_all_credentials(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     credentials = db.query(Credential).all()
     return credentials
 
 
 @router.get("/by-user/{user_id}", response_model=list[CredentialResponse])
-def get_all_credentials_by_user(user_id: str, db: Session = Depends(get_db)):
+def get_all_credentials_by_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("student", "admin", "operator")),
+):
+    if current_user.role == "student" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
     credentials = db.query(Credential).filter(Credential.user_id == user_id).all()
     return credentials
 
 
 @router.get("/{credential_id}", response_model=CredentialResponse)
-def get_credential(credential_id: str, db: Session = Depends(get_db)):
+def get_credential(
+    credential_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
         raise HTTPException(
@@ -67,7 +83,10 @@ def create_credential():
 
 @router.put("/{credential_id}", response_model=CredentialResponse)
 def update_credential(
-    credential_id: str, updated_data: CredentialUpdate, db: Session = Depends(get_db)
+    credential_id: str,
+    updated_data: CredentialUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
 ):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
@@ -82,7 +101,11 @@ def update_credential(
 
 
 @router.delete("/{credential_id}")
-def delete_credential(credential_id: str, db: Session = Depends(get_db)):
+def delete_credential(
+    credential_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     credential = db.query(Credential).filter(Credential.id == credential_id).first()
     if credential is None:
         raise HTTPException(

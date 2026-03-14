@@ -7,6 +7,7 @@ from api.schemas import (
     ClassEnrollmentResponse,
     ClassEnrollmentUpdate,
 )
+from api.services.session_service import require_role
 from db.database import Class, ClassEnrollment, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -16,13 +17,26 @@ router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 
 
 @router.get("/", response_model=list[ClassEnrollmentResponse])
-def get_all_enrollments(db: Session = Depends(get_db)):
+def get_all_enrollments(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     enrollments = db.query(ClassEnrollment).all()
     return enrollments
 
 
 @router.get("/by-class/{class_id}", response_model=list[ClassEnrollmentResponse])
-def get_enrollments_by_class(class_id: str, db: Session = Depends(get_db)):
+def get_enrollments_by_class(
+    class_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    if current_user.role == "teacher":
+        class_ = db.query(Class).filter(Class.id == class_id).first()
+        if class_ is None or class_.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+            )
     enrollments = (
         db.query(ClassEnrollment).filter(ClassEnrollment.class_id == class_id).all()
     )
@@ -30,7 +44,17 @@ def get_enrollments_by_class(class_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/by-student/{student_id}", response_model=list[ClassEnrollmentResponse])
-def get_enrollments_by_student(student_id: str, db: Session = Depends(get_db)):
+def get_enrollments_by_student(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("student", "teacher", "admin", "operator")
+    ),
+):
+    if current_user.role == "student" and current_user.id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
     enrollments = (
         db.query(ClassEnrollment).filter(ClassEnrollment.student_id == student_id).all()
     )
@@ -42,8 +66,23 @@ def get_enrollments_by_student(student_id: str, db: Session = Depends(get_db)):
     response_model=ClassEnrollmentResponse,
 )
 def get_enrollment_by_class_and_student(
-    class_id: str, student_id: str, db: Session = Depends(get_db)
+    class_id: str,
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("student", "teacher", "admin", "operator")
+    ),
 ):
+    if current_user.role == "student" and current_user.id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
+    if current_user.role == "teacher":
+        class_ = db.query(Class).filter(Class.id == class_id).first()
+        if class_ is None or class_.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+            )
     enrollment = (
         db.query(ClassEnrollment)
         .filter(
@@ -61,7 +100,9 @@ def get_enrollment_by_class_and_student(
 
 @router.post("/", response_model=ClassEnrollmentResponse)
 def create_enrollment(
-    enrollment_data: ClassEnrollmentCreate, db: Session = Depends(get_db)
+    enrollment_data: ClassEnrollmentCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
 ):
     class_ = db.query(Class).filter(Class.id == enrollment_data.class_id).first()
     student = db.query(User).filter(User.id == enrollment_data.student_id).first()
@@ -106,6 +147,7 @@ def update_enrollment(
     enrollment_id: str,
     updated_data: ClassEnrollmentUpdate,
     db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
 ):
     enrollment = (
         db.query(ClassEnrollment).filter(ClassEnrollment.id == enrollment_id).first()
@@ -122,7 +164,11 @@ def update_enrollment(
 
 
 @router.delete("/{enrollment_id}")
-def delete_enrollment(enrollment_id: str, db: Session = Depends(get_db)):
+def delete_enrollment(
+    enrollment_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     enrollment = (
         db.query(ClassEnrollment).filter(ClassEnrollment.id == enrollment_id).first()
     )

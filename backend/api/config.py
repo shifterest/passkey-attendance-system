@@ -27,6 +27,26 @@ class Settings(BaseSettings):
 
     # Credential policy
     max_active_credentials_per_user: int = 1
+    device_payload_max_age_ms: int = 30000
+    max_check_ins_per_session: int = 3
+
+    # Rate limiting
+    auth_user_ratelimit_max: int = 5
+    auth_user_ratelimit_window: int = 60
+
+    # Play Integrity
+    play_integrity_package_name: str = ""
+    play_integrity_api_key: str = ""
+
+    # Bootstrap
+    bootstrap_enabled: bool = False
+    bootstrap_token_ttl_seconds: int = 300
+
+    # Timezone
+    server_timezone: str = "Asia/Manila"
+
+    # Reverse proxy
+    trusted_proxy: str | None = None
 
 
 settings = Settings()

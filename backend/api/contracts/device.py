@@ -3,7 +3,7 @@ from typing import Final, TypeAlias
 
 from typing_extensions import Literal
 
-DEVICE_PAYLOAD_VERSION: Final[int] = 1
+DEVICE_PAYLOAD_VERSION: Final[Literal[1]] = 1
 DevicePayloadVersion: TypeAlias = Literal[1]
 DEVICE_PAYLOAD_KEYS: Final[tuple[str, ...]] = (
     "v",

@@ -127,6 +127,7 @@ Future<Map<String, dynamic>> checkIn(
   Map<String, dynamic> optionsJson,
   String? userId,
   String? sessionId,
+  int bluetoothRssi,
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();
@@ -146,6 +147,7 @@ Future<Map<String, dynamic>> checkIn(
     return {
       'user_id': userId,
       'session_id': sessionId,
+      'bluetooth_rssi': bluetoothRssi,
       'credential': credential,
       'device_signature': deviceBinding['device_signature'],
       'device_public_key': deviceBinding['device_public_key'],

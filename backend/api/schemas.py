@@ -2,7 +2,14 @@ from datetime import datetime, time
 from enum import Enum
 
 from api.contracts.device import DeviceBindingFlow, DevicePayloadVersion
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 from typing_extensions import Literal
 
 
@@ -86,15 +93,37 @@ class CredentialResponse(CredentialBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    sign_count_anomaly: bool
 
 
 # Classes
 class Schedule(BaseModel):
-    day: Literal[
-        "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
-    ]
+    days: list[
+        Literal[
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
+    ] = Field(min_length=1)
     start_time: time
     end_time: time
+
+    @field_validator("days")
+    @classmethod
+    def validate_days(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("Duplicate schedule days are not allowed")
+        return value
+
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be later than start_time")
+        return self
 
 
 class ClassBase(BaseModel):
@@ -103,6 +132,8 @@ class ClassBase(BaseModel):
     course_code: str
     course_name: str
     schedule: list[Schedule]
+    standard_assurance_threshold: int = Field(default=10, ge=0)
+    high_assurance_threshold: int = Field(default=20, ge=0)
 
 
 class ClassCreate(ClassBase):
@@ -118,6 +149,8 @@ class ClassUpdate(BaseModel):
     course_code: str | None = None
     course_name: str | None = None
     schedule: list[Schedule] | None = None
+    standard_assurance_threshold: int | None = Field(default=None, ge=0)
+    high_assurance_threshold: int | None = Field(default=None, ge=0)
 
 
 class ClassResponse(ClassBase):
@@ -159,6 +192,8 @@ class CheckInSessionBase(BaseModel):
     end_time: datetime
     status: str
     dynamic_token: str
+    present_cutoff_minutes: int = Field(default=5, ge=0)
+    late_cutoff_minutes: int = Field(default=15, ge=0)
 
 
 class CheckInSessionCreate(CheckInSessionBase):
@@ -175,12 +210,23 @@ class CheckInSessionUpdate(BaseModel):
     end_time: datetime | None = None
     status: str | None = None
     dynamic_token: str | None = None
+    present_cutoff_minutes: int | None = Field(default=None, ge=0)
+    late_cutoff_minutes: int | None = Field(default=None, ge=0)
 
 
 class CheckInSessionResponse(CheckInSessionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+
+
+class OpenTeacherSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    teacher_id: str
+    client_time: datetime | None = None
+    present_cutoff_minutes: int = Field(default=5, ge=0)
+    late_cutoff_minutes: int = Field(default=15, ge=0)
 
 
 # Attendance records
@@ -194,7 +240,8 @@ class AttendanceRecordVerificationMethods(str, Enum):
     DEVICE = "device"
     PASSKEY = "passkey"
     BLUETOOTH = "bluetooth"
-    NETWORK = "network"
+    QR_PROXIMITY = "qr_proximity"
+    PLAY_INTEGRITY = "play_integrity"
     GPS = "gps"
     MANUAL = "manual"
 
@@ -207,7 +254,7 @@ class AttendanceRecordBase(BaseModel):
     is_flagged: bool = False
     flag_reason: str | None = None
     timestamp: datetime
-    verification_methods: list[AttendanceRecordVerificationMethods]
+    verification_methods: list[str]
     assurance_score: int
     status: AttendanceRecordStatus
 
@@ -226,7 +273,7 @@ class AttendanceRecordUpdate(BaseModel):
     is_flagged: bool | None = None
     flag_reason: str | None = None
     timestamp: datetime | None = None
-    verification_methods: list[AttendanceRecordVerificationMethods] | None = None
+    verification_methods: list[str] | None = None
     status: AttendanceRecordStatus | None = None
 
 
@@ -287,6 +334,7 @@ class CheckInResponseBase(BaseModel):
 
     user_id: str
     session_id: str
+    bluetooth_rssi: int = Field(ge=-127, le=20)
     credential: dict
     device_signature: str
     device_public_key: str
@@ -322,3 +370,10 @@ class LogoutOptionsBase(BaseModel):
 
     user_id: str
     session_token: str
+
+
+# Play Integrity
+class PlayIntegrityVouchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    integrity_token: str

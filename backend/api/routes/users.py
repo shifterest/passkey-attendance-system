@@ -7,6 +7,7 @@ from api.schemas import (
     UserResponse,
     UserUpdate,
 )
+from api.services.session_service import require_role
 from db.database import User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
@@ -16,13 +17,26 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/", response_model=list[UserResponse])
-def get_all_users(db: Session = Depends(get_db)):
+def get_all_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     users = db.query(User).all()
     return users
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: str, db: Session = Depends(get_db)):
+def get_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
+):
+    if current_user.role == "student" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
@@ -35,7 +49,11 @@ def get_user(user_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=UserResponse)
-def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     new_uuid = str(uuid.uuid4())
     while True:
         user = db.query(User).filter(User.id == new_uuid).first()
@@ -59,7 +77,12 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(user_id: str, updated_data: UserUpdate, db: Session = Depends(get_db)):
+def update_user(
+    user_id: str,
+    updated_data: UserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
@@ -73,7 +96,11 @@ def update_user(user_id: str, updated_data: UserUpdate, db: Session = Depends(ge
 
 
 @router.delete("/{user_id}")
-def delete_user(user_id: str, db: Session = Depends(get_db)):
+def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(

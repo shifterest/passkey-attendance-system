@@ -37,7 +37,7 @@ class AuthApi {
   }
 
   // Authentication
-  static Future<Map<String, dynamic>> authenticateOptions(String userId) async {
+  static Future<Map<String, dynamic>> checkInOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     dynamic authenticationOptions = await client.post(

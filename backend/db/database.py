@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import Any
 
 from api.config import settings
 from sqlalchemy import JSON, ForeignKey, create_engine
@@ -64,6 +65,7 @@ class Credential(Base):
     public_key: Mapped[str]
     credential_id: Mapped[str]
     sign_count: Mapped[int]
+    sign_count_anomaly: Mapped[bool] = mapped_column(default=False)
     registered_at: Mapped[datetime]
     user: Mapped["User"] = relationship(back_populates="credentials")
 
@@ -74,8 +76,9 @@ class Class(Base):
     teacher_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     course_code: Mapped[str]
     course_name: Mapped[str]
-    # Stored as JSON string: [{"day": "Monday", "start_time": "10:00", "end_time": "11:30"}]
-    schedule: Mapped[list[dict]] = mapped_column(JSON)
+    schedule: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    standard_assurance_threshold: Mapped[int] = mapped_column(default=10)
+    high_assurance_threshold: Mapped[int] = mapped_column(default=25)
     teacher: Mapped["User"] = relationship(back_populates="classes")
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="enrolled_class"
@@ -135,11 +138,12 @@ class CheckInSession(Base):
     end_time: Mapped[datetime]
     status: Mapped[str]
     dynamic_token: Mapped[str]
+    present_cutoff_minutes: Mapped[int] = mapped_column(default=5)
+    late_cutoff_minutes: Mapped[int] = mapped_column(default=15)
     attended_class: Mapped["Class"] = relationship(back_populates="check_in_sessions")
     records: Mapped[list["AttendanceRecord"]] = relationship(back_populates="session")
 
 
-Base.metadata.create_all(bind=engine)
 session = sessionmaker(bind=engine)
 
 

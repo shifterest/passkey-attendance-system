@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from db.database import Base, Class, ClassEnrollment, User, engine
+from db.migrations import upgrade_database
 from sqlalchemy.orm import Session
 
 # Load data from separate JSON files
@@ -28,10 +29,12 @@ enrollments_data = load_json("enrollments.json")
 # Drop all existing tables
 print("🗑️  Dropping existing tables...")
 Base.metadata.drop_all(bind=engine)
+with engine.begin() as connection:
+    connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
 
-# Create all tables fresh
-print("📝 Creating tables...")
-Base.metadata.create_all(engine)
+# Recreate schema from Alembic baseline
+print("📝 Applying Alembic migrations...")
+upgrade_database()
 
 # Populate database
 with Session(engine) as session:

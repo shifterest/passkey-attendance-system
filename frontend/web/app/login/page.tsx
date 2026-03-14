@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -30,6 +31,7 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldDescription } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 // TODO: Throw error if can't connect to API
@@ -38,6 +40,12 @@ export default function LoginPage() {
 	const [isBootstrapMode, setIsBootstrapMode] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [bootstrapping, setBootstrapping] = useState(false);
+	const [bootstrapDialogOpen, setBootstrapDialogOpen] = useState(false);
+	const [bootstrapTokenInput, setBootstrapTokenInput] = useState("");
+	const [bootstrapTokenInvalid, setBootstrapTokenInvalid] = useState(false);
+	const [bootstrapRateLimitSeconds, setBootstrapRateLimitSeconds] = useState<
+		number | null
+	>(null);
 
 	useEffect(() => {
 		const checkBootstrap = async () => {
@@ -57,20 +65,50 @@ export default function LoginPage() {
 		checkBootstrap();
 	}, []);
 
-	const bootstrap = async () => {
+	useEffect(() => {
+		if (!bootstrapRateLimitSeconds) return;
+		const timer = setTimeout(() => {
+			setBootstrapRateLimitSeconds((prev) =>
+				prev && prev > 1 ? prev - 1 : null,
+			);
+		}, 1000);
+		return () => clearTimeout(timer);
+	}, [bootstrapRateLimitSeconds]);
+
+	const bootstrap = async (token: string) => {
 		setBootstrapping(true);
+		setBootstrapTokenInvalid(false);
 		try {
 			const response = await fetch(
 				`${process.env.NEXT_PUBLIC_API_ORIGIN}/bootstrap/operator`,
 				{
 					method: "POST",
+					headers: {
+						"X-Bootstrap-Token": token,
+					},
 				},
 			);
+			if (response.status === 429) {
+				const retryAfter = parseInt(
+					response.headers.get("Retry-After") ?? "60",
+					10,
+				);
+				setBootstrapRateLimitSeconds(retryAfter);
+				return;
+			}
+			if (response.status === 401) {
+				setBootstrapTokenInvalid(true);
+				return;
+			}
+			if (!response.ok) {
+				throw new Error(await response.text());
+			}
 			const data = await response.json();
 			localStorage.setItem("user_id", data.user_id);
 			localStorage.setItem("session_token", data.session_token);
 			// TODO: Implement token expiration handling
 			localStorage.setItem("expires_in", data.expires_in);
+			setBootstrapDialogOpen(false);
 			router.push("/dashboard");
 		} catch (error) {
 			console.error("Failed to bootstrap", error);
@@ -154,7 +192,10 @@ export default function LoginPage() {
 					<CardContent>
 						<Field>
 							{isBootstrapMode ? (
-								<Button onClick={bootstrap} disabled={bootstrapping}>
+								<Button
+									onClick={() => setBootstrapDialogOpen(true)}
+									disabled={bootstrapping}
+								>
 									{loading ? (
 										<Spinner data-icon="inline-start" />
 									) : (
@@ -187,6 +228,73 @@ export default function LoginPage() {
 					<a href="#!">Terms of Service</a> and <a href="#!">Privacy Policy</a>.
 				</FieldDescription>
 			</div>
+			<Dialog
+				open={bootstrapDialogOpen}
+				onOpenChange={(open) => {
+					setBootstrapDialogOpen(open);
+					if (!open) {
+						setBootstrapTokenInput("");
+						setBootstrapTokenInvalid(false);
+					}
+				}}
+			>
+				<DialogContent showCloseButton={false}>
+					<form
+						onSubmit={(e) => {
+							e.preventDefault();
+							bootstrap(bootstrapTokenInput);
+						}}
+						className="grid gap-4"
+					>
+						<DialogHeader>
+							<DialogTitle>Enter bootstrap token</DialogTitle>
+							<DialogDescription>
+								Bootstrap the system with an operator account using a valid
+								token.
+							</DialogDescription>
+						</DialogHeader>
+						<Field>
+							<Input
+								placeholder="Token"
+								value={bootstrapTokenInput}
+								onChange={(e) => {
+									setBootstrapTokenInput(e.target.value);
+									setBootstrapTokenInvalid(false);
+								}}
+								aria-invalid={bootstrapTokenInvalid || undefined}
+								disabled={bootstrapping || !!bootstrapRateLimitSeconds}
+							/>
+							{bootstrapTokenInvalid && (
+								<FieldDescription className="text-destructive">
+									The bootstrap token is not valid.
+								</FieldDescription>
+							)}
+							{!!bootstrapRateLimitSeconds && (
+								<FieldDescription className="text-destructive">
+									You are being rate limited. Try again in{" "}
+									{bootstrapRateLimitSeconds} second(s).
+								</FieldDescription>
+							)}
+						</Field>
+						<DialogFooter>
+							<DialogClose
+								render={
+									<Button variant="outline" type="button">
+										Cancel
+									</Button>
+								}
+							/>
+							<Button
+								type="submit"
+								disabled={bootstrapping || !!bootstrapRateLimitSeconds}
+							>
+								{bootstrapping && <Spinner data-icon="inline-start" />}
+								Enter
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

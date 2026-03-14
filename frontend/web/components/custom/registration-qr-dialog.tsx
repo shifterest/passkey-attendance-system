@@ -1,4 +1,5 @@
-import { RegistrationSessionDto } from "@/app/lib/api";
+import { QRCodeSVG } from "qrcode.react";
+import type { RegistrationSessionDto } from "@/app/lib/api";
 import {
 	Dialog,
 	DialogContent,
@@ -6,7 +7,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
 
 export function RegistrationQrDialog({
 	open,

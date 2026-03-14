@@ -1,17 +1,17 @@
 "use client";
 
 import {
+	IconCircle,
+	IconClipboard,
+	IconExclamationCircle,
+} from "@tabler/icons-react";
+import {
 	Card,
 	CardAction,
 	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	IconCircle,
-	IconClipboard,
-	IconExclamationCircle,
-} from "@tabler/icons-react";
 
 export function SectionCards() {
 	return (

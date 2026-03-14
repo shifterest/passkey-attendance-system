@@ -1,5 +1,5 @@
-import { DataTableStudent } from "@/components/custom/data-table-student";
 import { getStudents } from "@/app/lib/api";
+import { DataTableStudent } from "@/components/custom/data-table-student";
 
 export default async function Page() {
 	const students = await getStudents();

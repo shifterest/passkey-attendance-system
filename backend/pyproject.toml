@@ -7,10 +7,12 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.133.1",
+    "httpx>=0.28.0",
     "pydantic[email]>=2.12.5",
     "pydantic-settings>=2.0.0",
     "redis>=7.2.1",
     "sqlalchemy>=2.0.47",
+    "tzdata>=2025.2",
     "uvicorn>=0.41.0",
     "webauthn>=2.7.1",
 ]
