@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:passkey_attendance_system/config/config.dart';
+import 'package:passkey_attendance_system/strings.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -56,12 +58,12 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     if (url != null && mounted) {
                       final uri = Uri.parse(url);
 
-                      if (uri.scheme != 'shifterest-pas' ||
+                      if (uri.scheme != Config.registrationProtocol ||
                           uri.host != 'register') {
                         GoRouter.of(context).go('/');
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Invalid registration QR code'),
+                            content: Text(QrStrings.errorInvalidQr),
                           ),
                         );
                         return;
@@ -74,7 +76,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                         GoRouter.of(context).go('/');
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Missing registration data'),
+                            content: Text(QrStrings.errorMissingData),
                           ),
                         );
                         return;

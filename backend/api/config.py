@@ -38,15 +38,25 @@ class Settings(BaseSettings):
     play_integrity_package_name: str = ""
     play_integrity_api_key: str = ""
 
+    # Internet-dependent features
+    internet_features_enabled: bool = False
+    crl_check_enabled: bool = True
+
     # Bootstrap
     bootstrap_enabled: bool = False
     bootstrap_token_ttl_seconds: int = 300
 
+    # Network proximity
+    subnet_cidr: str | None = None
+    trusted_proxy: str | None = None
+
+    # School geofence
+    school_lat: float | None = None
+    school_lng: float | None = None
+    school_geofence_radius_m: float = 200.0
+
     # Timezone
     server_timezone: str = "Asia/Manila"
-
-    # Reverse proxy
-    trusted_proxy: str | None = None
 
 
 settings = Settings()

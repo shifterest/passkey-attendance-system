@@ -3,15 +3,23 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from api.models import (
+    DeviceAttestationFailureDetail,
+    DeviceAttestationVerifiedDetail,
+)
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
-from api.messages import Logs, Messages
 from api.redis import redis_client
 from api.schemas import (
     CredentialResponse,
     RegistrationOptionsBase,
     RegistrationResponseBase,
 )
+from api.services.attestation_service import (
+    google_hardware_attestation_roots,
+    validate_android_key_attestation,
+)
+from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
     build_device_payload,
     check_auth_rate_limit,
@@ -24,7 +32,8 @@ from api.services.device_service import (
     encode_base64url,
     normalize_credential_id_base64url,
 )
-from db.database import Credential, User, get_db
+from api.strings import AuditEvents, Logs, Messages
+from database import Credential, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -34,6 +43,9 @@ from webauthn import (
 )
 from webauthn.helpers.exceptions import InvalidRegistrationResponse
 from webauthn.helpers.structs import (
+    AttestationConveyancePreference,
+    AttestationFormat,
+    AuthenticatorAttachment,
     AuthenticatorSelectionCriteria,
     UserVerificationRequirement,
 )
@@ -57,14 +69,14 @@ def register_options(
     user_id_bytes = redis_client.get(
         f"registration_session_token:{options_data.registration_token}"
     )
-    if not user_id_bytes:
+    if not isinstance(user_id_bytes, bytes):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.REGISTRATION_TOKEN_INVALID,
         )
-    user_id = user_id_bytes.decode()  # type: ignore
+    user_id = user_id_bytes.decode()
 
-    if user_id != user.id:  # type: ignore
+    if user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
@@ -83,8 +95,10 @@ def register_options(
         user_name=user.email,
         user_display_name=user.full_name,
         timeout=settings.challenge_timeout * 1000,
+        attestation=AttestationConveyancePreference.DIRECT,
         authenticator_selection=AuthenticatorSelectionCriteria(
-            user_verification=UserVerificationRequirement.REQUIRED
+            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
+            user_verification=UserVerificationRequirement.REQUIRED,
         ),
     )
     issued_at_ms = issued_at_ms_now()
@@ -120,14 +134,14 @@ def register_verify(
     user_id_bytes = redis_client.get(
         f"registration_session_token:{response_data.registration_token}"
     )
-    if not user_id_bytes:
+    if not isinstance(user_id_bytes, bytes):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.REGISTRATION_TOKEN_INVALID,
         )
-    user_id = user_id_bytes.decode()  # type: ignore
+    user_id = user_id_bytes.decode()
 
-    if user_id != user.id:  # type: ignore
+    if user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
@@ -156,6 +170,9 @@ def register_verify(
                 expected_challenge=challenge_bytes,
                 expected_origin=[settings.web_origin, settings.app_origin],
                 expected_rp_id=settings.rp_id,
+                pem_root_certs_bytes_by_fmt={
+                    AttestationFormat.ANDROID_KEY: google_hardware_attestation_roots()
+                },
             )
         else:
             raise HTTPException(
@@ -172,11 +189,37 @@ def register_verify(
             challenge=challenge,
             issued_at_ms=issued_at_ms,
         )
-        verify_device_signature(
-            device_public_key=response_data.device_public_key,
-            device_signature=response_data.device_signature,
-            payload=device_payload,
-        )
+        try:
+            verify_device_signature(
+                device_public_key=response_data.device_public_key,
+                device_signature=response_data.device_signature,
+                payload=device_payload,
+            )
+        except HTTPException:
+            log_audit_event(AuditEvents.DEVICE_SIGNATURE_FAILURE, None, user.id, {}, db)
+            raise
+
+        try:
+            (
+                key_security_level,
+                is_legacy_root,
+                root_serial_hex,
+            ) = validate_android_key_attestation(
+                registration_verification.fmt,
+                registration_verification.attestation_object,
+            )
+        except ValueError as e:
+            log_audit_event(
+                AuditEvents.DEVICE_ATTESTATION_FAILURE,
+                None,
+                user.id,
+                DeviceAttestationFailureDetail(reason=str(e)).model_dump(),
+                db,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=Messages.DEVICE_KEY_INSECURE,
+            ) from e
 
         if credential_limit_reached(user.id, db):
             raise HTTPException(
@@ -184,24 +227,39 @@ def register_verify(
                 detail=Messages.CREDENTIAL_LIMIT_REACHED,
             )
 
-        new_uuid = str(uuid.uuid4())
-        while True:
-            credential = db.query(Credential).filter(Credential.id == new_uuid).first()
-            if credential is None:
-                break
-            new_uuid = str(uuid.uuid4())
         new_credential = Credential(
-            id=new_uuid,
+            id=str(uuid.uuid4()),
             user_id=user.id,
             device_public_key=response_data.device_public_key,
             public_key=registration_verification.credential_public_key.hex(),
             credential_id=encode_base64url(registration_verification.credential_id),
             sign_count=0,
+            key_security_level=key_security_level,
             registered_at=datetime.now(timezone.utc),
         )
         db.add(new_credential)
         db.commit()
         db.refresh(new_credential)
+        log_audit_event(
+            AuditEvents.DEVICE_ATTESTATION_VERIFIED,
+            None,
+            user.id,
+            DeviceAttestationVerifiedDetail(
+                credential_id=new_credential.id,
+                root_serial_hex=root_serial_hex,
+                is_legacy_root=is_legacy_root,
+                key_security_level=key_security_level,
+            ).model_dump(),
+            db,
+        )
+        if is_legacy_root:
+            logger.warning(
+                Logs.LEGACY_ATTESTATION_ROOT_ACCEPTED.format(
+                    user_id=new_credential.user_id,
+                    credential_id=new_credential.id,
+                    root_serial_hex=root_serial_hex,
+                )
+            )
         logger.info(
             Logs.USER_REGISTERED.format(
                 user_id=new_credential.user_id, credential_id=new_credential.id

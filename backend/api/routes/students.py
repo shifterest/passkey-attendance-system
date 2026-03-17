@@ -1,10 +1,10 @@
 import logging
 
-from api.messages import Messages
 from api.schemas import UserRole, UserStudentResponse
 from api.services.session_service import require_role
 from api.services.user_service import get_student_details
-from db.database import Class, ClassEnrollment, User, get_db
+from api.strings import Messages
+from database import Class, ClassEnrollment, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -25,19 +25,19 @@ def get_all_user_students(
     return results
 
 
-@router.get("/{user_id}", response_model=UserStudentResponse)
+@router.get("/{student_id}", response_model=UserStudentResponse)
 def get_user_student(
-    user_id: str,
+    student_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(
         require_role("student", "teacher", "admin", "operator")
     ),
 ):
-    if current_user.role == "student" and current_user.id != user_id:
+    if current_user.role == "student" and current_user.id != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
         )
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == student_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
@@ -48,7 +48,7 @@ def get_user_student(
             detail=Messages.USER_NOT_STUDENT,
         )
 
-    details = get_student_details(user_id, db)
+    details = get_student_details(student_id, db)
     return {**user.__dict__, **details}
 
 

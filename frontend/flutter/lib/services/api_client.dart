@@ -32,11 +32,19 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> post(String path, Map body) async {
+  Future<dynamic> post(
+    String path,
+    Map body, {
+    Map<String, String>? extraHeaders,
+  }) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (extraHeaders != null) ...extraHeaders,
+      };
       final response = await http.post(
         Uri.parse('$apiBaseUrl$path'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(body),
       );
 

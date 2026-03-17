@@ -1,11 +1,12 @@
-import { getStudents } from "@/app/lib/api";
-import { DataTableStudent } from "@/components/custom/data-table-student";
+import { getUsers } from "@/app/lib/api";
+import { DataTableUsers } from "@/components/custom/data-table-users";
 
 export default async function Page() {
-	const students = await getStudents();
+	const allUsers = await getUsers();
+	const admins = allUsers.filter((u) => ["admin", "operator"].includes(u.role));
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-			<DataTableStudent data={students} />
+			<DataTableUsers data={admins} />
 		</div>
 	);
 }

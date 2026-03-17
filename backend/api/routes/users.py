@@ -1,15 +1,17 @@
 import logging
 import uuid
 
-from api.messages import Logs, Messages
+from api.models import UserRoleChange, UserUpdatedDetail
 from api.schemas import (
     UserCreate,
     UserResponse,
     UserUpdate,
 )
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from db.database import User, get_db
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from api.strings import AuditEvents, Logs, Messages
+from database import User, get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -18,11 +20,14 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/", response_model=list[UserResponse])
 def get_all_users(
+    role: str | None = Query(default=None),
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "operator")),
 ):
-    users = db.query(User).all()
-    return users
+    query = db.query(User)
+    if role is not None:
+        query = query.filter(User.role == role)
+    return query.all()
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -54,14 +59,8 @@ def create_user(
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "operator")),
 ):
-    new_uuid = str(uuid.uuid4())
-    while True:
-        user = db.query(User).filter(User.id == new_uuid).first()
-        if user is None:
-            break
-        new_uuid = str(uuid.uuid4())
     new_user = User(
-        id=new_uuid,
+        id=str(uuid.uuid4()),
         role=user_data.role,
         full_name=user_data.full_name,
         email=user_data.email,
@@ -88,9 +87,22 @@ def update_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
-    for key, value in updated_data.model_dump(exclude_unset=True).items():
+    updated_fields = updated_data.model_dump(exclude_unset=True)
+    old_role = user.role if "role" in updated_fields else None
+    for key, value in updated_fields.items():
         setattr(user, key, value)
     db.commit()
+    log_audit_event(
+        event_type=AuditEvents.USER_UPDATED,
+        actor_id=None,
+        target_id=user.id,
+        detail=UserUpdatedDetail(
+            updated_fields=list(updated_fields.keys()),
+            old_value=UserRoleChange(role=old_role) if old_role is not None else None,
+            new_value=UserRoleChange(role=user.role) if old_role is not None else None,
+        ).model_dump(exclude_none=True),
+        db=db,
+    )
     logger.info(Logs.USER_EDITED.format(full_name=user.full_name, user_id=user.id))
     return user
 

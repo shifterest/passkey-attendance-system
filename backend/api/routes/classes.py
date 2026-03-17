@@ -1,10 +1,15 @@
 import logging
 import uuid
 
-from api.messages import Logs, Messages
-from api.schemas import ClassCreate, ClassResponse, ClassUpdate, UserRole
+from api.schemas import (
+    ClassCreate,
+    ClassResponse,
+    ClassUpdate,
+    UserRole,
+)
 from api.services.session_service import require_role
-from db.database import Class, User, get_db
+from api.strings import Logs, Messages
+from database import Class, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -18,20 +23,6 @@ def get_all_classes(
     _: User = Depends(require_role("admin", "operator")),
 ):
     classes = db.query(Class).all()
-    return classes
-
-
-@router.get("/by-teacher/{teacher_id}", response_model=list[ClassResponse])
-def get_all_classes_by_teacher(
-    teacher_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("teacher", "admin", "operator")),
-):
-    if current_user.role == "teacher" and current_user.id != teacher_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
-        )
-    classes = db.query(Class).filter(Class.teacher_id == teacher_id).all()
     return classes
 
 
@@ -70,14 +61,8 @@ def create_class(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=Messages.CLASS_TEACHER_INVALID_ROLE,
         )
-    new_uuid = str(uuid.uuid4())
-    while True:
-        class_ = db.query(Class).filter(Class.id == new_uuid).first()
-        if class_ is None:
-            break
-        new_uuid = str(uuid.uuid4())
     new_class = Class(
-        id=new_uuid,
+        id=str(uuid.uuid4()),
         teacher_id=class_data.teacher_id,
         course_code=class_data.course_code,
         course_name=class_data.course_name,

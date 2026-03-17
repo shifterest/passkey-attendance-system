@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 import fastapi
 from db.migrations import ensure_database_schema
@@ -8,6 +9,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from .config import settings
 from .routes import (
     admin,
+    audit,
     bootstrap,
     check_in,
     classes,
@@ -15,20 +17,25 @@ from .routes import (
     enrollments,
     integrity,
     login,
+    policies,
     records,
     register,
     sessions,
     students,
+    teachers,
     users,
 )
 
 logger = logging.getLogger(__name__)
-app = fastapi.FastAPI()
 
 
-@app.on_event("startup")
-def apply_database_migrations() -> None:
+@asynccontextmanager
+async def _lifespan(app: fastapi.FastAPI):
     ensure_database_schema()
+    yield
+
+
+app = fastapi.FastAPI(lifespan=_lifespan)
 
 
 if settings.trusted_proxy:
@@ -42,6 +49,7 @@ app.add_middleware(
 )
 
 app.include_router(admin.router)
+app.include_router(audit.router)
 app.include_router(bootstrap.router)
 app.include_router(check_in.router)
 app.include_router(classes.router)
@@ -49,8 +57,10 @@ app.include_router(credentials.router)
 app.include_router(enrollments.router)
 app.include_router(integrity.router)
 app.include_router(login.router)
+app.include_router(policies.router)
 app.include_router(records.router)
 app.include_router(register.router)
 app.include_router(sessions.router)
 app.include_router(students.router)
+app.include_router(teachers.router)
 app.include_router(users.router)

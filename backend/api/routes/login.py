@@ -3,9 +3,13 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from api.models import (
+    DeviceKeyMismatchDetail,
+    DeviceSignatureFailureDetail,
+    SignCountAnomalyDetail,
+)
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
-from api.messages import Logs, Messages
 from api.redis import redis_client
 from api.schemas import (
     LoginOptionsBase,
@@ -13,6 +17,7 @@ from api.schemas import (
     LoginSessionBase,
     LogoutOptionsBase,
 )
+from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
     build_device_payload,
     check_auth_rate_limit,
@@ -26,7 +31,8 @@ from api.services.device_service import (
     encode_base64url,
     normalize_credential_id_base64url,
 )
-from db.database import LoginSession, User, get_db
+from api.strings import AuditEvents, Logs, Messages
+from database import LoginSession, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -124,6 +130,13 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             )
 
         if response_data.device_public_key != user_credential.device_public_key:
+            log_audit_event(
+                AuditEvents.DEVICE_KEY_MISMATCH,
+                None,
+                user.id,
+                DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
+                db,
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
@@ -138,11 +151,23 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             challenge=challenge,
             issued_at_ms=issued_at_ms,
         )
-        verify_device_signature(
-            device_public_key=user_credential.device_public_key,
-            device_signature=response_data.device_signature,
-            payload=device_payload,
-        )
+        try:
+            verify_device_signature(
+                device_public_key=user_credential.device_public_key,
+                device_signature=response_data.device_signature,
+                payload=device_payload,
+            )
+        except HTTPException:
+            log_audit_event(
+                AuditEvents.DEVICE_SIGNATURE_FAILURE,
+                None,
+                user.id,
+                DeviceSignatureFailureDetail(
+                    credential_id=user_credential.id
+                ).model_dump(),
+                db,
+            )
+            raise
 
         user_credential.sign_count = authentication_verification.new_sign_count
         if (
@@ -150,15 +175,20 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             and authentication_verification.new_sign_count <= user_sign_count
         ):
             user_credential.sign_count_anomaly = True
+            log_audit_event(
+                AuditEvents.SIGN_COUNT_ANOMALY,
+                None,
+                user.id,
+                SignCountAnomalyDetail(
+                    credential_id=user_credential.id,
+                    old_count=user_sign_count,
+                    new_count=authentication_verification.new_sign_count,
+                ).model_dump(),
+                db,
+            )
 
-        new_uuid = str(uuid.uuid4())
-        while True:
-            record = db.query(LoginSession).filter(LoginSession.id == new_uuid).first()
-            if record is None:
-                break
-            new_uuid = str(uuid.uuid4())
         new_session = LoginSession(
-            id=new_uuid,
+            id=str(uuid.uuid4()),
             user_id=user.id,
             created_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc)
@@ -193,13 +223,13 @@ def logout(options_data: LogoutOptionsBase, db: Session = Depends(get_db)):
     session_token_bytes = redis_client.get(
         f"login_session_token:{options_data.session_token}"
     )
-    if not session_token_bytes:
+    if not isinstance(session_token_bytes, bytes):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.LOGIN_SESSION_NOT_FOUND,
         )
-    session_token = session_token_bytes.decode()  # type: ignore
-    if session_token != options_data.user_id:  # type: ignore
+    session_token = session_token_bytes.decode()
+    if session_token != options_data.user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.SESSION_USER_MISMATCH,

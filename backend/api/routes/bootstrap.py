@@ -1,14 +1,14 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import cast
 
 from api.config import settings
-from api.messages import Logs, Messages
 from api.redis import redis_client
 from api.schemas import UserRole
+from api.services.audit_service import log_audit_event
 from api.services.auth_service import create_login_session
-from db.database import LoginSession, User, get_db
+from api.strings import AuditEvents, Logs, Messages
+from database import LoginSession, User, get_db
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -26,9 +26,9 @@ def _check_rate_limit(request: Request) -> None:
     client_ip = request.client.host if request.client else "unknown"
     key = f"{BOOTSTRAP_RATELIMIT_PREFIX}{client_ip}"
     redis_client.set(key, 0, ex=BOOTSTRAP_RATELIMIT_WINDOW, nx=True)
-    count = cast(int, redis_client.incr(key))
+    count = int(redis_client.incr(key))
     if count > BOOTSTRAP_RATELIMIT_MAX:
-        ttl = cast(int, redis_client.ttl(key))
+        ttl = int(redis_client.ttl(key))
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=Messages.BOOTSTRAP_RATE_LIMITED,
@@ -44,21 +44,21 @@ def _bootstrap_initialized(db: Session) -> bool:
 
 def _ensure_bootstrap_allowed(db: Session) -> None:
     if not settings.bootstrap_enabled:
-        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="disabled"))
+        logger.warning(Logs.BOOTSTRAP_DENIED_DISABLED)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=Messages.BOOTSTRAP_DISABLED,
         )
 
     if redis_client.get(BOOTSTRAP_COMPLETED_KEY):
-        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="already_completed"))
+        logger.warning(Logs.BOOTSTRAP_DENIED_ALREADY_COMPLETED)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=Messages.BOOTSTRAP_ALREADY_COMPLETED,
         )
 
     if _bootstrap_initialized(db):
-        logger.warning(Logs.BOOTSTRAP_DENIED.format(reason="already_initialized"))
+        logger.warning(Logs.BOOTSTRAP_DENIED_ALREADY_INITIALIZED)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=Messages.BOOTSTRAP_ALREADY_INITIALIZED,
@@ -101,6 +101,7 @@ def initialize_operator(
     _check_rate_limit(request)
     _ensure_bootstrap_allowed(db)
     token_key = _validate_bootstrap_token(bootstrap_token)
+    log_audit_event(AuditEvents.BOOTSTRAP_ATTEMPT, None, None, {}, db)
 
     new_operator = User(
         id=str(uuid.uuid4()),
@@ -128,6 +129,7 @@ def initialize_operator(
         redis_client.delete(token_key)
         redis_client.set(BOOTSTRAP_COMPLETED_KEY, "1")
         logger.info(Logs.BOOTSTRAP_COMPLETED)
+        log_audit_event(AuditEvents.BOOTSTRAP_COMPLETED, new_operator.id, None, {}, db)
 
         return create_login_session(new_session)
     except HTTPException:

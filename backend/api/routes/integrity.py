@@ -1,22 +1,20 @@
 import logging
 from datetime import datetime, timedelta
-from typing import cast
 from zoneinfo import ZoneInfo
 
 import httpx
 from api.config import settings
-from api.messages import Logs, Messages
 from api.redis import redis_client
 from api.schemas import PlayIntegrityVouchRequest
-from api.services.session_service import require_role
-from db.database import Credential, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from backend.api.services.integrity_service import (
+from api.services.integrity_service import (
     store_vouch,
     verify_integrity_token,
 )
+from api.services.session_service import require_role
+from api.strings import Logs, Messages
+from database import Credential, User, get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -65,8 +63,8 @@ def play_integrity_vouch(
 
     credential_id = credential.credential_id
     rate_key = f"{PI_VOUCH_DAILY_COUNT_PREFIX}{credential_id}:{_today_date_str()}"
-    count_bytes = cast(bytes | None, redis_client.get(rate_key))
-    count = int(count_bytes) if count_bytes else 0
+    count_bytes = redis_client.get(rate_key)
+    count = int(count_bytes.decode()) if count_bytes else 0
     if count >= PI_MAX_DAILY_VOUCHES:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

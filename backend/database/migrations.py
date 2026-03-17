@@ -3,7 +3,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from api.config import settings
-from db.database import engine
+from database import engine
 from sqlalchemy import inspect
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]

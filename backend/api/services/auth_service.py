@@ -2,11 +2,10 @@ import base64
 import binascii
 import secrets
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import Any
 
 from api.config import settings
 from api.contracts.device import DEVICE_PAYLOAD_VERSION, DeviceBindingFlow
-from api.messages import Messages
 from api.redis import redis_client
 from api.schemas import (
     DeviceBindingPayload,
@@ -22,9 +21,11 @@ from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from db.database import Credential, LoginSession, RegistrationSession
+from database import Credential, LoginSession, RegistrationSession
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+
+from api.strings import Messages
 
 AUTH_RATELIMIT_USER_PREFIX = "auth:ratelimit:user:"
 
@@ -83,9 +84,9 @@ def create_registration_session(session: RegistrationSession):
 
 def validate_registration_token(user_id: str, token: str):
     user_id_bytes = redis_client.get(f"registration_session_token:{token}")
-    if not user_id_bytes:
+    if not isinstance(user_id_bytes, bytes):
         return False
-    if user_id == user_id_bytes.decode():  # type: ignore
+    if user_id == user_id_bytes.decode():
         return True
     return False
 
@@ -97,9 +98,9 @@ def issued_at_ms_now() -> int:
 def check_auth_rate_limit(user_id: str) -> None:
     key = f"{AUTH_RATELIMIT_USER_PREFIX}{user_id}"
     redis_client.set(key, 0, ex=settings.auth_user_ratelimit_window, nx=True)
-    count = cast(int, redis_client.incr(key))
+    count = int(redis_client.incr(key))
     if count > settings.auth_user_ratelimit_max:
-        ttl = cast(int, redis_client.ttl(key))
+        ttl = int(redis_client.ttl(key))
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=Messages.AUTH_RATE_LIMITED,
@@ -178,7 +179,7 @@ def verify_device_signature(
         public_key = load_der_public_key(public_key_bytes)
 
         if not isinstance(public_key, ec.EllipticCurvePublicKey):
-            raise ValueError("Invalid key algorithm")
+            raise ValueError(Messages.DEVICE_KEY_ALGORITHM_INVALID)
 
         public_key.verify(
             signature_bytes,
@@ -222,3 +223,4 @@ def load_issued_at_ms(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=Messages.INVALID_CHALLENGE_DATA,
         )
+

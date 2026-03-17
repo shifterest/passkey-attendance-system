@@ -1,6 +1,6 @@
-from api.messages import Messages
 from api.redis import redis_client
-from db.database import User, get_db
+from api.strings import Messages
+from database import User, get_db
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     user_id_bytes = redis_client.get(f"login_session_token:{x_session_token}")
-    if not user_id_bytes:
+    if not isinstance(user_id_bytes, bytes):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.AUTH_SESSION_INVALID,

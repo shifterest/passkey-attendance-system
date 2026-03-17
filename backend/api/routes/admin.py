@@ -1,13 +1,15 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Annotated, Literal
 
 from api.config import settings
-from api.messages import Logs, Messages
 from api.services.auth_service import create_registration_session
+from api.services.import_service import process_import
 from api.services.session_service import require_role
-from db.database import Credential, RegistrationSession, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from api.strings import Logs, Messages
+from database import Credential, RegistrationSession, User, get_db
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -26,18 +28,8 @@ def register_user(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
 
-    new_uuid = str(uuid.uuid4())
-    while True:
-        record = (
-            db.query(RegistrationSession)
-            .filter(RegistrationSession.id == new_uuid)
-            .first()
-        )
-        if record is None:
-            break
-        new_uuid = str(uuid.uuid4())
     new_session = RegistrationSession(
-        id=new_uuid,
+        id=str(uuid.uuid4()),
         user_id=user_id,
         created_at=datetime.now(timezone.utc),
         expires_at=datetime.now(timezone.utc)
@@ -80,3 +72,20 @@ def unregister_user(
         Logs.USER_UNREGISTERED.format(full_name=user.full_name, user_id=user.id)
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/import-users")
+async def import_users(
+    file: Annotated[UploadFile, File()],
+    format: Annotated[Literal["generic", "banner"], Form()] = "generic",
+    dry_run: Annotated[bool, Form()] = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "operator")),
+):
+    content = await file.read()
+    result = process_import(content=content, format=format, dry_run=dry_run, db=db)
+    if "error" in result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
+        )
+    return result

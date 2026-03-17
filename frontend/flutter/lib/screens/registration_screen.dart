@@ -4,6 +4,8 @@ import 'package:passkey_attendance_system/screens/home_screen.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/session_store.dart';
+import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({
@@ -17,33 +19,6 @@ class RegistrationScreen extends StatefulWidget {
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
-}
-
-Future<void> _showErrorDialog(BuildContext context, String? error) {
-  return showDialog<void>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Error'),
-        content: Text(
-          'Something went wrong during registration. Please try again.'
-          '\n\n$error',
-        ),
-        actions: <Widget>[
-          TextButton(
-            style: TextButton.styleFrom(
-              textStyle: Theme.of(context).textTheme.labelLarge,
-            ),
-            child: const Text('Return'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              GoRouter.of(context).go('/');
-            },
-          ),
-        ],
-      );
-    },
-  );
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
@@ -64,7 +39,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     try {
       setState(() {
-        _status = 'Registering...';
+        _status = RegistrationStrings.registering;
       });
 
       await _register();
@@ -81,7 +56,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       if (_error != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await _showErrorDialog(context, _error);
+          await showErrorDialog(
+            context,
+            _error,
+            body: RegistrationStrings.errorBody,
+          );
         });
       }
     } finally {
@@ -91,7 +70,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   Future<bool> _register() async {
     setState(() {
-      _status = 'Initiating registration with server...';
+      _status = RegistrationStrings.initiating;
     });
 
     final optionsJson = await AuthApi.registerOptions(
@@ -100,7 +79,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
 
     setState(() {
-      _status = 'Creating passkey...';
+      _status = RegistrationStrings.creatingPasskey;
     });
 
     final credentialJson = await passkey.register(
@@ -110,7 +89,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
 
     setState(() {
-      _status = 'Verifying passkey with server...';
+      _status = RegistrationStrings.verifyingPasskey;
     });
 
     await AuthApi.registerVerify(credentialJson);

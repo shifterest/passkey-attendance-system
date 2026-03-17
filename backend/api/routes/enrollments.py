@@ -1,14 +1,16 @@
 import logging
 import uuid
 
-from api.messages import Logs, Messages
+from api.models import EnrollmentDeletedDetail, EnrollmentDeletedOldValue
 from api.schemas import (
     ClassEnrollmentCreate,
     ClassEnrollmentResponse,
     ClassEnrollmentUpdate,
 )
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from db.database import Class, ClassEnrollment, User, get_db
+from api.strings import AuditEvents, Logs, Messages
+from database import Class, ClassEnrollment, User, get_db
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -116,16 +118,21 @@ def create_enrollment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.ENROLLMENT_STUDENT_NOT_FOUND,
         )
-    new_uuid = str(uuid.uuid4())
-    while True:
-        enrollment = (
-            db.query(ClassEnrollment).filter(ClassEnrollment.id == new_uuid).first()
+    existing = (
+        db.query(ClassEnrollment)
+        .filter(
+            ClassEnrollment.class_id == enrollment_data.class_id,
+            ClassEnrollment.student_id == enrollment_data.student_id,
         )
-        if enrollment is None:
-            break
-        new_uuid = str(uuid.uuid4())
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.ENROLLMENT_ALREADY_EXISTS,
+        )
     new_enrollment = ClassEnrollment(
-        id=new_uuid,
+        id=str(uuid.uuid4()),
         class_id=enrollment_data.class_id,
         student_id=enrollment_data.student_id,
     )
@@ -176,6 +183,20 @@ def delete_enrollment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.ENROLLMENT_NOT_FOUND
         )
+    old_student_id = enrollment.student_id
+    old_class_id = enrollment.class_id
     db.delete(enrollment)
     db.commit()
+    log_audit_event(
+        event_type=AuditEvents.ENROLLMENT_DELETED,
+        actor_id=None,
+        target_id=enrollment_id,
+        detail=EnrollmentDeletedDetail(
+            old_value=EnrollmentDeletedOldValue(
+                student_id=old_student_id,
+                class_id=old_class_id,
+            )
+        ).model_dump(),
+        db=db,
+    )
     return Response(status_code=204)

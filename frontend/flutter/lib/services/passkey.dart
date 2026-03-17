@@ -127,8 +127,12 @@ Future<Map<String, dynamic>> checkIn(
   Map<String, dynamic> optionsJson,
   String? userId,
   String? sessionId,
-  int bluetoothRssi,
-) async {
+  List<int> bluetoothRssiReadings, {
+  String? bleToken,
+  double? gpsLatitude,
+  double? gpsLongitude,
+  bool? gpsIsMock,
+}) async {
   try {
     final authenticator = PasskeyAuthenticator();
     final request = AuthenticateRequestType.fromJson(optionsJson);
@@ -147,7 +151,12 @@ Future<Map<String, dynamic>> checkIn(
     return {
       'user_id': userId,
       'session_id': sessionId,
-      'bluetooth_rssi': bluetoothRssi,
+      if (bluetoothRssiReadings.isNotEmpty)
+        'bluetooth_rssi_readings': bluetoothRssiReadings,
+      if (bleToken != null) 'ble_token': bleToken,
+      if (gpsLatitude != null) 'gps_latitude': gpsLatitude,
+      if (gpsLongitude != null) 'gps_longitude': gpsLongitude,
+      if (gpsIsMock != null) 'gps_is_mock': gpsIsMock,
       'credential': credential,
       'device_signature': deviceBinding['device_signature'],
       'device_public_key': deviceBinding['device_public_key'],

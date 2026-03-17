@@ -6,6 +6,8 @@ from typing import Any
 from api.contracts.device import DEVICE_PAYLOAD_KEYS
 from api.schemas import DeviceBindingPayload
 
+from api.strings import Messages
+
 
 def encode_base64url(value: bytes) -> str:
     return base64.urlsafe_b64encode(value).decode("utf-8").rstrip("=")
@@ -66,10 +68,11 @@ def canonical_payload_bytes(payload: DeviceBindingPayload) -> bytes:
         "issued_at_ms": payload.issued_at_ms,
     }
     if tuple(canonical_payload.keys()) != DEVICE_PAYLOAD_KEYS:
-        raise ValueError("Invalid device binding payload keys")
+        raise ValueError(Messages.DEVICE_BINDING_PAYLOAD_KEYS_INVALID)
 
     return json.dumps(
         canonical_payload,
         separators=(",", ":"),
         ensure_ascii=False,
     ).encode("utf-8")
+

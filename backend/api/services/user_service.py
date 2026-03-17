@@ -2,7 +2,14 @@ from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from api.config import settings
-from db.database import AttendanceRecord, ClassEnrollment, Credential
+from database import (
+    AttendanceRecord,
+    CheckInSession,
+    Class,
+    ClassEnrollment,
+    ClassPolicy,
+    Credential,
+)
 from sqlalchemy.orm import Session
 
 
@@ -74,4 +81,38 @@ def get_student_details(user_id: str, db: Session):
         "records": records,
         "flagged": flagged,
         "registered": registered,
+    }
+
+
+def get_teacher_details(user_id: str, db: Session):
+    classes = db.query(Class).filter(Class.teacher_id == user_id).all()
+    class_ids = [c.id for c in classes]
+
+    student_ids = {
+        row[0]
+        for row in db.query(ClassEnrollment.student_id)
+        .filter(ClassEnrollment.class_id.in_(class_ids))
+        .all()
+    }
+
+    now = datetime.now(timezone.utc)
+    has_open_session = (
+        db.query(CheckInSession)
+        .filter(CheckInSession.class_id.in_(class_ids))
+        .filter(CheckInSession.start_time <= now)
+        .filter(CheckInSession.end_time >= now)
+        .first()
+    ) is not None
+
+    default_policy = (
+        db.query(ClassPolicy)
+        .filter(ClassPolicy.created_by == user_id, ClassPolicy.class_id.is_(None))
+        .first()
+    )
+
+    return {
+        "class_count": len(classes),
+        "student_count": len(student_ids),
+        "has_open_session": has_open_session,
+        "default_policy": default_policy,
     }

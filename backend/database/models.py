@@ -1,42 +1,11 @@
-import logging
 from datetime import datetime
 from typing import Any
 
-from api.config import settings
-from sqlalchemy import JSON, ForeignKey, create_engine
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    mapped_column,
-    relationship,
-    sessionmaker,
-)
-
-logger = logging.getLogger(__name__)
-
-# Old crusty sqlite3 method
-# try:
-#     logger.info("Attempting to connect to database...")
-#     with sqlite3.connect("db/attendance.db") as conn:
-#         cursor = conn.cursor()
-#         logger.info("Connected to database.")
-#         with open("db/schema.sql", "r") as schema_file:
-#             schema = schema_file.read()
-#             logger.info("Loaded schema.")
-#             cursor.executescript(schema)
-#             conn.commit()
-#             logger.info("Applied schema.")
-# except:
-#     logger.info("Failed to connect to database.")
-
-engine = create_engine(settings.database_url, echo=True)
+from database.connection import Base
+from sqlalchemy import JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
-class Base(DeclarativeBase):
-    pass
-
-
-# Models
 class User(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(primary_key=True)
@@ -44,7 +13,7 @@ class User(Base):
     full_name: Mapped[str]
     email: Mapped[str]
     school_id: Mapped[str | None] = mapped_column(None)
-    credentials: Mapped["Credential"] = relationship(back_populates="user")
+    credentials: Mapped[list["Credential"]] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
     )
@@ -66,8 +35,26 @@ class Credential(Base):
     credential_id: Mapped[str]
     sign_count: Mapped[int]
     sign_count_anomaly: Mapped[bool] = mapped_column(default=False)
+    key_security_level: Mapped[str | None] = mapped_column(None)
+    attestation_crl_verified: Mapped[bool | None] = mapped_column(None)
     registered_at: Mapped[datetime]
     user: Mapped["User"] = relationship(back_populates="credentials")
+
+
+class ClassPolicy(Base):
+    __tablename__ = "class_policies"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(None)
+    class_id: Mapped[str | None] = mapped_column(ForeignKey("classes.id"), default=None)
+    play_integrity_enabled: Mapped[bool] = mapped_column(default=False)
+    standard_assurance_threshold: Mapped[int] = mapped_column(default=5)
+    high_assurance_threshold: Mapped[int] = mapped_column(default=9)
+    present_cutoff_minutes: Mapped[int] = mapped_column(default=5)
+    late_cutoff_minutes: Mapped[int] = mapped_column(default=15)
+    max_check_ins: Mapped[int] = mapped_column(default=3)
+    class_: Mapped["Class | None"] = relationship(
+        back_populates="policies", foreign_keys="[ClassPolicy.class_id]"
+    )
 
 
 class Class(Base):
@@ -77,9 +64,12 @@ class Class(Base):
     course_code: Mapped[str]
     course_name: Mapped[str]
     schedule: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    standard_assurance_threshold: Mapped[int] = mapped_column(default=10)
-    high_assurance_threshold: Mapped[int] = mapped_column(default=25)
+    standard_assurance_threshold: Mapped[int] = mapped_column(default=5)
+    high_assurance_threshold: Mapped[int] = mapped_column(default=9)
     teacher: Mapped["User"] = relationship(back_populates="classes")
+    policies: Mapped[list["ClassPolicy"]] = relationship(
+        back_populates="class_", foreign_keys="[ClassPolicy.class_id]"
+    )
     enrollments: Mapped[list["ClassEnrollment"]] = relationship(
         back_populates="enrolled_class"
     )
@@ -104,9 +94,19 @@ class AttendanceRecord(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     is_flagged: Mapped[bool]
     flag_reason: Mapped[str | None] = mapped_column(None)
+    manually_approved: Mapped[bool] = mapped_column(default=False)
+    manually_approved_by: Mapped[str | None] = mapped_column(None)
+    manually_approved_reason: Mapped[str | None] = mapped_column(None)
+    sync_pending: Mapped[bool] = mapped_column(default=False)
+    network_anomaly: Mapped[bool] = mapped_column(default=False)
+    gps_is_mock: Mapped[bool] = mapped_column(default=False)
+    gps_in_geofence: Mapped[bool | None] = mapped_column(None)
     timestamp: Mapped[datetime]
     verification_methods: Mapped[list[str]] = mapped_column(JSON)
     assurance_score: Mapped[int]
+    assurance_band_recorded: Mapped[str | None] = mapped_column(None)
+    standard_threshold_recorded: Mapped[int | None] = mapped_column(None)
+    high_threshold_recorded: Mapped[int | None] = mapped_column(None)
     status: Mapped[str]
     session: Mapped["CheckInSession"] = relationship(back_populates="records")
 
@@ -144,12 +144,11 @@ class CheckInSession(Base):
     records: Mapped[list["AttendanceRecord"]] = relationship(back_populates="session")
 
 
-session = sessionmaker(bind=engine)
-
-
-def get_db():
-    db = session()
-    try:
-        yield db
-    finally:
-        db.close()
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    event_type: Mapped[str]
+    actor_id: Mapped[str | None] = mapped_column(None)
+    target_id: Mapped[str | None] = mapped_column(None)
+    detail: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime]

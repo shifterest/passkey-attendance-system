@@ -3,10 +3,13 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:passkey_attendance_system/screens/home_screen.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/error_dialog.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AuthenticationScreen extends StatefulWidget {
   const AuthenticationScreen({
@@ -22,49 +25,22 @@ class AuthenticationScreen extends StatefulWidget {
   State<AuthenticationScreen> createState() => _AuthenticationScreenState();
 }
 
-Future<void> _showErrorDialog(BuildContext context, String? error) {
-  return showDialog<void>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Error'),
-        content: Text(
-          'Something went wrong during authentication. Please try again.'
-          '\n\n$error',
-        ),
-        actions: <Widget>[
-          TextButton(
-            style: TextButton.styleFrom(
-              textStyle: Theme.of(context).textTheme.labelLarge,
-            ),
-            child: const Text('Return'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              GoRouter.of(context).go('/');
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
-
 Future<bool> _showBluetoothDialog(BuildContext context) async {
   return await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: const Text('Bluetooth required'),
+            title: const Text(AuthStrings.bleDialogTitle),
             content: Text(
-              'Bluetooth is currently turned off. You can\'t check in without it.',
+              AuthStrings.bleDialogBody,
             ),
             actions: <Widget>[
               TextButton(
                 style: TextButton.styleFrom(
                   textStyle: Theme.of(context).textTheme.labelLarge,
                 ),
-                child: const Text('Cancel'),
+                child: const Text(AuthStrings.bleDialogCancel),
                 onPressed: () {
                   Navigator.of(context).pop(false);
                 },
@@ -73,7 +49,7 @@ Future<bool> _showBluetoothDialog(BuildContext context) async {
                 style: TextButton.styleFrom(
                   textStyle: Theme.of(context).textTheme.labelLarge,
                 ),
-                child: const Text('Enable Bluetooth'),
+                child: const Text(AuthStrings.bleDialogEnable),
                 onPressed: () {
                   Navigator.of(context).pop(true);
                 },
@@ -90,9 +66,22 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   String _status = '';
   String? _error;
 
-  Future<int> _collectStrongestRssi() async {
+  Future<({List<int> rssiReadings, String? bleToken})> _collectBleProximity() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      final statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+      ].request();
+      if (statuses[Permission.bluetoothScan] != PermissionStatus.granted ||
+          statuses[Permission.bluetoothConnect] != PermissionStatus.granted) {
+        throw Exception(
+          AuthStrings.errorBlePermissions,
+        );
+      }
+    }
+
     if (!await FlutterBluePlus.isSupported) {
-      throw Exception('Bluetooth is not supported on this device');
+      throw Exception(AuthStrings.errorBleNotSupported);
     }
 
     var adapterState = await FlutterBluePlus.adapterState.first;
@@ -103,7 +92,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
             : false;
         if (!shouldEnableBluetooth) {
           throw Exception(
-            'Bluetooth must be turned on for attendance check-in',
+            AuthStrings.errorBleMustBeOn,
           );
         }
 
@@ -117,15 +106,20 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
             );
       }
       if (adapterState != BluetoothAdapterState.on) {
-        throw Exception('Bluetooth must be turned on for attendance check-in');
+        throw Exception(AuthStrings.errorBleMustBeOn);
       }
     }
 
     int? strongestRssi;
+    String? bleToken;
+    final List<int> rssiReadings = [];
     final subscription = FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
+        rssiReadings.add(result.rssi);
         if (strongestRssi == null || result.rssi > strongestRssi!) {
           strongestRssi = result.rssi;
+          final advName = result.advertisementData.advName;
+          bleToken = advName.isNotEmpty ? advName : null;
         }
       }
     });
@@ -138,11 +132,31 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       await subscription.cancel();
     }
 
-    if (strongestRssi == null) {
-      throw Exception('No BLE proximity signal detected');
+    if (rssiReadings.isEmpty) {
+      throw Exception(AuthStrings.errorNoBleSignal);
     }
 
-    return strongestRssi!;
+    return (rssiReadings: rssiReadings, bleToken: bleToken);
+  }
+
+  Future<Position?> _collectGpsPosition() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return null;
+    }
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -158,7 +172,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
     try {
       setState(() {
-        _status = widget.login ? 'Logging in...' : 'Checking in...';
+        _status = widget.login ? AuthStrings.loggingIn : AuthStrings.checkingIn;
       });
 
       await _authenticate();
@@ -168,6 +182,18 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text(AuthStrings.checkInSuccess)));
+
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -176,7 +202,12 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
       if (_error != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await _showErrorDialog(context, _error);
+          await showErrorDialog(
+            context,
+            _error,
+            body:
+                AuthStrings.authErrorBody,
+          );
         });
       }
     } finally {
@@ -187,7 +218,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   Future<bool> _authenticate() async {
     setState(() {
       _status =
-          'Initiating ${widget.login ? 'login' : 'check-in'} with server...';
+          widget.login ? AuthStrings.initiatingLogin : AuthStrings.initiatingCheckIn;
     });
 
     Map<String, dynamic> optionsJson;
@@ -203,24 +234,33 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     } else {
       final sessionId = optionsJson['session_id'];
       if (sessionId is! String || sessionId.isEmpty) {
-        throw Exception('Missing session ID in check-in options');
+        throw Exception(AuthStrings.errorMissingSessionId);
       }
 
       setState(() {
-        _status = 'Collecting BLE proximity signal...';
+        _status = AuthStrings.collectingBle;
       });
-      final bluetoothRssi = await _collectStrongestRssi();
+      final bleResult = await _collectBleProximity();
+
+      setState(() {
+        _status = AuthStrings.collectingGps;
+      });
+      final gpsPosition = await _collectGpsPosition();
 
       credentialJson = await passkey.checkIn(
         optionsJson,
         widget.userId,
         sessionId,
-        bluetoothRssi,
+        bleResult.rssiReadings,
+        bleToken: bleResult.bleToken,
+        gpsLatitude: gpsPosition?.latitude,
+        gpsLongitude: gpsPosition?.longitude,
+        gpsIsMock: gpsPosition?.isMocked,
       );
     }
 
     setState(() {
-      _status = 'Verifying passkey with server...';
+_status = AuthStrings.verifyingPasskey;
     });
 
     if (widget.login) {

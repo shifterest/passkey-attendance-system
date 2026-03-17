@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
@@ -10,18 +9,18 @@ import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'config/config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/play_integrity_service.dart';
 import 'services/session_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  debugPaintSizeEnabled = false;
 
   final appLinks = AppLinks();
 
   try {
     await Config.init();
     await SessionStore.init();
+    unawaited(submitPlayIntegrityVouch());
     runApp(Main(appLinks));
   } catch (e, stackTrace) {
     debugPrint('Error during initialization: $e');
@@ -116,7 +115,7 @@ class _MainState extends State<Main> {
   void _routeUri(Uri? uri) {
     if (uri == null) return;
 
-    if (uri.scheme != 'shifterest-pas') return;
+    if (uri.scheme != Config.registrationProtocol) return;
     if (uri.host != 'register') return;
 
     final token = uri.queryParameters['token'];

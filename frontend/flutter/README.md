@@ -1,17 +1,27 @@
 # passkey_attendance_system
 
-A FIDO2 Passkey Attendance System Using Two-Factor Proximity and Credential-Based Authentication
+A FIDO2 passkey attendance app using Android passkeys, device keys, and proximity signals.
 
-## Getting Started
+## Configure Build Values
 
-This project is a starting point for a Flutter application.
+Edit `frontend/flutter/.dart_defines.json` directly:
 
-A few resources to get you started if this is your first Flutter project:
+```json
+{
+  "API_BASE_URL": "http://10.0.2.2:8000",
+  "RP_ID": "localhost",
+  "RP_NAME": "Passkey Attendance System",
+  "REGISTRATION_PROTOCOL": "shifterest-pas"
+}
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+`API_BASE_URL` uses `10.0.2.2` for the Android emulator (maps to host `localhost`). Use your machine's LAN IP for a physical device.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Backend and web configuration is managed via `backend/.env` and `frontend/web/.env` directly.
+
+## Run The Flutter App
+
+```bash
+cd frontend/flutter
+flutter run --dart-define-from-file=.dart_defines.json
+```

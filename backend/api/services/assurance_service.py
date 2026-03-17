@@ -1,7 +1,28 @@
+import math
 from datetime import datetime, timedelta
 
 from api.schemas import AttendanceRecordStatus, AttendanceRecordVerificationMethods
-from db.database import CheckInSession
+from database import CheckInSession
+
+
+def is_within_geofence(
+    lat: float,
+    lng: float,
+    school_lat: float,
+    school_lng: float,
+    radius_m: float,
+) -> bool:
+    R = 6_371_000.0
+    phi1 = math.radians(lat)
+    phi2 = math.radians(school_lat)
+    d_phi = math.radians(school_lat - lat)
+    d_lambda = math.radians(school_lng - lng)
+    a = (
+        math.sin(d_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    )
+    distance_m = 2 * R * math.asin(math.sqrt(a))
+    return distance_m <= radius_m
 
 
 def _bluetooth_score_from_method(method: str) -> int:
@@ -45,8 +66,21 @@ def resolve_attendance_status(
     return AttendanceRecordStatus.ABSENT
 
 
+def _bluetooth_score_vouched(method: str, integrity_vouched: bool) -> int:
+    base = _bluetooth_score_from_method(method)
+    if integrity_vouched or base == 0:
+        return base
+    if base == 7:
+        return 4
+    if base == 4:
+        return 2
+    return 1
+
+
 def assurance_score_from_verification_methods(
     verification_methods: list[str] | None,
+    *,
+    integrity_vouched: bool = True,
 ) -> int:
     score = 0
     if not verification_methods:
@@ -59,17 +93,27 @@ def assurance_score_from_verification_methods(
     }
 
     for method in normalized_methods:
-        if method == AttendanceRecordVerificationMethods.DEVICE.value:
-            score += 9
-        elif method == AttendanceRecordVerificationMethods.PASSKEY.value:
-            score += 8
-        elif method == AttendanceRecordVerificationMethods.PLAY_INTEGRITY.value:
-            score += 7
-        elif method == AttendanceRecordVerificationMethods.GPS.value:
-            score += 3
+        if method == AttendanceRecordVerificationMethods.GPS.value:
+            score += 3 if integrity_vouched else 1
+        elif method == AttendanceRecordVerificationMethods.QR_PROXIMITY.value:
+            score += 4
+        elif method == AttendanceRecordVerificationMethods.NETWORK.value:
+            score += 2
         elif method.startswith(
             f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:"
         ):
-            score += _bluetooth_score_from_method(method)
+            score += _bluetooth_score_vouched(method, integrity_vouched)
 
     return score
+
+
+def compute_assurance_band(
+    score: int,
+    standard_threshold: int,
+    high_threshold: int,
+) -> str:
+    if score >= high_threshold:
+        return "high"
+    if score >= standard_threshold:
+        return "standard"
+    return "low"

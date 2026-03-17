@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 
@@ -20,14 +21,15 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 32.0),
           child: SizedBox(
             width: min(MediaQuery.of(context).size.width, 300),
-            child: FutureBuilder(
+            child: FutureBuilder<String?>(
               future: SessionStore.getUserId(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const CircularProgressIndicator();
                 }
 
-                final bool isRegistered = snapshot.data != null;
+                final userId = snapshot.data;
+                final bool isRegistered = userId != null;
 
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -35,12 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   spacing: 4,
                   children: [
                     Text(
-                      'Passkey attendance system',
+                      LoginStrings.appTitle,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Select any of the options below',
+                      LoginStrings.selectOptions,
                       style: Theme.of(context).textTheme.bodyLarge,
                       textAlign: TextAlign.left,
                     ),
@@ -51,14 +53,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           if (isRegistered) ...[
                             FilledButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => AuthenticationScreen(
+                                      userId: userId,
+                                      login: true,
+                                    ),
+                                  ),
+                                );
+                              },
                               icon: const Icon(Icons.key),
-                              label: const Text('Login with passkey'),
+                              label: const Text(LoginStrings.buttonLoginPasskey),
                             ),
                             ElevatedButton.icon(
-                              onPressed: () {},
+                              onPressed: null,
                               icon: const Icon(Icons.password),
-                              label: const Text('Login with password and 2FA'),
+                              label: const Text(LoginStrings.buttonLoginPassword),
                             ),
                           ] else ...[
                             FilledButton.icon(
@@ -71,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               },
                               icon: const Icon(Icons.key),
-                              label: const Text('Register a new passkey'),
+                              label: const Text(LoginStrings.buttonRegisterPasskey),
                             ),
                           ],
                         ],

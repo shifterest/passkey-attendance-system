@@ -1,5 +1,7 @@
+import 'package:uuid/uuid.dart';
 import 'api_client.dart';
 import '../config/config.dart';
+import '../strings.dart';
 
 class AuthApi {
   // Registration
@@ -9,7 +11,7 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic registrationOptions = await client.post('/auth/register/options', {
+    dynamic registrationOptions = await client.post(ApiPaths.registerOptions, {
       'user_id': userId,
       'registration_token': registrationToken,
     });
@@ -26,7 +28,7 @@ class AuthApi {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     dynamic registrationResponse = await client.post(
-      '/auth/register/verify',
+      ApiPaths.registerVerify,
       response,
     );
     if (registrationResponse is Map<String, dynamic>) {
@@ -41,7 +43,7 @@ class AuthApi {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
     dynamic authenticationOptions = await client.post(
-      '/auth/check-in/options',
+      ApiPaths.checkInOptions,
       {'user_id': userId},
     );
     if (authenticationOptions is Map<String, dynamic>) {
@@ -55,10 +57,12 @@ class AuthApi {
     Map<String, dynamic> response,
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
+    final idempotencyKey = const Uuid().v4();
 
     dynamic authenticateResponse = await client.post(
-      '/auth/check-in/verify',
+      ApiPaths.checkInVerify,
       response,
+      extraHeaders: {'X-Idempotency-Key': idempotencyKey},
     );
     if (authenticateResponse is Map<String, dynamic>) {
       return authenticateResponse;
@@ -71,7 +75,7 @@ class AuthApi {
   static Future<Map<String, dynamic>> loginOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic loginOptions = await client.post('/auth/login/options', {
+    dynamic loginOptions = await client.post(ApiPaths.loginOptions, {
       'user_id': userId,
     });
     if (loginOptions is Map<String, dynamic>) {
@@ -86,7 +90,7 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic loginResponse = await client.post('/auth/login/verify', response);
+    dynamic loginResponse = await client.post(ApiPaths.loginVerify, response);
     if (loginResponse is Map<String, dynamic>) {
       return loginResponse;
     } else {
@@ -100,7 +104,7 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic logoutResponse = await client.post('/auth/logout', {
+    dynamic logoutResponse = await client.post(ApiPaths.logout, {
       'user_id': userId,
       'session_token': sessionToken,
     });

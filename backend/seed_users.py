@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db.database import Base, Class, ClassEnrollment, User, engine
+from database import Base, Class, ClassEnrollment, User, engine
 from db.migrations import upgrade_database
 from sqlalchemy.orm import Session
 

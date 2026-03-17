@@ -3,7 +3,7 @@ name = "passkey-attendance-system"
 version = "0.1.0"
 description = "A FIDO2 Passkey Attendance System Using Two-Factor Proximity and Credential-Based Authentication"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.133.1",
@@ -15,13 +15,18 @@ dependencies = [
     "tzdata>=2025.2",
     "uvicorn>=0.41.0",
     "webauthn>=2.7.1",
+    "pyasn1>=0.6.2",
+    "cbor2>=5.8.0",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-p no:anyio"
 
 [dependency-groups]
 dev = [
+    "anyio>=3.0,!=4.12.*",
     "coverage>=7.13.4",
     "mypy>=1.19.1",
     "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
     "ruff>=0.15.4",
 ]

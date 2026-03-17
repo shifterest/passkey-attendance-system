@@ -2,6 +2,7 @@ from datetime import datetime, time
 from enum import Enum
 
 from api.contracts.device import DeviceBindingFlow, DevicePayloadVersion
+from api.strings import Messages
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -63,6 +64,16 @@ class UserStudentResponse(UserBase):
     registered: bool
 
 
+class UserTeacherResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    class_count: int
+    student_count: int
+    has_open_session: bool
+    default_policy: "ClassPolicyResponse | None" = None
+
+
 # Credentials
 class CredentialBase(BaseModel):
     user_id: str
@@ -70,6 +81,7 @@ class CredentialBase(BaseModel):
     public_key: str
     credential_id: str
     sign_count: int
+    key_security_level: str | None = None
     registered_at: datetime
 
 
@@ -96,6 +108,41 @@ class CredentialResponse(CredentialBase):
     sign_count_anomaly: bool
 
 
+# Class policies
+class ClassPolicyBase(BaseModel):
+    class_id: str | None = None
+    play_integrity_enabled: bool = False
+    standard_assurance_threshold: int = Field(default=5, ge=0)
+    high_assurance_threshold: int = Field(default=9, ge=0)
+    present_cutoff_minutes: int = Field(default=5, ge=0)
+    late_cutoff_minutes: int = Field(default=15, ge=0)
+    max_check_ins: int = Field(default=3, ge=1)
+
+
+class ClassPolicyCreate(ClassPolicyBase):
+    model_config = ConfigDict(extra="forbid")
+
+    pass
+
+
+class ClassPolicyUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    play_integrity_enabled: bool | None = None
+    standard_assurance_threshold: int | None = Field(default=None, ge=0)
+    high_assurance_threshold: int | None = Field(default=None, ge=0)
+    present_cutoff_minutes: int | None = Field(default=None, ge=0)
+    late_cutoff_minutes: int | None = Field(default=None, ge=0)
+    max_check_ins: int | None = Field(default=None, ge=1)
+
+
+class ClassPolicyResponse(ClassPolicyBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_by: str | None = None
+
+
 # Classes
 class Schedule(BaseModel):
     days: list[
@@ -116,13 +163,13 @@ class Schedule(BaseModel):
     @classmethod
     def validate_days(cls, value: list[str]) -> list[str]:
         if len(set(value)) != len(value):
-            raise ValueError("Duplicate schedule days are not allowed")
+            raise ValueError(Messages.SCHEDULE_DAYS_DUPLICATE)
         return value
 
     @model_validator(mode="after")
     def validate_time_range(self):
         if self.end_time <= self.start_time:
-            raise ValueError("end_time must be later than start_time")
+            raise ValueError(Messages.SCHEDULE_END_TIME_INVALID)
         return self
 
 
@@ -132,8 +179,8 @@ class ClassBase(BaseModel):
     course_code: str
     course_name: str
     schedule: list[Schedule]
-    standard_assurance_threshold: int = Field(default=10, ge=0)
-    high_assurance_threshold: int = Field(default=20, ge=0)
+    standard_assurance_threshold: int = Field(default=5, ge=0)
+    high_assurance_threshold: int = Field(default=9, ge=0)
 
 
 class ClassCreate(ClassBase):
@@ -243,6 +290,7 @@ class AttendanceRecordVerificationMethods(str, Enum):
     QR_PROXIMITY = "qr_proximity"
     PLAY_INTEGRITY = "play_integrity"
     GPS = "gps"
+    NETWORK = "network"
     MANUAL = "manual"
 
 
@@ -253,9 +301,19 @@ class AttendanceRecordBase(BaseModel):
     user_id: str
     is_flagged: bool = False
     flag_reason: str | None = None
+    manually_approved: bool = False
+    manually_approved_by: str | None = None
+    manually_approved_reason: str | None = None
+    sync_pending: bool = False
+    network_anomaly: bool = False
+    gps_is_mock: bool = False
+    gps_in_geofence: bool | None = None
     timestamp: datetime
     verification_methods: list[str]
     assurance_score: int
+    assurance_band_recorded: str | None = None
+    standard_threshold_recorded: int | None = None
+    high_threshold_recorded: int | None = None
     status: AttendanceRecordStatus
 
 
@@ -268,19 +326,65 @@ class AttendanceRecordCreate(AttendanceRecordBase):
 class AttendanceRecordUpdate(BaseModel):
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
-    session_id: str | None = None
-    user_id: str | None = None
     is_flagged: bool | None = None
     flag_reason: str | None = None
-    timestamp: datetime | None = None
-    verification_methods: list[str] | None = None
-    status: AttendanceRecordStatus | None = None
+    sync_pending: bool | None = None
 
 
 class AttendanceRecordResponse(AttendanceRecordBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+
+
+class ManualApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str | None = None
+
+
+class ManualAttendanceRequest(BaseModel):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    session_id: str
+    student_id: str
+    reason: str
+    backdated_timestamp: datetime | None = None
+    status: AttendanceRecordStatus | None = None
+
+
+class AssuranceEvaluateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    record_ids: list[str] | None = None
+    session_id: str | None = None
+    canonical: bool = False
+    standard_threshold: int | None = Field(default=None, ge=0)
+    high_threshold: int | None = Field(default=None, ge=0)
+
+
+class AssuranceEvaluateRowResponse(BaseModel):
+    record_id: str
+    user_id: str
+    assurance_score: int
+    assurance_band_recorded: str | None
+    standard_threshold_recorded: int | None
+    high_threshold_recorded: int | None
+    assurance_band_current: str
+    standard_threshold_current: int
+    high_threshold_current: int
+    policy_drift: bool
+
+
+class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    event_type: str
+    actor_id: str | None = None
+    target_id: str | None = None
+    detail: dict
+    created_at: datetime
 
 
 # Registration
@@ -334,7 +438,11 @@ class CheckInResponseBase(BaseModel):
 
     user_id: str
     session_id: str
-    bluetooth_rssi: int = Field(ge=-127, le=20)
+    bluetooth_rssi_readings: list[int] | None = None
+    ble_token: str | None = None
+    gps_latitude: float | None = None
+    gps_longitude: float | None = None
+    gps_is_mock: bool | None = None
     credential: dict
     device_signature: str
     device_public_key: str

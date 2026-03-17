@@ -2,11 +2,11 @@ import logging
 import secrets
 import uuid
 from datetime import datetime, time, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from api.config import settings
-from api.messages import Logs, Messages
+from api.redis import redis_client
 from api.schemas import (
     CheckInSessionCreate,
     CheckInSessionResponse,
@@ -15,8 +15,9 @@ from api.schemas import (
     UserRole,
 )
 from api.services.session_service import require_role
-from db.database import CheckInSession, Class, User, get_db
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from api.strings import Logs, Messages
+from database import CheckInSession, Class, User, get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -67,16 +68,21 @@ def _class_matches_now(class_: Class, now: datetime) -> bool:
 
 @router.get("/", response_model=list[CheckInSessionResponse])
 def get_all_sessions(
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "operator")),
 ):
-    sessions = db.query(CheckInSession).all()
+    sessions = db.query(CheckInSession).offset(offset).limit(limit).all()
     return sessions
 
 
 @router.get("/by-class/{class_id}", response_model=list[CheckInSessionResponse])
 def get_sessions_by_class(
     class_id: str,
+    order: Literal["asc", "desc"] = Query(default="desc"),
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("teacher", "admin", "operator")),
 ):
@@ -86,10 +92,19 @@ def get_sessions_by_class(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
             )
-    sessions = (
-        db.query(CheckInSession).filter(CheckInSession.class_id == class_id).all()
+    sort_expr = (
+        CheckInSession.start_time.desc()
+        if order == "desc"
+        else CheckInSession.start_time.asc()
     )
-    return sessions
+    return (
+        db.query(CheckInSession)
+        .filter(CheckInSession.class_id == class_id)
+        .order_by(sort_expr)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{session_id}", response_model=CheckInSessionResponse)
@@ -124,14 +139,8 @@ def create_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.SESSION_CLASS_NOT_FOUND,
         )
-    new_uuid = str(uuid.uuid4())
-    while True:
-        session = db.query(CheckInSession).filter(CheckInSession.id == new_uuid).first()
-        if session is None:
-            break
-        new_uuid = str(uuid.uuid4())
     new_session = CheckInSession(
-        id=new_uuid,
+        id=str(uuid.uuid4()),
         class_id=session_data.class_id,
         start_time=session_data.start_time,
         end_time=session_data.end_time,
@@ -232,8 +241,70 @@ def open_teacher_session(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
+    redis_client.set(
+        f"ble_token:{new_session.id}", new_session.dynamic_token, ex=30
+    )
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return new_session
+
+
+_BLE_TOKEN_TTL = 30
+
+
+@router.get("/{session_id}/ble-token")
+def get_ble_token(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+        )
+    if current_user.role == "teacher":
+        class_ = db.query(Class).filter(Class.id == session.class_id).first()
+        if class_ is None or class_.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+            )
+    existing = redis_client.get(f"ble_token:{session_id}")
+    if existing:
+        return {"ble_token": existing.decode(), "ttl": redis_client.ttl(f"ble_token:{session_id}")}
+    new_token = secrets.token_urlsafe(32)
+    redis_client.set(f"ble_token:{session_id}", new_token, ex=_BLE_TOKEN_TTL)
+    logger.info(Logs.BLE_TOKEN_ROTATED.format(session_id=session_id))
+    return {"ble_token": new_token, "ttl": _BLE_TOKEN_TTL}
+
+
+@router.post("/{session_id}/close", response_model=CheckInSessionResponse)
+def close_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+        )
+    if current_user.role == "teacher":
+        class_ = db.query(Class).filter(Class.id == session.class_id).first()
+        if class_ is None or class_.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+            )
+    if session.status == "closed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.SESSION_ALREADY_CLOSED,
+        )
+    session.status = "closed"
+    db.commit()
+    logger.info(
+        Logs.SESSION_CLOSED.format(session_id=session.id, actor_id=current_user.id)
+    )
+    return session
 
 
 @router.put("/{session_id}", response_model=CheckInSessionResponse)

@@ -1,9 +1,8 @@
 import 'package:flutter/services.dart';
+import 'package:passkey_attendance_system/config/config.dart';
 
 class SecureStore {
-  static const kotlinChannel = MethodChannel(
-    'top.whatta.attendance/secure_store',
-  );
+  static const kotlinChannel = MethodChannel(Config.secureStoreChannel);
 
   static Future<bool> ensureKeyExists() async {
     try {

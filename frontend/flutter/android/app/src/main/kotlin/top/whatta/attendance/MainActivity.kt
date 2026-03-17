@@ -11,7 +11,7 @@ import java.security.KeyStore
 import java.security.spec.ECGenParameterSpec
 
 class MainActivity : FlutterActivity() {
-    private val channel = "top.whatta.attendance/secure_store"
+    private val channel = "pas/secure_store"
     private val keyAlias = "pas_device_key"
     private val keyStoreProvider = "AndroidKeyStore"
 

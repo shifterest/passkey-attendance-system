@@ -28,19 +28,21 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 - In plans, label items as boilerplate or core logic/debugging.
 - Translate recurring workflow notes from memory into instruction files and prune them once they become irrelevant.
 - Do not add new code comments unless the user explicitly asks for comments.
+- Towards the end of development, remind the user to add their own comments to complex functions (e.g. `extract_android_key_security_level`, device signature verification, assurance scoring) for future readability. User writes all comments themselves.
 
 ## Settled Security Decisions
 
 1. WebAuthn user verification is required for registration, check-in, and login option generation.
 2. Device binding is app-layer based: store `device_public_key`, verify `device_signature`, and verify Android key attestation server-side.
   - Device key algorithm is ECDSA P-256 in Android Keystore (StrongBox preferred, TEE fallback), generated for signing purpose.
+  - Registration requests direct attestation and is rejected unless Android Key attestation chains to a pinned Google root and reports `tee` or `strongbox`; no emulator bypass is supported.
   - Do not require a second per-use biometric prompt on the device key; WebAuthn user verification already enforces biometric user presence.
   - Device signature payload for check-in/login is canonical JSON containing `v`, `flow`, `user_id`, `session_id`, `credential_id`, `challenge`, and server-issued `issued_at_ms`.
   - Canonical serialization contract is PAS JSON v1: UTF-8 JSON, fixed key order `v,flow,user_id,session_id,credential_id,challenge,issued_at_ms`, compact separators, and no extra fields.
   - Keep assurance roles explicit: passkey = identity (`who`), device key = enrolled device (`which device`), proximity = context (`where`).
 3. Play Integrity is a configurable attestation factor, disabled by default. Governed by `ClassPolicy.play_integrity_enabled` (deployment default: false; class-level override allowed). When enabled and verdict fails: check-in is rejected before scoring. When disabled: check-in proceeds without PI.
   - **Daily vouch flow:** PI is not called per-check-in. The app calls PI once per day and submits the verdict token to `POST /auth/play-integrity/vouch`. The server verifies with Google, stores a 24h vouch record keyed on `credential_id`. At check-in, a valid vouch means PI contributes +7. Rate limit: 3 successful submissions per credential per calendar day; failed submissions do not consume a slot or invalidate an existing vouch.
-  - **Integrity gates proximity weight:** valid PI vouch = full proximity weight (as scored). No PI vouch (integrity absent) = reduced proximity weight for BLE/GPS/network (exact values pending calibration). PI explicitly failing = check-in rejected before scoring.
+  - **Integrity governs proximity weight:** valid PI vouch = full proximity weight (as scored). No PI vouch (integrity absent) = reduced proximity weights: BLE strong +4, BLE medium +2, BLE weak +1, GPS +1, network +2 (unchanged). PI explicitly failing = check-in rejected before scoring.
 4. BLE proximity uses bucketed RSSI scoring (not linear):
    - `> -65` => +7
    - `-65 to -80` => +4
@@ -51,7 +53,7 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
    - BLE proximity token is bound to the WebAuthn challenge (session-specific, single-use).
    - School network origin of the check-in options request is server-verified. When `SCHOOL_SUBNET_CIDR` is configured: matching origin scores `network` +2 as a proximity signal; non-matching origin is stored as an anomaly indicator on the teacher dashboard and does not reject the check-in.
 5. Offline QR flow uses signed payloads and 60-second TTL to reduce relay risk.
-   - Offline records score `device` (+9) + `qr_proximity` (+4) only; passkey is not scored offline.
+   - Offline records score `qr_proximity` (+4) only (`assurance_score` is proximity-only; device signature is a gate, not a score term).
    - A `sync_pending` flag (not a score flag) is set on the record.
    - Device signature verification on post-sync auto-clears the flag.
    - Records unsynced after 24 hours escalate to teacher review.
@@ -70,21 +72,22 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 - Store evidence in `AttendanceRecord.verification_methods`.
 - Compute additive `assurance_score`.
 - Three evidence dimensions: **Identity** (passkey + device key, cryptographic), **Proximity** (BLE/GPS/network/QR, client-reported or server-witnessed), **Integrity** (PI daily vouch + Android Key Attestation + mock location flag, server-verifiable). Integrity governs proximity weight: vouched = full weight; absent = reduced weight (pending calibration); failed = check-in rejected.
-- Weights (full-integrity / vouched case):
-  - `passkey` +8
-  - `device` +9
-  - `bluetooth` +2/+4/+7
-  - `play_integrity` +7 (via daily vouch; see Settled Security Decision 3)
-  - `gps` +3 (0 if app reports `isMock()` flag; mock flag stored as integrity indicator)
-  - `network` +2 (school subnet origin, server-verified; absent when `SCHOOL_SUBNET_CIDR` not configured)
-- Low-assurance threshold defaults to 10 and is configurable per class via `Class.standard_assurance_threshold`.
-- High-assurance threshold defaults to 25 and is configurable per class via `Class.high_assurance_threshold`.
+- Standards basis for scoring: NIST SP 800-63B/63-4 defines authentication semantics; NIST SP 800-207 and BeyondCorp define the identity/device/context split; Android Key Attestation and Play Integrity define verifiable integrity evidence; MCDA/MAVT calibrates weights and thresholds. Numeric scores are local policy values constrained by threat model and pilot data, not copied from a standard.
+- `assurance_score` is a proximity-only effective score. Passkey, device key, and Play Integrity are required authentication gates but do not contribute additive score terms.
+- Proximity weights (integrity-absent / integrity-vouched):
+  - `bluetooth` weak/medium/strong: absent +1/+2/+4, vouched +2/+4/+7
+  - `gps` absent +1, vouched +3 (mock flag stored as integrity indicator)
+  - `network` +2 always (school subnet, server-verified; absent when `SCHOOL_SUBNET_CIDR` not configured)
+  - `qr_proximity` +4 always (offline only)
+- Low-assurance threshold defaults to 5 and is configurable per class via `Class.standard_assurance_threshold`.
+- High-assurance threshold defaults to 9 and is configurable per class via `Class.high_assurance_threshold`.
 - `AttendanceRecord.is_flagged` and `flag_reason` are manual teacher flags and must not be auto-derived from `assurance_score`.
 - Manual teacher approval is a status override, not a score component. Sets `manually_approved` flag with actor log; does not modify `assurance_score`.
-- Assurance bands (default thresholds: standard = 10, high = 25):
+- Assurance bands (default thresholds: standard = 5, high = 9):
   - **≥`high_assurance_threshold` (High):** auto-confirmed, green indicator, no teacher action needed
   - **≥`standard_assurance_threshold` (Standard):** auto-accepted, neutral indicator
   - **<`standard_assurance_threshold` (Low):** held; teacher must explicitly confirm or reject
+- Band stored at write time: `assurance_band_recorded`, `standard_threshold_recorded`, `high_threshold_recorded` on each `AttendanceRecord`. `POST /records/assurance/evaluate` returns both recorded and current-policy bands with `policy_drift` flag.
 - Session window policy (configurable; defaults apply):
   - 0–5 min from window open: status = present
   - 5–15 min: status = late
@@ -112,7 +115,7 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 - `POST /credentials/` and `POST /records/` stay guarded as side-effect-created resources only.
 - Entity IDs use `uuid.uuid4()` string keys.
 - `Class.schedule` is JSON list data, not a separate schedule table; each entry uses `{ days: [...], start_time, end_time }`.
-- When SQLAlchemy models change, create a generated Alembic revision (`uv run alembic revision --autogenerate`) and apply it (`uv run alembic upgrade head`).
+- Do not create or apply Alembic migrations until architecture is finalized; keep schema changes in code and consolidate migrations at the end.
 
 ### Web
 
