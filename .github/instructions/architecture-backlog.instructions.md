@@ -144,6 +144,65 @@ name: "Architecture Backlog Guidance"
 
 ---
 
+## Organizations and Events (Deferred — Class-Based System to Ship First)
+
+Full design is locked in session memory and the conversation summary. Implementation deferred until the class-based attendance system is working end-to-end in production.
+
+### Locked Design Decisions
+
+**User model additions**
+- `program: str | None` (e.g. BSCS, BSIT, BLIS)
+- `year_level: int | None`
+- `department` dropped (derivable from program); `section` dropped (enrollment-dependent)
+
+**Organization model**
+- `Organization` — `id`, `name`, `description`, `created_by FK → users`, `created_at`
+- `OrganizationMembershipRule` — `id`, `org_id FK`, `rule_type` (`all | role | program | year_level` — **`org_member` is FORBIDDEN in org rules**, prevents recursion), `rule_value`, `rule_group` (present but ignored; deferred AND logic; current evaluation is pure OR)
+- `OrganizationMembership` — `id`, `org_id FK`, `user_id FK`, `membership_type` (`explicit_grant | explicit_revocation | role_elevation`), `org_role` (`member | moderator | event_creator | admin`), `granted_at`, `expires_at (nullable)`, `granted_by FK nullable`
+
+**Event model**
+- `Event` — owned by `Organization`; `id`, `org_id FK`, `name`, `description`, `schedule JSON`, `standard_assurance_threshold` (default 5), `high_assurance_threshold` (default 9), `play_integrity_enabled` (default False), `max_check_ins` (default 3), `created_by FK nullable`, `created_at`
+- `EventAttendeeRule` — `id`, `event_id FK`, `rule_type` (`all | role | program | year_level | org_member`), `rule_value` (`org_id` when type is `org_member`), `rule_group (nullable)`
+- No separate EventPolicy model — Event owns its own thresholds directly
+- Empty attendee rules = closed by default (no one qualifies)
+
+**Session bucketing**
+- `CheckInSession` gains `event_id: nullable FK → events.id`
+- `class_id` and `event_id` are mutually exclusive (exactly one non-null, enforced at application layer)
+- `ClassEnrollment` gains `expires_at: nullable`
+
+**Membership resolution algorithm (lazy, no materialization)**
+1. Check explicit revocation row for user+org → if found, reject
+2. Check explicit grant/role_elevation row with expiry check → if found and not expired, accept
+3. Evaluate org's flat rules against user properties → accept if any match (OR composition)
+
+**Event attendee evaluation**
+- For `org_member` rule: run org membership resolution for that `org_id` — bounded at 2 hops max (org rules are guaranteed flat, no `org_member` in org rules)
+- All other rule types: direct user property match
+
+**Cross-class/event: closed** — class attendance ≠ event attendance; no bridge model; no shared sessions
+
+**Auth is ReBAC, not role-based** — `User.role` is not extended; teacher+student+organizer are simultaneous relationships, not a role value
+
+### Implementation Checklist (all ❌ pending)
+
+- ❌ `User.program` + `User.year_level` fields
+- ❌ `Organization`, `OrganizationMembershipRule`, `OrganizationMembership` models
+- ❌ `Event`, `EventAttendeeRule` models
+- ❌ `CheckInSession.event_id` nullable FK, `ClassEnrollment.expires_at` nullable
+- ❌ Strings: `ORG_NOT_FOUND`, `EVENT_NOT_FOUND`, `NOT_EVENT_ATTENDEE`, `ORG_RULE_ORG_MEMBER_FORBIDDEN`, `MEMBERSHIP_EXPIRED`
+- ❌ Schemas: user update fields, all org/event/rule shapes
+- ❌ `membership_service.py` — `is_org_member`, `get_org_role`, `is_event_attendee`, rule evaluators
+- ❌ `organizations.py` routes — CRUD + membership grant/revoke + rule management (validate: no `org_member` rule_type in org rules)
+- ❌ `events.py` routes — CRUD + attendee rule management + `GET /{event_id}/qualifies/{user_id}`
+- ❌ `check_in.py` event session branch — attendee gate (replaces enrollment check), event thresholds, event.max_check_ins, event.play_integrity_enabled
+- ❌ `users.py` — expose `program`/`year_level` in create/update
+- ❌ `api.py` — register `organizations.router` and `events.router`
+- ❌ Instruction file updates: `auth-flows.instructions.md` (event options/verify flow), `copilot-instructions.md` (settled decisions)
+- ❌ `ARCHITECTURE_DECISIONS.md` new section — org/event model, membership resolution, 2-hop bound, safety constraint
+
+---
+
 ## Future Proximity Indicators (Research / Deferred)
 
 These are proximity signal candidates documented for future consideration. None are currently scored.
