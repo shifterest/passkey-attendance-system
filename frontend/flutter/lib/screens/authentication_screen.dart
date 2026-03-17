@@ -32,9 +32,7 @@ Future<bool> _showBluetoothDialog(BuildContext context) async {
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text(AuthStrings.bleDialogTitle),
-            content: Text(
-              AuthStrings.bleDialogBody,
-            ),
+            content: Text(AuthStrings.bleDialogBody),
             actions: <Widget>[
               TextButton(
                 style: TextButton.styleFrom(
@@ -66,7 +64,8 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   String _status = '';
   String? _error;
 
-  Future<({List<int> rssiReadings, String? bleToken})> _collectBleProximity() async {
+  Future<({List<int> rssiReadings, String? bleToken})>
+  _collectBleProximity() async {
     if (!kIsWeb && Platform.isAndroid) {
       final statuses = await [
         Permission.bluetoothScan,
@@ -74,9 +73,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       ].request();
       if (statuses[Permission.bluetoothScan] != PermissionStatus.granted ||
           statuses[Permission.bluetoothConnect] != PermissionStatus.granted) {
-        throw Exception(
-          AuthStrings.errorBlePermissions,
-        );
+        throw Exception(AuthStrings.errorBlePermissions);
       }
     }
 
@@ -91,9 +88,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
             ? await _showBluetoothDialog(context)
             : false;
         if (!shouldEnableBluetooth) {
-          throw Exception(
-            AuthStrings.errorBleMustBeOn,
-          );
+          throw Exception(AuthStrings.errorBleMustBeOn);
         }
 
         await FlutterBluePlus.turnOn();
@@ -183,9 +178,9 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text(AuthStrings.checkInSuccess)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AuthStrings.checkInSuccess)),
+        );
 
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
@@ -205,8 +200,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
           await showErrorDialog(
             context,
             _error,
-            body:
-                AuthStrings.authErrorBody,
+            body: AuthStrings.authErrorBody,
           );
         });
       }
@@ -217,8 +211,9 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
   Future<bool> _authenticate() async {
     setState(() {
-      _status =
-          widget.login ? AuthStrings.initiatingLogin : AuthStrings.initiatingCheckIn;
+      _status = widget.login
+          ? AuthStrings.initiatingLogin
+          : AuthStrings.initiatingCheckIn;
     });
 
     Map<String, dynamic> optionsJson;
@@ -260,7 +255,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     }
 
     setState(() {
-_status = AuthStrings.verifyingPasskey;
+      _status = AuthStrings.verifyingPasskey;
     });
 
     if (widget.login) {

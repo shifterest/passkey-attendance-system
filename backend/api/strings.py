@@ -118,9 +118,7 @@ class Messages:
     ATTESTATION_CERT_CHAIN_INVALID = (
         "Android Key attestation certificate chain is invalid"
     )
-    ATTESTATION_CRL_REVOKED = (
-        "Device attestation key has been revoked by Google"
-    )
+    ATTESTATION_CRL_REVOKED = "Device attestation key has been revoked by Google"
     ATTESTATION_EXTENSION_UNEXPECTED_FORMAT = (
         "Android Key attestation extension has unexpected format"
     )

@@ -64,12 +64,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               },
                               icon: const Icon(Icons.key),
-                              label: const Text(LoginStrings.buttonLoginPasskey),
+                              label: const Text(
+                                LoginStrings.buttonLoginPasskey,
+                              ),
                             ),
                             ElevatedButton.icon(
                               onPressed: null,
                               icon: const Icon(Icons.password),
-                              label: const Text(LoginStrings.buttonLoginPassword),
+                              label: const Text(
+                                LoginStrings.buttonLoginPassword,
+                              ),
                             ),
                           ] else ...[
                             FilledButton.icon(
@@ -82,7 +86,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               },
                               icon: const Icon(Icons.key),
-                              label: const Text(LoginStrings.buttonRegisterPasskey),
+                              label: const Text(
+                                LoginStrings.buttonRegisterPasskey,
+                              ),
                             ),
                           ],
                         ],

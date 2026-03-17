@@ -59,7 +59,12 @@ def process_import(
 
     parser = _PARSERS.get(format)
     if parser is None:
-        return {"error": f"Unknown format: {format}", "created": 0, "skipped": 0, "errors": []}
+        return {
+            "error": f"Unknown format: {format}",
+            "created": 0,
+            "skipped": 0,
+            "errors": [],
+        }
 
     try:
         rows = parser(reader)
@@ -77,7 +82,9 @@ def process_import(
         role = row.get("role", "student")
 
         if not full_name or not email:
-            errors.append({"row": i, "reason": "missing full_name or email", "data": row})
+            errors.append(
+                {"row": i, "reason": "missing full_name or email", "data": row}
+            )
             continue
         if role not in _VALID_ROLES:
             errors.append({"row": i, "reason": f"invalid role: {role}", "data": row})

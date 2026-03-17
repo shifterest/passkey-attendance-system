@@ -5,13 +5,13 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from api.config import settings
+from api.contracts.device import DeviceBindingFlow
 from api.models import (
     DeviceKeyMismatchDetail,
     DeviceSignatureFailureDetail,
     SignCountAnomalyDetail,
 )
-from api.config import settings
-from api.contracts.device import DeviceBindingFlow
 from api.redis import redis_client
 from api.schemas import (
     AttendanceRecordResponse,
@@ -372,7 +372,9 @@ def check_in_verify(
             ]
             if readings and response_data.ble_token is not None:
                 redis_token = redis_client.get(f"ble_token:{session.id}")
-                valid_token = redis_token.decode() if redis_token else session.dynamic_token
+                valid_token = (
+                    redis_token.decode() if redis_token else session.dynamic_token
+                )
                 if response_data.ble_token == valid_token:
                     avg_rssi = round(sum(readings) / len(readings))
                     verification_methods.append(
@@ -441,7 +443,9 @@ def check_in_verify(
             if policy
             else class_.high_assurance_threshold
         )
-        assurance_band = compute_assurance_band(assurance_score, effective_standard, effective_high)
+        assurance_band = compute_assurance_band(
+            assurance_score, effective_standard, effective_high
+        )
         attendance_status = resolve_attendance_status(
             attempted_at=attempted_at,
             session=session,

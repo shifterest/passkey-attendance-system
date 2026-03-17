@@ -38,42 +38,101 @@ class TestProximityOnlyScoring:
 
 class TestBLEScoring:
     def test_ble_strong_vouched(self):
-        assert assurance_score_from_verification_methods([BLE_STRONG], integrity_vouched=True) == 7
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_STRONG], integrity_vouched=True
+            )
+            == 7
+        )
 
     def test_ble_strong_absent(self):
-        assert assurance_score_from_verification_methods([BLE_STRONG], integrity_vouched=False) == 4
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_STRONG], integrity_vouched=False
+            )
+            == 4
+        )
 
     def test_ble_medium_vouched(self):
-        assert assurance_score_from_verification_methods([BLE_MEDIUM], integrity_vouched=True) == 4
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_MEDIUM], integrity_vouched=True
+            )
+            == 4
+        )
 
     def test_ble_medium_absent(self):
-        assert assurance_score_from_verification_methods([BLE_MEDIUM], integrity_vouched=False) == 2
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_MEDIUM], integrity_vouched=False
+            )
+            == 2
+        )
 
     def test_ble_weak_vouched(self):
-        assert assurance_score_from_verification_methods([BLE_WEAK], integrity_vouched=True) == 2
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_WEAK], integrity_vouched=True
+            )
+            == 2
+        )
 
     def test_ble_weak_absent(self):
-        assert assurance_score_from_verification_methods([BLE_WEAK], integrity_vouched=False) == 1
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_WEAK], integrity_vouched=False
+            )
+            == 1
+        )
 
     def test_ble_below_threshold_scores_zero(self):
-        assert assurance_score_from_verification_methods([BLE_NONE], integrity_vouched=True) == 0
-        assert assurance_score_from_verification_methods([BLE_NONE], integrity_vouched=False) == 0
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_NONE], integrity_vouched=True
+            )
+            == 0
+        )
+        assert (
+            assurance_score_from_verification_methods(
+                [BLE_NONE], integrity_vouched=False
+            )
+            == 0
+        )
 
 
 class TestGPSAndNetworkScoring:
     def test_gps_vouched(self):
-        assert assurance_score_from_verification_methods([GPS], integrity_vouched=True) == 3
+        assert (
+            assurance_score_from_verification_methods([GPS], integrity_vouched=True)
+            == 3
+        )
 
     def test_gps_absent(self):
-        assert assurance_score_from_verification_methods([GPS], integrity_vouched=False) == 1
+        assert (
+            assurance_score_from_verification_methods([GPS], integrity_vouched=False)
+            == 1
+        )
 
     def test_network_always_two(self):
-        assert assurance_score_from_verification_methods([NETWORK], integrity_vouched=True) == 2
-        assert assurance_score_from_verification_methods([NETWORK], integrity_vouched=False) == 2
+        assert (
+            assurance_score_from_verification_methods([NETWORK], integrity_vouched=True)
+            == 2
+        )
+        assert (
+            assurance_score_from_verification_methods(
+                [NETWORK], integrity_vouched=False
+            )
+            == 2
+        )
 
     def test_qr_always_four(self):
-        assert assurance_score_from_verification_methods([QR], integrity_vouched=True) == 4
-        assert assurance_score_from_verification_methods([QR], integrity_vouched=False) == 4
+        assert (
+            assurance_score_from_verification_methods([QR], integrity_vouched=True) == 4
+        )
+        assert (
+            assurance_score_from_verification_methods([QR], integrity_vouched=False)
+            == 4
+        )
 
 
 class TestCompositeScenarios:
@@ -99,7 +158,9 @@ class TestCompositeScenarios:
         assert score == 6
 
     def test_offline_qr_only_scores_four(self):
-        score = assurance_score_from_verification_methods([DEVICE, QR], integrity_vouched=False)
+        score = assurance_score_from_verification_methods(
+            [DEVICE, QR], integrity_vouched=False
+        )
         assert score == 4
 
     def test_max_absent_below_high_threshold(self):

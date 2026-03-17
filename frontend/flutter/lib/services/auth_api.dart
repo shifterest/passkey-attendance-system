@@ -42,10 +42,9 @@ class AuthApi {
   static Future<Map<String, dynamic>> checkInOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic authenticationOptions = await client.post(
-      ApiPaths.checkInOptions,
-      {'user_id': userId},
-    );
+    dynamic authenticationOptions = await client.post(ApiPaths.checkInOptions, {
+      'user_id': userId,
+    });
     if (authenticationOptions is Map<String, dynamic>) {
       return authenticationOptions;
     } else {

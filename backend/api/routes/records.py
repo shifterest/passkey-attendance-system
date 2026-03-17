@@ -17,7 +17,10 @@ from api.schemas import (
     ManualApprovalRequest,
     ManualAttendanceRequest,
 )
-from api.services.assurance_service import compute_assurance_band, resolve_attendance_status
+from api.services.assurance_service import (
+    compute_assurance_band,
+    resolve_attendance_status,
+)
 from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
@@ -421,7 +424,10 @@ def evaluate_assurance(
                 if class_obj is None:
                     threshold_cache[record.session_id] = (5, 9)
                 else:
-                    if current_user.role == "teacher" and class_obj.teacher_id != current_user.id:
+                    if (
+                        current_user.role == "teacher"
+                        and class_obj.teacher_id != current_user.id
+                    ):
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail=Messages.AUTH_FORBIDDEN,
@@ -458,7 +464,9 @@ def evaluate_assurance(
         if body.high_threshold is not None:
             hi_current = body.high_threshold
 
-        band_current = compute_assurance_band(record.assurance_score, std_current, hi_current)
+        band_current = compute_assurance_band(
+            record.assurance_score, std_current, hi_current
+        )
         drift = (
             record.assurance_band_recorded is not None
             and record.assurance_band_recorded != band_current

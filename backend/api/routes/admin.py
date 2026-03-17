@@ -9,7 +9,16 @@ from api.services.import_service import process_import
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
 from database import Credential, RegistrationSession, User, get_db
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)

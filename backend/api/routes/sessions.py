@@ -241,9 +241,7 @@ def open_teacher_session(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
-    redis_client.set(
-        f"ble_token:{new_session.id}", new_session.dynamic_token, ex=30
-    )
+    redis_client.set(f"ble_token:{new_session.id}", new_session.dynamic_token, ex=30)
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return new_session
 
@@ -270,7 +268,10 @@ def get_ble_token(
             )
     existing = redis_client.get(f"ble_token:{session_id}")
     if existing:
-        return {"ble_token": existing.decode(), "ttl": redis_client.ttl(f"ble_token:{session_id}")}
+        return {
+            "ble_token": existing.decode(),
+            "ttl": redis_client.ttl(f"ble_token:{session_id}"),
+        }
     new_token = secrets.token_urlsafe(32)
     redis_client.set(f"ble_token:{session_id}", new_token, ex=_BLE_TOKEN_TTL)
     logger.info(Logs.BLE_TOKEN_ROTATED.format(session_id=session_id))

@@ -46,19 +46,23 @@ def export_audit_events(
     def generate():
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(["id", "event_type", "actor_id", "target_id", "detail", "created_at"])
+        writer.writerow(
+            ["id", "event_type", "actor_id", "target_id", "detail", "created_at"]
+        )
         yield buf.getvalue()
         for event in events:
             buf = io.StringIO()
             writer = csv.writer(buf)
-            writer.writerow([
-                event.id,
-                event.event_type,
-                event.actor_id or "",
-                event.target_id or "",
-                str(event.detail),
-                event.created_at.isoformat(),
-            ])
+            writer.writerow(
+                [
+                    event.id,
+                    event.event_type,
+                    event.actor_id or "",
+                    event.target_id or "",
+                    str(event.detail),
+                    event.created_at.isoformat(),
+                ]
+            )
             yield buf.getvalue()
 
     return StreamingResponse(

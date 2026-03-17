@@ -24,6 +24,5 @@ Future<void> submitPlayIntegrityVouch() async {
     await client.post(ApiPaths.playIntegrityVouch, {'integrity_token': token});
 
     await prefs.setString(_vouchDateKey, today);
-  } catch (_) {
-  }
+  } catch (_) {}
 }

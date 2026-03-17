@@ -24,13 +24,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Import users from CSV via admin API")
     parser.add_argument("csv_file", help="Path to the CSV file")
     parser.add_argument(
-        "--format", choices=["generic", "banner"], default="generic", help="CSV format adapter"
+        "--format",
+        choices=["generic", "banner"],
+        default="generic",
+        help="CSV format adapter",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Validate without writing to DB")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Validate without writing to DB"
+    )
     parser.add_argument(
         "--api-url", default="http://localhost:8000", help="Backend base URL"
     )
-    parser.add_argument("--token", default="", help="Session token for Authorization header")
+    parser.add_argument(
+        "--token", default="", help="Session token for Authorization header"
+    )
     args = parser.parse_args()
 
     with open(args.csv_file, "rb") as f:
@@ -38,9 +45,9 @@ def main() -> None:
 
     boundary = "----ImportBoundary"
     body_parts = [
-        f"--{boundary}\r\nContent-Disposition: form-data; name=\"format\"\r\n\r\n{args.format}",
-        f"--{boundary}\r\nContent-Disposition: form-data; name=\"dry_run\"\r\n\r\n{'true' if args.dry_run else 'false'}",
-        f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"import.csv\"\r\nContent-Type: text/csv\r\n\r\n",
+        f'--{boundary}\r\nContent-Disposition: form-data; name="format"\r\n\r\n{args.format}',
+        f'--{boundary}\r\nContent-Disposition: form-data; name="dry_run"\r\n\r\n{"true" if args.dry_run else "false"}',
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="import.csv"\r\nContent-Type: text/csv\r\n\r\n',
     ]
     body = (
         "\r\n".join(body_parts).encode("utf-8")
