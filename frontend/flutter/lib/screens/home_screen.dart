@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
@@ -104,10 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AuthenticationScreen(userId: userId),
-                      ),
+                    context.push(
+                      '/authenticate?user_id=${Uri.encodeComponent(userId)}',
                     );
                   },
                   icon: const Icon(Icons.how_to_reg),

@@ -36,12 +36,13 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 2. Device binding is app-layer based: store `device_public_key`, verify `device_signature`, and verify Android key attestation server-side.
   - Device key algorithm is ECDSA P-256 in Android Keystore (StrongBox preferred, TEE fallback), generated for signing purpose.
   - Registration requests direct attestation and is rejected unless Android Key attestation chains to a pinned Google root and reports `tee` or `strongbox`; no emulator bypass is supported.
+  - Server-side Android Key attestation enforcement is deployment-configurable via `ANDROID_KEY_ATTESTATION_REQUIRED` (default: true).
   - Do not require a second per-use biometric prompt on the device key; WebAuthn user verification already enforces biometric user presence.
   - Device signature payload for check-in/login is canonical JSON containing `v`, `flow`, `user_id`, `session_id`, `credential_id`, `challenge`, and server-issued `issued_at_ms`.
   - Canonical serialization contract is PAS JSON v1: UTF-8 JSON, fixed key order `v,flow,user_id,session_id,credential_id,challenge,issued_at_ms`, compact separators, and no extra fields.
   - Keep assurance roles explicit: passkey = identity (`who`), device key = enrolled device (`which device`), proximity = context (`where`).
-3. Play Integrity is a configurable attestation factor, disabled by default. Governed by `ClassPolicy.play_integrity_enabled` (deployment default: false; class-level override allowed). When enabled and verdict fails: check-in is rejected before scoring. When disabled: check-in proceeds without PI.
-  - **Daily vouch flow:** PI is not called per-check-in. The app calls PI once per day and submits the verdict token to `POST /auth/play-integrity/vouch`. The server verifies with Google, stores a 24h vouch record keyed on `credential_id`. At check-in, a valid vouch means PI contributes +7. Rate limit: 3 successful submissions per credential per calendar day; failed submissions do not consume a slot or invalidate an existing vouch.
+3. Play Integrity is a deployment-level attestation factor, disabled by default. Governed by `PLAY_INTEGRITY_ENABLED` together with `OUTBOUND_INTEGRITY_CHECKS_ENABLED`. When enabled and verdict fails: check-in is rejected before scoring. When disabled or unavailable: check-in proceeds without PI.
+  - **Daily vouch flow:** PI is not called per-check-in. The app submits the verdict token to `POST /auth/play-integrity/vouch` once per day after the student has an authenticated session. The server verifies with Google and stores a 24h vouch record keyed on `credential_id`. At check-in, a valid vouch enables full proximity weights. Rate limit: 3 successful submissions per credential per calendar day; failed submissions do not consume a slot or invalidate an existing vouch.
   - **Integrity governs proximity weight:** valid PI vouch = full proximity weight (as scored). No PI vouch (integrity absent) = reduced proximity weights: BLE strong +4, BLE medium +2, BLE weak +1, GPS +1, network +2 (unchanged). PI explicitly failing = check-in rejected before scoring.
 4. BLE proximity uses bucketed RSSI scoring (not linear):
    - `> -65` => +7
@@ -49,7 +50,8 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
    - `-80 to -90` => +2
    - `< -90` => 0
    - Teacher device advertises the BLE proximity signal; student app scans and reports RSSI.
-  - Clients must submit raw RSSI integers; the server derives all BLE buckets and scores.
+   - Clients must submit raw RSSI integers; the server derives all BLE buckets and scores.
+   - BLE proximity token is stored in Redis at `ble_token:{session_id}` with TTL governed by `BLE_TOKEN_TTL_SECONDS` (default: 30). The teacher device polls `GET /sessions/{id}/ble-token` to obtain the current broadcast value.
    - BLE proximity token is bound to the WebAuthn challenge (session-specific, single-use).
    - School network origin of the check-in options request is server-verified. When `SCHOOL_SUBNET_CIDR` is configured: matching origin scores `network` +2 as a proximity signal; non-matching origin is stored as an anomaly indicator on the teacher dashboard and does not reject the check-in.
 5. Offline QR flow uses signed payloads and 60-second TTL to reduce relay risk.
@@ -93,9 +95,10 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
   - 5–15 min: status = late
   - After close (15 min): status = absent; status is immutable once window closes
   - Students may retry check-in up to 3 times per window; highest assurance score is kept
-- Teachers may open a presence check window at any time after the attendance window closes; results are supplemental and do not modify original attendance status.
-- Only one `attendance`-type window may be open per class session at a time; `presence_check` windows have no such constraint.
-- `CheckInSession` attendance windows are teacher-initiated at actual attendance start; class attribution is inferred from the teacher's active `Class.schedule` block, and cutoffs are computed relative to window open time.
+- `CheckInSession` windows are teacher-initiated through `POST /sessions/open/teacher`; class attribution is inferred from the teacher's active `Class.schedule` block, and cutoffs are computed relative to window open time.
+- For a given active schedule block, the first opened session is the attendance window.
+- Any later sessions opened in that same schedule block are implicit presence checks; they are supplemental and do not modify the original attendance status.
+- No `session_type` or `window_type` field is stored on `CheckInSession`.
 - After each check-in attempt the student app displays the outcome (assurance band and whether a retry would help).
 - Multi-credential support is allowed via a configurable limit, with default behavior set to one active credential per student. Admin may revoke credentials and issue a new registration link when a student needs re-registration (e.g. new phone).
 

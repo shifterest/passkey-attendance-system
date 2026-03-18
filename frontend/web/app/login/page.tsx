@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getBootstrapStatus, persistBrowserSession } from "@/app/lib/api";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -48,13 +49,15 @@ export default function LoginPage() {
 	>(null);
 
 	useEffect(() => {
+		if (localStorage.getItem("session_token")) {
+			router.replace("/dashboard");
+			return;
+		}
+
 		const checkBootstrap = async () => {
 			try {
-				const response = await fetch(
-					`${process.env.NEXT_PUBLIC_API_ORIGIN}/bootstrap/status`,
-				);
-				const data = await response.json();
-				setIsBootstrapMode(data);
+				const data = await getBootstrapStatus();
+				setIsBootstrapMode(Boolean(data));
 			} catch (error) {
 				console.error("Failed to check bootstrap status", error);
 			} finally {
@@ -104,10 +107,7 @@ export default function LoginPage() {
 				throw new Error(await response.text());
 			}
 			const data = await response.json();
-			localStorage.setItem("user_id", data.user_id);
-			localStorage.setItem("session_token", data.session_token);
-			// TODO: Implement token expiration handling
-			localStorage.setItem("expires_in", data.expires_in);
+			persistBrowserSession(data);
 			setBootstrapDialogOpen(false);
 			router.push("/dashboard");
 		} catch (error) {
@@ -205,7 +205,7 @@ export default function LoginPage() {
 								</Button>
 							) : (
 								<>
-									<Button>
+									<Button disabled>
 										<IconKey data-icon="inline-start" />
 										Login with passkey
 									</Button>

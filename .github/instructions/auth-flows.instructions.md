@@ -25,7 +25,8 @@ The relying party accepts two origins: the web app origin and the Android APK ha
 - At registration, the client submits the device public key and Android Key Attestation certificate chain.
 - Registration is rejected unless the attestation chain roots to a pinned Google Hardware Attestation Root and reports `tee` or `strongbox`. No emulator bypass is supported.
 - The backend verifies: full chain to trusted root, hardware security level, key purpose, algorithm, and challenge binding.
-- **CRL lazy verification:** the CRL distribution point from the leaf certificate is checked lazily at the first check-in after registration, not at registration time. `Credential.attestation_crl_verified` stores the result (`None` = unchecked, `True` = clean, `False` = revoked). Check-in is rejected if the stored value is `False`. CRL checking requires `INTERNET_FEATURES_ENABLED=true` and `CRL_CHECK_ENABLED=true`; air-gapped deployments must document that CRL checking is skipped and `attestation_crl_verified` will remain `None`.
+- Server-side enforcement of Android Key Attestation is deployment-configurable via `ANDROID_KEY_ATTESTATION_REQUIRED` (default: `true`).
+- **CRL lazy verification:** this remains planned hardening, not a fully wired runtime check. `Credential.attestation_crl_verified` exists and check-in rejects when it is explicitly `False`, but the live fetch/update path is not yet implemented. Internet-restricted deployments should treat CRL validation as unavailable.
 
 ## Device Signature Payload Contract (PAS JSON v1)
 
@@ -52,9 +53,9 @@ Clock authority is server-side. Backend enforces freshness and rejects stale pay
 ## BLE Proximity Model
 
 - **Teacher device broadcasts**; student app scans passively and reports raw RSSI to the backend.
-- The **session nonce** (stored as `CheckInSession.dynamic_token`) is generated server-side when the session is opened. The teacher device broadcasts the current nonce via BLE.
-- **Token rotation:** the live session nonce is stored in Redis (`ble_token:{session_id}`) with a 30-second TTL. Teachers poll `GET /sessions/{id}/ble-token` to obtain the current value; the server auto-generates a new nonce if the Redis key has expired. The DB `dynamic_token` serves as an initial seed and fallback only.
-- At check-in verify, the backend first reads the Redis nonce; if Redis has expired, it falls back to `dynamic_token`. This means a student submitting a nonce from the current or most recent 30-second window passes validation.
+- The **session nonce** is generated server-side when the session is opened and stored in Redis at `ble_token:{session_id}`.
+- **Token rotation:** the live session nonce uses the `BLE_TOKEN_TTL_SECONDS` deployment setting (default: 30). Teachers poll `GET /sessions/{id}/ble-token` to obtain the current value; the server auto-generates a new nonce if the Redis key has expired.
+- At check-in verify, the backend validates the submitted BLE token against the current Redis value only. There is no DB fallback token.
 - BLE proximity token is bound to the WebAuthn challenge (session-specific, single-use).
 - Clients submit raw RSSI integers. The backend derives BLE buckets and scores. Never accept pre-bucketed scores from clients.
 - Relay attack (documented residual risk): BLE nonce is readable by any device in range. A commodity relay could forward it to an off-campus device. Controls that bound but do not eliminate this:
@@ -64,7 +65,7 @@ Clock authority is server-side. Backend enforces freshness and rejects stale pay
 
 ## Network Attestation
 
-When `SCHOOL_SUBNET_CIDR` is configured, the backend checks the IP of the check-in options request against the subnet at options time and stores the result in Redis (`check_in_network_ok:{user_id}`). At verify time this is consumed and stored on the record.
+When `SCHOOL_SUBNET_CIDR` is configured, the backend checks the IP of the check-in options request against the subnet at options time and stores the result in Redis (`check_in_network_ok:{user_id}:{session_id}`). At verify time this is consumed and stored on the record.
 
 - Matching: `network` verification method added, +2 score.
 - Non-matching: `network_anomaly = True` stored on the record; surfaced as anomaly indicator on teacher dashboard. Check-in is **not** rejected.
@@ -102,14 +103,15 @@ When the server is unreachable, WebAuthn cannot complete. The offline flow:
 - Students may retry up to `max_check_ins` (default 3) times per window. The highest assurance score is kept; all attempts are logged.
 - **Canonical record** per session-student pair: (1) highest-priority status (present > late > absent); (2) highest assurance score within that tier. All underlying attempt records are preserved.
 - After each attempt, the student app displays the assurance band achieved and whether a retry could improve it.
-- Only **one `attendance`-type window** may be open per class session at a time.
-- Check-in sessions are **teacher-initiated** when attendance actually begins. Class attribution is inferred from the teacher's active schedule block; cutoffs are computed relative to session open time.
+- Check-in sessions are **teacher-initiated** through `POST /sessions/open/teacher` when attendance actually begins. Class attribution is inferred from the teacher's active schedule block; cutoffs are computed relative to session open time.
+- For a given active schedule block, the first opened session is the attendance window.
+- Later sessions opened in that same active schedule block are implicit presence checks. No stored `window_type` field exists.
 
 ## Presence Checks
 
-A teacher may open a presence check window at any time after the attendance window closes. Students use the same check-in flow. Results are supplemental records linked to the session — they **do not modify** original attendance status. Multiple presence check windows may be open simultaneously.
+A teacher may open additional check-in windows after the attendance window closes. Students use the same check-in flow. These later windows are treated as supplemental presence checks linked to their own `CheckInSession` rows and **do not modify** original attendance status.
 
-Both window types share the same `CheckInSession` model and flow. They are distinguished by temporal convention (first session opened per schedule block = attendance; subsequent = presence check), not by a stored type field.
+Attendance versus presence-check semantics are determined by temporal convention (first session opened in a schedule block = attendance; subsequent sessions = presence checks), not by a stored type field.
 
 ## Bootstrap
 

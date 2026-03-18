@@ -147,7 +147,7 @@ def check_in_options(
             except ValueError:
                 pass
         redis_client.set(
-            f"check_in_network_ok:{user.id}",
+            f"check_in_network_ok:{user.id}:{session.id}",
             "1" if network_ok else "0",
             ex=settings.challenge_timeout,
         )
@@ -226,6 +226,56 @@ def check_in_verify(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
         )
+    class_ = db.query(Class).filter(Class.id == session.class_id).first()
+    if class_ is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
+        )
+    policy = (
+        db.query(ClassPolicy)
+        .filter(
+            ClassPolicy.created_by == class_.teacher_id,
+            ClassPolicy.class_id == class_.id,
+        )
+        .first()
+        or db.query(ClassPolicy)
+        .filter(
+            ClassPolicy.created_by == class_.teacher_id,
+            ClassPolicy.class_id.is_(None),
+        )
+        .first()
+    )
+    effective_max_check_ins = (
+        policy.max_check_ins if policy else settings.max_check_ins_per_session
+    )
+    retry_key = f"check_in_retry:{session.id}:{user.id}"
+    retry_ttl_seconds = max(
+        int((session.end_time - datetime.now(timezone.utc)).total_seconds()),
+        settings.challenge_timeout,
+        1,
+    )
+    retry_count_raw = redis_client.get(retry_key)
+    if retry_count_raw:
+        retry_count = int(retry_count_raw)
+    else:
+        retry_count = (
+            db.query(AttendanceRecord)
+            .filter(AttendanceRecord.session_id == response_data.session_id)
+            .filter(AttendanceRecord.user_id == user.id)
+            .count()
+        )
+        if retry_count > 0:
+            redis_client.set(retry_key, retry_count, ex=retry_ttl_seconds)
+    if retry_count >= effective_max_check_ins:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.CHECKIN_RETRY_LIMIT_REACHED,
+        )
+    retry_attempt_number = redis_client.incr(retry_key)
+    if retry_attempt_number == 1 or retry_count > 0:
+        redis_client.expire(retry_key, retry_ttl_seconds)
+
     challenge_key = f"check_in_challenge:{user.id}"
     issued_at_ms_key = f"check_in_issued_at_ms:{user.id}"
 
@@ -258,18 +308,6 @@ def check_in_verify(
     user_sign_count = user_credential.sign_count
 
     try:
-        enrollment = (
-            db.query(ClassEnrollment.id)
-            .filter(ClassEnrollment.class_id == session.class_id)
-            .filter(ClassEnrollment.student_id == user.id)
-            .first()
-        )
-        if enrollment is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
-            )
-
         if isinstance(challenge_bytes, bytes):
             authentication_verification = verify_authentication_response(
                 credential=response_data.credential,
@@ -283,6 +321,18 @@ def check_in_verify(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=Messages.INVALID_CHALLENGE_DATA,
+            )
+
+        enrollment = (
+            db.query(ClassEnrollment.id)
+            .filter(ClassEnrollment.class_id == session.class_id)
+            .filter(ClassEnrollment.student_id == user.id)
+            .first()
+        )
+        if enrollment is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
             )
 
         if response_data.device_public_key != user_credential.device_public_key:
@@ -325,42 +375,6 @@ def check_in_verify(
             )
             raise
 
-        class_ = db.query(Class).filter(Class.id == session.class_id).first()
-        if class_ is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
-            )
-        policy = (
-            db.query(ClassPolicy)
-            .filter(
-                ClassPolicy.created_by == class_.teacher_id,
-                ClassPolicy.class_id == class_.id,
-            )
-            .first()
-            or db.query(ClassPolicy)
-            .filter(
-                ClassPolicy.created_by == class_.teacher_id,
-                ClassPolicy.class_id.is_(None),
-            )
-            .first()
-        )
-        effective_max_check_ins = (
-            policy.max_check_ins if policy else settings.max_check_ins_per_session
-        )
-
-        existing_records = (
-            db.query(AttendanceRecord)
-            .filter(AttendanceRecord.session_id == response_data.session_id)
-            .filter(AttendanceRecord.user_id == user.id)
-            .count()
-        )
-        if existing_records >= effective_max_check_ins:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=Messages.CHECKIN_RETRY_LIMIT_REACHED,
-            )
-
         attempted_at = datetime.now(timezone.utc)
         verification_methods = [
             AttendanceRecordVerificationMethods.PASSKEY.value,
@@ -372,10 +386,8 @@ def check_in_verify(
             ]
             if readings and response_data.ble_token is not None:
                 redis_token = redis_client.get(f"ble_token:{session.id}")
-                valid_token = (
-                    redis_token.decode() if redis_token else session.dynamic_token
-                )
-                if response_data.ble_token == valid_token:
+                valid_token = redis_token.decode() if redis_token else None
+                if valid_token is not None and response_data.ble_token == valid_token:
                     avg_rssi = round(sum(readings) / len(readings))
                     verification_methods.append(
                         f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:{avg_rssi}"
@@ -397,7 +409,6 @@ def check_in_verify(
         if (
             response_data.gps_latitude is not None
             and response_data.gps_longitude is not None
-            and not gps_is_mock
             and settings.school_lat is not None
             and settings.school_lng is not None
         ):
@@ -412,7 +423,10 @@ def check_in_verify(
                 verification_methods.append(
                     AttendanceRecordVerificationMethods.GPS.value
                 )
-        play_integrity_enabled = policy.play_integrity_enabled if policy else False
+        play_integrity_enabled = (
+            settings.outbound_integrity_checks_enabled
+            and settings.play_integrity_enabled
+        )
         integrity_vouched = play_integrity_enabled and has_valid_vouch(
             user_credential.credential_id
         )
@@ -422,7 +436,9 @@ def check_in_verify(
             )
         network_anomaly = False
         if settings.subnet_cidr:
-            network_ok_raw = redis_client.getdel(f"check_in_network_ok:{user.id}")
+            network_ok_raw = redis_client.getdel(
+                f"check_in_network_ok:{user.id}:{session.id}"
+            )
             if network_ok_raw in (b"1", "1"):
                 verification_methods.append(
                     AttendanceRecordVerificationMethods.NETWORK.value

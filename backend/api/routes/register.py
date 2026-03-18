@@ -131,7 +131,7 @@ def register_verify(
             detail=Messages.USER_NOT_FOUND,
         )
 
-    user_id_bytes = redis_client.get(
+    user_id_bytes = redis_client.getdel(
         f"registration_session_token:{response_data.registration_token}"
     )
     if not isinstance(user_id_bytes, bytes):
@@ -199,27 +199,31 @@ def register_verify(
             log_audit_event(AuditEvents.DEVICE_SIGNATURE_FAILURE, None, user.id, {}, db)
             raise
 
-        try:
-            (
-                key_security_level,
-                is_legacy_root,
-                root_serial_hex,
-            ) = validate_android_key_attestation(
-                registration_verification.fmt,
-                registration_verification.attestation_object,
-            )
-        except ValueError as e:
-            log_audit_event(
-                AuditEvents.DEVICE_ATTESTATION_FAILURE,
-                None,
-                user.id,
-                DeviceAttestationFailureDetail(reason=str(e)).model_dump(),
-                db,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=Messages.DEVICE_KEY_INSECURE,
-            ) from e
+        key_security_level = None
+        is_legacy_root = False
+        root_serial_hex = ""
+        if settings.android_key_attestation_required:
+            try:
+                (
+                    key_security_level,
+                    is_legacy_root,
+                    root_serial_hex,
+                ) = validate_android_key_attestation(
+                    registration_verification.fmt,
+                    registration_verification.attestation_object,
+                )
+            except ValueError as e:
+                log_audit_event(
+                    AuditEvents.DEVICE_ATTESTATION_FAILURE,
+                    None,
+                    user.id,
+                    DeviceAttestationFailureDetail(reason=str(e)).model_dump(),
+                    db,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=Messages.DEVICE_KEY_INSECURE,
+                ) from e
 
         if credential_limit_reached(user.id, db):
             raise HTTPException(
@@ -240,19 +244,20 @@ def register_verify(
         db.add(new_credential)
         db.commit()
         db.refresh(new_credential)
-        log_audit_event(
-            AuditEvents.DEVICE_ATTESTATION_VERIFIED,
-            None,
-            user.id,
-            DeviceAttestationVerifiedDetail(
-                credential_id=new_credential.id,
-                root_serial_hex=root_serial_hex,
-                is_legacy_root=is_legacy_root,
-                key_security_level=key_security_level,
-            ).model_dump(),
-            db,
-        )
-        if is_legacy_root:
+        if settings.android_key_attestation_required:
+            log_audit_event(
+                AuditEvents.DEVICE_ATTESTATION_VERIFIED,
+                None,
+                user.id,
+                DeviceAttestationVerifiedDetail(
+                    credential_id=new_credential.id,
+                    root_serial_hex=root_serial_hex,
+                    is_legacy_root=is_legacy_root,
+                    key_security_level=key_security_level,
+                ).model_dump(),
+                db,
+            )
+        if settings.android_key_attestation_required and is_legacy_root:
             logger.warning(
                 Logs.LEGACY_ATTESTATION_ROOT_ACCEPTED.format(
                     user_id=new_credential.user_id,

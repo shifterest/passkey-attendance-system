@@ -50,39 +50,6 @@ def get_credential(
     return credential
 
 
-# Credentials can only be created via registration endpoint
-@router.post("/")
-def create_credential():
-    raise HTTPException(
-        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-        detail=Messages.CREDENTIAL_CREATE_FORBIDDEN,
-    )
-    # user = db.query(User).filter(User.id == credential_data.user_id).first()
-    # if user is None:
-    #     return {"message": "Error adding credential: user not found"}
-    # new_uuid = str(uuid.uuid4())
-    # while True:
-    #     credential = db.query(Credential).filter(Credential.id == new_uuid).first()
-    #     if credential is None:
-    #         break
-    #     new_uuid = str(uuid.uuid4())
-    # new_credential = Credential(
-    #     id=new_uuid,
-    #     user_id=credential_data.user_id,
-    #     public_key=credential_data.public_key,
-    #     credential_id=credential_data.credential_id,
-    #     sign_count=0,
-    #     registered_at=datetime.datetime.now(datetime.timezone.utc),
-    # )
-    # db.add(new_credential)
-    # db.commit()
-    # db.refresh(new_credential)
-    # logger.info(
-    #     f"Added credential for user {new_credential.user_id} (ID: {new_credential.id})"
-    # )
-    # return new_credential
-
-
 @router.put("/{credential_id}", response_model=CredentialResponse)
 def update_credential(
     credential_id: str,
@@ -138,7 +105,8 @@ def delete_credential(
     )
     logger.info(
         Logs.CREDENTIAL_REVOKED.format(
-            credential_id=credential_id, actor_id=current_user.id
+            credential_id=credential_id,
+            performed_by_user_id=current_user.id,
         )
     )
     return Response(status_code=204)

@@ -47,7 +47,6 @@ class ClassPolicy(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     created_by: Mapped[str | None] = mapped_column(None)
     class_id: Mapped[str | None] = mapped_column(ForeignKey("classes.id"), default=None)
-    play_integrity_enabled: Mapped[bool] = mapped_column(default=False)
     standard_assurance_threshold: Mapped[int] = mapped_column(default=5)
     high_assurance_threshold: Mapped[int] = mapped_column(default=9)
     present_cutoff_minutes: Mapped[int] = mapped_column(default=5)
@@ -138,7 +137,6 @@ class CheckInSession(Base):
     start_time: Mapped[datetime]
     end_time: Mapped[datetime]
     status: Mapped[str]
-    dynamic_token: Mapped[str]
     present_cutoff_minutes: Mapped[int] = mapped_column(default=5)
     late_cutoff_minutes: Mapped[int] = mapped_column(default=15)
     attended_class: Mapped["Class"] = relationship(back_populates="check_in_sessions")

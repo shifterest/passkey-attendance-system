@@ -43,10 +43,17 @@ function statusVariant(
 	return "outline";
 }
 
-function assuranceBand(score: number) {
-	if (score >= 25)
+function assuranceBand(
+	score: number,
+	standardThreshold: number | null,
+	highThreshold: number | null,
+) {
+	const effectiveStandardThreshold = standardThreshold ?? 5;
+	const effectiveHighThreshold = highThreshold ?? 9;
+	if (score >= effectiveHighThreshold)
 		return { label: "High", cls: "text-green-600 dark:text-green-400" };
-	if (score >= 10) return { label: "Standard", cls: "text-muted-foreground" };
+	if (score >= effectiveStandardThreshold)
+		return { label: "Standard", cls: "text-muted-foreground" };
 	return { label: "Low", cls: "text-red-600 dark:text-red-400" };
 }
 
@@ -97,7 +104,11 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 		header: "Score",
 		cell: ({ row }) => {
 			const score = row.original.assurance_score;
-			const band = assuranceBand(score);
+			const band = assuranceBand(
+				score,
+				row.original.standard_threshold_recorded,
+				row.original.high_threshold_recorded,
+			);
 			return (
 				<div className="flex items-center gap-1.5">
 					<span className="font-medium tabular-nums">{score}</span>

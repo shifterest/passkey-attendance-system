@@ -1,9 +1,18 @@
 import 'package:uuid/uuid.dart';
 import 'api_client.dart';
 import '../config/config.dart';
+import '../services/session_store.dart';
 import '../strings.dart';
 
 class AuthApi {
+  static Future<Map<String, String>> _sessionHeaders() async {
+    final sessionToken = await SessionStore.getSessionToken();
+    if (sessionToken == null || sessionToken.isEmpty) {
+      throw Exception('Missing session token');
+    }
+    return {'X-Session-Token': sessionToken};
+  }
+
   // Registration
   static Future<Map<String, dynamic>> registerOptions(
     String userId,
@@ -41,10 +50,11 @@ class AuthApi {
   // Authentication
   static Future<Map<String, dynamic>> checkInOptions(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
+    final sessionHeaders = await _sessionHeaders();
 
     dynamic authenticationOptions = await client.post(ApiPaths.checkInOptions, {
       'user_id': userId,
-    });
+    }, extraHeaders: sessionHeaders);
     if (authenticationOptions is Map<String, dynamic>) {
       return authenticationOptions;
     } else {
@@ -57,11 +67,12 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
     final idempotencyKey = const Uuid().v4();
+    final sessionHeaders = await _sessionHeaders();
 
     dynamic authenticateResponse = await client.post(
       ApiPaths.checkInVerify,
       response,
-      extraHeaders: {'X-Idempotency-Key': idempotencyKey},
+      extraHeaders: {...sessionHeaders, 'X-Idempotency-Key': idempotencyKey},
     );
     if (authenticateResponse is Map<String, dynamic>) {
       return authenticateResponse;

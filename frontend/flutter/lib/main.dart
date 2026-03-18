@@ -4,12 +4,13 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
+import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
+import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'services/play_integrity_service.dart';
 import 'services/session_store.dart';
 
 void main() async {
@@ -20,7 +21,6 @@ void main() async {
   try {
     await Config.init();
     await SessionStore.init();
-    unawaited(submitPlayIntegrityVouch());
     runApp(Main(appLinks));
   } catch (e, stackTrace) {
     debugPrint('Error during initialization: $e');
@@ -33,6 +33,21 @@ void main() async {
 final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AuthWrapper()),
+    GoRoute(
+      path: '/scan',
+      builder: (context, state) => const QrScannerScreen(),
+    ),
+    GoRoute(
+      path: '/authenticate',
+      builder: (context, state) {
+        final userId = state.uri.queryParameters['user_id'];
+        final login = state.uri.queryParameters['login'] == 'true';
+        if (userId == null || userId.isEmpty) {
+          return const LoginScreen();
+        }
+        return AuthenticationScreen(userId: userId, login: login);
+      },
+    ),
     GoRoute(
       path: '/register',
       builder: (context, state) => RegistrationScreen(

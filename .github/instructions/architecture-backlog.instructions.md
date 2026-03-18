@@ -26,9 +26,9 @@ name: "Architecture Backlog Guidance"
 | Attack | Coverage status | Residual risk |
 |---|---|---|
 | Synced passkey / proxy attendance | ✅ Covered — device_public_key + device_signature + attestation-backed device trust | BLE relay via unmodified enrolled devices remains; see BLE relay notes in `auth-flows.instructions.md` |
-| Emulator or scripted API client | Partially covered — Android Key Attestation rejects emulators at registration; Play Integrity (when enabled) blocks modified apps per-check-in. Flutter daily vouch implemented. | CRL not yet checked |
+| Emulator or scripted API client | Partially covered — Android Key Attestation rejects emulators at registration; Play Integrity (when enabled) blocks modified apps through the daily vouch flow. | CRL lazy verification is not yet wired |
 | RSSI injection | Blocked when PI vouch present; otherwise residual for modified apps | Flutter now collects and submits RSSI reading arrays; backend averages before bucketing |
-| GPS spoofing | ✅ `isMock()` flag detected in Flutter, submitted in check-in payload, stored as `gps_is_mock` on record, scored 0 when mocked. PI blocks state-changed modified apps when vouched | Residual for apps that can spoof `isMocked` without triggering PI |
+| GPS spoofing | ✅ `isMock()` flag detected in Flutter, submitted in check-in payload, and stored as `gps_is_mock` on the record as an integrity indicator. PI blocks state-changed modified apps when vouched. | Residual for apps that can spoof `isMocked` without triggering PI |
 | Offline QR pre-staging | Bounded by session window enforcement; nonce hardening planned (see backlog) | Pre-staged payload within valid session window is not yet blocked |
 | Duplicate / replayed attendance | ✅ Covered — GETDEL atomic challenge, issued_at_ms staleness check, idempotency key (Redis-scoped per user), device_signature hash cache | |
 | Manual override abuse | ✅ Covered — append-only audit + actor attribution |  |
@@ -51,8 +51,8 @@ name: "Architecture Backlog Guidance"
 - ✅ Role-based authorization on all non-public endpoints
 - ✅ Bootstrap disabled by default; one-time console token; completion lock
 - ✅ Sign-count anomaly flag on `Credential`; detected in check-in and login verify; surfaced in `CredentialResponse`
-- ✅ **Android Key Attestation CRL verification** — `Credential.attestation_crl_verified` field added (`None` = unchecked, `True` = clean, `False` = revoked). Check-in rejects if `False`. Lazy fetch at first check-in post-registration, gated on `INTERNET_FEATURES_ENABLED` and `CRL_CHECK_ENABLED` config flags. Air-gapped deployments document that checking is skipped.
-- ✅ **Play Integrity Flutter integration** — `play_integrity_service.dart` calls Google PI API once per day on app launch (`main.dart`); submits token to `POST /auth/play-integrity/vouch`; result persisted in SharedPreferences. Gracefully ignores 503 when PI disabled server-side.
+- ❌ **Android Key Attestation CRL verification** — `Credential.attestation_crl_verified` field exists and check-in rejects if it is explicitly `False`, but the lazy fetch/update path is not yet implemented.
+- ✅ **Play Integrity Flutter integration** — `play_integrity_service.dart` calls Google PI once per day after successful login, submits the token to `POST /auth/play-integrity/vouch` with the stored session token, and persists the last-vouched date locally.
 
 ---
 
@@ -72,7 +72,7 @@ name: "Architecture Backlog Guidance"
 - ✅ `issued_at_ms` staleness check (30s, configurable)
 - ✅ Per-user rate limiting on auth option and verify endpoints
 - ✅ **Idempotency key** — `X-Idempotency-Key` header on check-in verify; Flutter generates a UUID per attempt; backend caches response in Redis scoped to `{user_id}:{key}` with challenge TTL.
-- ✅ **BLE session nonce rotation** — session nonce stored in Redis (`ble_token:{session_id}`) with 30-second TTL on session open. `GET /sessions/{id}/ble-token` endpoint auto-rotates on expiry (teacher/admin/operator only). Check-in verify reads Redis-first, falls back to DB `dynamic_token`. Teacher device polls this endpoint to get current broadcast nonce.
+- ✅ **BLE session nonce rotation** — session nonce stored in Redis (`ble_token:{session_id}`) with TTL from `BLE_TOKEN_TTL_SECONDS` on session open. `GET /sessions/{id}/ble-token` endpoint auto-rotates on expiry (teacher/admin/operator only). Check-in verify reads Redis only. Teacher device polls this endpoint to get current broadcast nonce.
 - ✅ **BLE RSSI averaging window** — Flutter collects full array of RSSI readings during 30s scan; backend averages the array before RSSI bucketing.
 - ❌ **Offline QR nonce hardening** — teacher device nonce broadcast + server cross-check on sync (see `auth-flows.instructions.md` offline section for full design)
 
@@ -98,7 +98,7 @@ name: "Architecture Backlog Guidance"
 
 ## P1 — Flutter Client Gaps
 
-- ✅ **Daily PI vouch call** — `play_integrity_service.dart`; triggered from `main.dart` on app launch (not HomeScreen)
+- ✅ **Daily PI vouch call** — `play_integrity_service.dart`; triggered after successful login once an authenticated session exists
 - ❌ **Post-check-in outcome screen** — display assurance band and whether a retry would improve it
 - ✅ **`gps_is_mock` flag submission** — `Position.isMocked` read from `geolocator`, included in check-in verify payload, stored as `gps_is_mock` on `AttendanceRecord`
 - ❌ **Offline QR attendance UI** — device-signed QR generation screen for offline sessions
@@ -132,7 +132,7 @@ name: "Architecture Backlog Guidance"
 - Require stable DNS hostname and trusted HTTPS for WebAuthn secure context.
 - Add strict internal segmentation; insider risk increases without perimeter.
 - If outbound internet is restricted: Play Integrity cannot verify with Google; must disable `play_integrity_enabled`. Without PI, proximity weights are reduced; maximum achievable score is 7 (BLE strong + GPS + network = 4+1+2) — all records land in Standard band at best. Operators must document this.
-- CRL checking (when implemented) requires outbound HTTP at registration time; document as unavailable in fully air-gapped deployments.
+- CRL lazy verification is not yet wired. When implemented, it will require outbound HTTP during post-registration validation; document it as unavailable in fully air-gapped deployments.
 
 ---
 

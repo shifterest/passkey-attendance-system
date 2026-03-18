@@ -125,8 +125,8 @@ All fields are read from environment or `.env` file via `pydantic-settings`. Env
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `internet_features_enabled` | `False` | Master gate for all internet-dependent features (CRL, PI verification) |
-| `crl_check_enabled` | `True` | Whether CRL checking runs (only when `internet_features_enabled=True`) |
+| `outbound_integrity_checks_enabled` | `False` | Master gate for all outbound integrity checks (CRL, PI verification) |
+| `crl_check_enabled` | `True` | Whether CRL checking runs (only when `outbound_integrity_checks_enabled=True`) |
 
 ### Network Proximity
 
@@ -250,7 +250,7 @@ All tests must pass and ruff must be clean before any backend change is consider
 - See `docker-compose.postgres.yml`
 
 ### Air-gapped deployment
-- Set `INTERNET_FEATURES_ENABLED=false`
+- Set `OUTBOUND_INTEGRITY_CHECKS_ENABLED=false`
 - Set `play_integrity_package_name` and `play_integrity_api_key` to empty strings (disables PI)
 - Without PI and CRL, `attestation_crl_verified` remains `None` for all credentials (document this)
 - Without PI, max achievable assurance score = 7 (BLE strong + GPS + network = 4+1+2); all records land Standard band at best

@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:passkey_attendance_system/screens/authentication_screen.dart';
-import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
+import 'package:passkey_attendance_system/strings.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,13 +54,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (isRegistered) ...[
                             FilledButton.icon(
                               onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => AuthenticationScreen(
-                                      userId: userId,
-                                      login: true,
-                                    ),
-                                  ),
+                                context.push(
+                                  '/authenticate?user_id=${Uri.encodeComponent(userId!)}&login=true',
                                 );
                               },
                               icon: const Icon(Icons.key),
@@ -78,12 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ] else ...[
                             FilledButton.icon(
                               onPressed: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const QrScannerScreen(),
-                                  ),
-                                );
+                                context.push('/scan');
                               },
                               icon: const Icon(Icons.key),
                               label: const Text(

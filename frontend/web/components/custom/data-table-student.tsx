@@ -3,6 +3,7 @@
 import {
 	closestCenter,
 	DndContext,
+	type DragEndEvent,
 	KeyboardSensor,
 	MouseSensor,
 	TouchSensor,
@@ -12,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
+	arrayMove,
 	SortableContext,
 	useSortable,
 	verticalListSortingStrategy,
@@ -50,7 +52,11 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useState } from "react";
 import { z } from "zod";
-import { getUser, type RegistrationSessionDto } from "@/app/lib/api";
+import {
+	getStudent,
+	type RegistrationSessionDto,
+	unregisterUser,
+} from "@/app/lib/api";
 import { getRegistrationSession } from "@/app/lib/webauthn";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
@@ -164,6 +170,7 @@ const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
 
 function columns(
 	setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>) => void,
+	onUnregister: (userId: string) => Promise<void>,
 ): ColumnDef<z.infer<typeof schema>>[] {
 	return [
 		{
@@ -314,7 +321,12 @@ function columns(
 									Regenerate registration QR
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem variant="destructive">
+								<DropdownMenuItem
+									onClick={async () => {
+										await onUnregister(row.original.id);
+									}}
+									variant="destructive"
+								>
 									Unregister
 								</DropdownMenuItem>
 							</>
@@ -577,7 +589,7 @@ export function DataTableStudent({
 		null,
 	);
 
-	const data = initialData;
+	const [data, setData] = useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({});
@@ -601,6 +613,10 @@ export function DataTableStudent({
 		[data],
 	);
 	const [globalFilter, setGlobalFilter] = useState("");
+
+	React.useEffect(() => {
+		setData(initialData);
+	}, [initialData]);
 
 	const closeRegistrationQrDialog = React.useCallback(() => {
 		setOpen(false);
@@ -641,7 +657,7 @@ export function DataTableStudent({
 
 		const intervalId = window.setInterval(async () => {
 			try {
-				const latestUser = await getUser(registrationUserId);
+				const latestUser = await getStudent(registrationUserId);
 				if (!latestUser.registered) {
 					return;
 				}
@@ -658,9 +674,33 @@ export function DataTableStudent({
 		};
 	}, [open, registrationUserId, router, setRegistrationQrDialogOpenState]);
 
+	const handleDragEnd = React.useCallback((event: DragEndEvent) => {
+		const { active, over } = event;
+		if (!over || active.id === over.id) {
+			return;
+		}
+
+		setData((current) => {
+			const oldIndex = current.findIndex((item) => item.id === active.id);
+			const newIndex = current.findIndex((item) => item.id === over.id);
+			if (oldIndex === -1 || newIndex === -1) {
+				return current;
+			}
+			return arrayMove(current, oldIndex, newIndex);
+		});
+	}, []);
+
+	const handleUnregister = React.useCallback(
+		async (userId: string) => {
+			await unregisterUser(userId);
+			router.refresh();
+		},
+		[router],
+	);
+
 	const table = useReactTable({
 		data,
-		columns: columns(setRegistrationQrDialogState),
+		columns: columns(setRegistrationQrDialogState, handleUnregister),
 		state: {
 			sorting,
 			columnVisibility,
@@ -899,6 +939,7 @@ export function DataTableStudent({
 						modifiers={[restrictToVerticalAxis]}
 						sensors={sensors}
 						id={sortableId}
+						onDragEnd={handleDragEnd}
 					>
 						<Table>
 							<TableHeader className="bg-muted sticky top-0 z-10">
@@ -932,7 +973,7 @@ export function DataTableStudent({
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={columns(setRegistrationQrDialogState).length}
+											colSpan={columns(setRegistrationQrDialogState, handleUnregister).length}
 											className="h-24 text-center"
 										>
 											No results.

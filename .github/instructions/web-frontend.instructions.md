@@ -142,13 +142,14 @@ All authenticated pages live inside the `(home)` route group, which provides the
 | `getAuditEvents(params?)` | GET | `/audit?...` |
 | `getAuditExportUrl(params?)` | — | Returns URL string for `<a href>` download |
 
-### Known bugs in `api.ts`
-- **`getUsers` is declared twice** — the second declaration at the bottom of the file shadows the first and drops the `role` filter parameter. The role filter on `GET /users/` is broken as a result. Fix: remove the duplicate declaration.
-- **No auth headers on any request** — no session token is attached. All auth-gated endpoints will reject calls once session tokens are properly enforced. Fix: inject session token from `localStorage` into each request.
+### Current auth model in `api.ts`
+- Browser requests attach `X-Session-Token` from localStorage.
+- SSR requests attach `X-Session-Token` from the mirrored session cookie so authenticated server components can call protected backend endpoints.
+- `requestAll()` handles paginated aggregation for pages that need the full dataset rather than the first page.
 
 ### Missing wrappers
-The following `ApiPaths` constants exist in `strings.ts` but have no corresponding wrapper functions in `api.ts`:
-`openSession`, `closeSession`, `manualRecord`, `manualApproval`, `policies`, `userPolicy`, `credentials`, `enrollments`
+The following backend areas still lack complete wrapper coverage in `api.ts`:
+`openSession`, policy CRUD, credential CRUD, enrollment CRUD, and record update (`PUT /records/{id}`)
 
 These need wrapper functions before any UI that uses them can be built.
 
@@ -161,21 +162,21 @@ Client component. Fetches `GET /bootstrap/status` on mount (raw `fetch`, not `ap
 
 **What works:**
 - Bootstrap mode detection and display
-- Bootstrap token submission → `POST /bootstrap/operator` → stores session in `localStorage`
+- Bootstrap token submission → `POST /bootstrap/operator` → persists session in both `localStorage` and cookie storage
+- Existing-session redirect into the authenticated app shell
+- Unsupported browser passkey login is explicitly disabled instead of being a dead click target
 
 **Known gaps:**
-- Passkey login button is rendered but has no `onClick` handler — clicking it does nothing
+- Browser passkey login remains disabled because the current backend login contract requires the app-layer device signature and enrolled device key, which the browser client does not provide
 - Password login button is permanently inert
-- `expires_in` is stored in `localStorage` but never read or enforced
 - API unreachability on mount is silently swallowed — no error shown
 - "Register" link and ToS/Privacy links all point to `#!`
 
 ### `/dashboard`
-Server component. Fetches up to 1000 records and 100 sessions. Computes today's counts in-page.
+Server component. Fetches all records and sessions through paginated helpers. Computes today's counts in-page and passes live daily aggregates to the chart component.
 
 **Known gaps:**
-- 1000-record ceiling breaks the count once historical records exceed it
-- `ChartAreaInteractive` receives no props — it uses entirely hardcoded mock data
+- No drill-down/filter controls from the stat cards or chart yet
 
 ### `/classes/[class_id]/sessions`
 Server component. Shows sessions for a class; "Back to Classes" link; no class name shown in the header.
@@ -184,7 +185,10 @@ Server component. Shows sessions for a class; "Back to Classes" link; no class n
 Server component passthrough to `DataTableStudent`.
 
 ### `/records`
-Hard 500-record cap with no pagination or load-more.
+Server component. Fetches all records through paginated helpers.
+
+**Known gaps:**
+- No server-backed pagination or filter UI yet
 
 ### `/logs`
 Hard 200-event cap. API supports `event_type`, `actor_id`, date-range filters — none exposed.
@@ -201,11 +205,11 @@ Hard 200-event cap. API supports `event_type`, `actor_id`, date-range filters �
 - Column visibility toggle
 - Per-row "Generate/Regenerate registration QR" → `POST /admin/register/{userId}` → QR dialog
 - Registration polling (2s interval until registered)
+- Per-row unregister action wired to `POST /admin/unregister/{userId}`
+- Local drag-and-drop row reordering
 - `router.refresh()` after registration confirmed
 
 **Known gaps:**
-- "Unregister" action renders the menu item but has no `onClick` — clicking it does nothing. `unregisterUser()` exists in `api.ts` but is never called.
-- Row drag-and-drop uses `@dnd-kit/core` but `onDragEnd` is missing — rows can be grabbed but nothing happens.
 - The student detail drawer is entirely commented out. The commented code contains a chart with hardcoded `desktop/mobile` keys (scaffolding remnant, unrelated to attendance data).
 - `chartData` and `chartConfig` exports at the top are dead code (referenced only by the commented drawer).
 
@@ -213,10 +217,7 @@ Hard 200-event cap. API supports `event_type`, `actor_id`, date-range filters �
 
 **What works:**
 - Paginated table: client-side, 20/page default
-- Status badge, assurance score + band label, verification methods badges, flag icons (network anomaly ⚠, teacher flag 🚩, sync pending 🔄, manually approved ✓, mock GPS 🛡)
-
-**Known bugs:**
-- **Assurance band thresholds are hardcoded at `≥ 25 = High, ≥ 10 = Standard`**. The architecture specifies defaults of high=9, standard=5. At the hardcoded values, virtually every real record will be labeled "Low." Fix: pull thresholds from the record's `standard_threshold_recorded` and `high_threshold_recorded` fields (these are stored per-record as snapshots).
+- Status badge, assurance score + band label using recorded threshold snapshots, verification methods badges, flag icons (network anomaly ⚠, teacher flag 🚩, sync pending 🔄, manually approved ✓, mock GPS 🛡)
 
 **Known gaps:**
 - No actions (approval, flagging) — read-only
@@ -225,11 +226,11 @@ Hard 200-event cap. API supports `event_type`, `actor_id`, date-range filters �
 
 ### `ChartAreaInteractive` — `components/custom/chart-area-interactive.tsx`
 
-**Known bugs and gaps:**
-- All 91 data points are hardcoded (April–June 2024 random values)
-- Reference date hardcoded as `2024-06-30` (TODO in code)
-- Both chart series (`records` and `flagged`) render with `var(--primary)` — visually indistinguishable
-- Accepts no props; has no internal fetch; cannot be connected to live data without a full refactor
+Prop-driven chart component used by the dashboard. It renders live daily aggregates for total records and flagged records.
+
+**Known gaps:**
+- No range selector or drill-down interaction yet
+- Still dashboard-specific rather than a reusable reporting component
 
 ### `SectionCards` — `components/custom/section-cards.tsx`
 
@@ -267,7 +268,6 @@ These are the unimplemented parts of the web UI needed for a working class-based
 | Class policy management (thresholds, PI toggle, timing) | `ClassPolicy` endpoints | P1 |
 | Enrollment management (add/remove students from classes) | `/enrollments` endpoints | P1 |
 | Credential revocation UI | `DELETE /credentials/{id}` | P1 |
-| Dashboard live chart | `GET /records` with date grouping | P2 |
 | Audit log filters (event type, date range) | query params on `GET /audit/` | P2 |
 | Search form wired to tables | client-side filter | P2 |
 
@@ -275,4 +275,6 @@ These are the unimplemented parts of the web UI needed for a working class-based
 
 ## Auth State (Current Gap)
 
-No session token is currently injected into any API request in `api.ts`. The web frontend relies on the backend's CORS and session middleware, but no `Authorization` header or cookie is sent. This means all auth-gated endpoints will fail for any user who has logged in via the web. Fix required before the web UI can perform any write action.
+Authenticated browser requests now use `X-Session-Token` from localStorage, and authenticated SSR requests use the mirrored session cookie. This is sufficient for the current bootstrap-backed web flow.
+
+The remaining auth constraint is architectural, not transport-related: browser passkey login is still disabled because the backend login flow expects the app-layer device signature and enrolled device key that exist only on the mobile client today.

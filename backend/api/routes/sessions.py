@@ -8,7 +8,6 @@ from zoneinfo import ZoneInfo
 from api.config import settings
 from api.redis import redis_client
 from api.schemas import (
-    CheckInSessionCreate,
     CheckInSessionResponse,
     CheckInSessionUpdate,
     OpenTeacherSessionRequest,
@@ -22,6 +21,10 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+def _new_ble_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 def _parse_schedule_time(value: Any) -> time | None:
@@ -127,35 +130,6 @@ def get_session(
     return session
 
 
-@router.post("/", response_model=CheckInSessionResponse)
-def create_session(
-    session_data: CheckInSessionCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
-):
-    class_ = db.query(Class).filter(Class.id == session_data.class_id).first()
-    if class_ is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.SESSION_CLASS_NOT_FOUND,
-        )
-    new_session = CheckInSession(
-        id=str(uuid.uuid4()),
-        class_id=session_data.class_id,
-        start_time=session_data.start_time,
-        end_time=session_data.end_time,
-        status=session_data.status,
-        dynamic_token=session_data.dynamic_token,
-        present_cutoff_minutes=session_data.present_cutoff_minutes,
-        late_cutoff_minutes=session_data.late_cutoff_minutes,
-    )
-    db.add(new_session)
-    db.commit()
-    db.refresh(new_session)
-    logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
-    return new_session
-
-
 @router.post("/open/teacher", response_model=CheckInSessionResponse)
 def open_teacher_session(
     open_data: OpenTeacherSessionRequest,
@@ -216,6 +190,7 @@ def open_teacher_session(
         .filter(CheckInSession.class_id == target_class.id)
         .filter(CheckInSession.start_time <= now)
         .filter(CheckInSession.end_time >= now)
+        .filter(CheckInSession.status != "closed")
         .first()
     )
     if existing_session is not None:
@@ -233,7 +208,6 @@ def open_teacher_session(
         start_time=now,
         end_time=now + timedelta(minutes=late_window_minutes),
         status="open",
-        dynamic_token=secrets.token_urlsafe(32),
         present_cutoff_minutes=present_window_minutes,
         late_cutoff_minutes=late_window_minutes,
     )
@@ -241,12 +215,13 @@ def open_teacher_session(
     db.add(new_session)
     db.commit()
     db.refresh(new_session)
-    redis_client.set(f"ble_token:{new_session.id}", new_session.dynamic_token, ex=30)
+    redis_client.set(
+        f"ble_token:{new_session.id}",
+        _new_ble_token(),
+        ex=settings.ble_token_ttl_seconds,
+    )
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return new_session
-
-
-_BLE_TOKEN_TTL = 30
 
 
 @router.get("/{session_id}/ble-token")
@@ -272,10 +247,14 @@ def get_ble_token(
             "ble_token": existing.decode(),
             "ttl": redis_client.ttl(f"ble_token:{session_id}"),
         }
-    new_token = secrets.token_urlsafe(32)
-    redis_client.set(f"ble_token:{session_id}", new_token, ex=_BLE_TOKEN_TTL)
+    new_token = _new_ble_token()
+    redis_client.set(
+        f"ble_token:{session_id}",
+        new_token,
+        ex=settings.ble_token_ttl_seconds,
+    )
     logger.info(Logs.BLE_TOKEN_ROTATED.format(session_id=session_id))
-    return {"ble_token": new_token, "ttl": _BLE_TOKEN_TTL}
+    return {"ble_token": new_token, "ttl": settings.ble_token_ttl_seconds}
 
 
 @router.post("/{session_id}/close", response_model=CheckInSessionResponse)
@@ -303,7 +282,7 @@ def close_session(
     session.status = "closed"
     db.commit()
     logger.info(
-        Logs.SESSION_CLOSED.format(session_id=session.id, actor_id=current_user.id)
+        Logs.SESSION_CLOSED.format(session_id=session.id, user_id=current_user.id)
     )
     return session
 

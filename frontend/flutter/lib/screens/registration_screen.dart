@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:passkey_attendance_system/screens/home_screen.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/session_store.dart';
@@ -45,10 +44,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       await _register();
       if (!mounted) return;
 
-      // TODO: Add a router here or something, or not
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+      context.go('/');
     } catch (e) {
       if (!mounted) return;
 

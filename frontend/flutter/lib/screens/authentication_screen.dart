@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:passkey_attendance_system/screens/home_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/play_integrity_service.dart';
+import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -107,14 +110,17 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
     int? strongestRssi;
     String? bleToken;
-    final List<int> rssiReadings = [];
+    final readingsByToken = <String, List<int>>{};
     final subscription = FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
-        rssiReadings.add(result.rssi);
+        final advName = result.advertisementData.advName;
+        if (advName.isEmpty) {
+          continue;
+        }
+        readingsByToken.putIfAbsent(advName, () => <int>[]).add(result.rssi);
         if (strongestRssi == null || result.rssi > strongestRssi!) {
           strongestRssi = result.rssi;
-          final advName = result.advertisementData.advName;
-          bleToken = advName.isNotEmpty ? advName : null;
+          bleToken = advName;
         }
       }
     });
@@ -126,6 +132,10 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       await FlutterBluePlus.stopScan();
       await subscription.cancel();
     }
+
+    final rssiReadings = bleToken == null
+        ? <int>[]
+        : (readingsByToken[bleToken] ?? <int>[]);
 
     if (rssiReadings.isEmpty) {
       throw Exception(AuthStrings.errorNoBleSignal);
@@ -174,20 +184,16 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       if (!mounted) return;
 
       if (widget.login) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        context.go('/');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text(AuthStrings.checkInSuccess)),
         );
 
         if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+          context.pop();
         } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+          context.go('/');
         }
       }
     } catch (e) {
@@ -259,7 +265,17 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     });
 
     if (widget.login) {
-      await AuthApi.loginVerify(credentialJson);
+      final loginResponse = await AuthApi.loginVerify(credentialJson);
+      final sessionToken = loginResponse['session_token'];
+      final expiresIn = loginResponse['expires_in'];
+      if (sessionToken is! String || sessionToken.isEmpty) {
+        throw Exception(AuthStrings.errorMissingSessionToken);
+      }
+      if (expiresIn is! int) {
+        throw Exception(AuthStrings.errorMissingSessionExpiry);
+      }
+      await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
+      unawaited(submitPlayIntegrityVouch());
     } else {
       await AuthApi.checkInVerify(credentialJson);
     }

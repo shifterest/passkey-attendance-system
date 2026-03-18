@@ -118,6 +118,11 @@ def create_enrollment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.ENROLLMENT_STUDENT_NOT_FOUND,
         )
+    if student.role != "student":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=Messages.USER_NOT_STUDENT,
+        )
     existing = (
         db.query(ClassEnrollment)
         .filter(
@@ -174,7 +179,7 @@ def update_enrollment(
 def delete_enrollment(
     enrollment_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     enrollment = (
         db.query(ClassEnrollment).filter(ClassEnrollment.id == enrollment_id).first()
@@ -189,7 +194,7 @@ def delete_enrollment(
     db.commit()
     log_audit_event(
         event_type=AuditEvents.ENROLLMENT_DELETED,
-        actor_id=None,
+        actor_id=current_user.id,
         target_id=enrollment_id,
         detail=EnrollmentDeletedDetail(
             old_value=EnrollmentDeletedOldValue(

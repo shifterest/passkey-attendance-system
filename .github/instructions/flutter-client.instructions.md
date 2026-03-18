@@ -62,13 +62,13 @@ Defined in `main.dart` via GoRouter:
 | Route | Component | Notes |
 |---|---|---|
 | `/` | `AuthWrapper` | Session gate; redirects to `HomeScreen` or `LoginScreen` |
+| `/scan` | `QrScannerScreen` | Registration QR scanner |
+| `/authenticate` | `AuthenticationScreen` | Receives `?user_id=&login=true` for login or check-in |
 | `/register` | `RegistrationScreen` | Receives `?token=&user_id=` from deep link |
 
 `AuthWrapper` calls `SessionStore.isSessionValid()`. If the session is valid it renders `HomeScreen`; otherwise `LoginScreen`.
 
 **Deep link handling:** `Main._routeUri()` validates the incoming URI scheme (`Config.registrationProtocol` = `shifterest-pas`) and host (`register`), then navigates to `/register?token=...&user_id=...`. Both cold-start links (via `getInitialLink()`) and live stream links are handled.
-
-**Navigation inconsistency:** `HomeScreen` pushes `AuthenticationScreen` via `MaterialPageRoute` instead of GoRouter. `RegistrationScreen` also navigates to `HomeScreen` via `MaterialPageRoute`. These should be migrated to GoRouter for consistency.
 
 ---
 
@@ -89,9 +89,7 @@ Stateless gate screen. Calls `SessionStore.getUserId()` in a `FutureBuilder` to 
 
 ### `QrScannerScreen`
 
-Full-screen camera scanner using `mobile_scanner`. Parses the first detected barcode as a URI, validates scheme and host, extracts `token` and `user_id` query params, navigates to `/register?token=...&user_id=...`.
-
-**Known gap:** error catch block uses a hardcoded `'An error occurred'` string instead of a `QrStrings` constant.
+Full-screen camera scanner using `mobile_scanner`. Parses the first detected barcode as a URI, validates scheme and host, extracts `token` and `user_id` query params, navigates to `/register?token=...&user_id=...`, and reports unexpected failures through `QrStrings.errorUnexpectedFailure`.
 
 ---
 
@@ -105,11 +103,9 @@ Auto-starts `_startRegistration()` on mount. Props: `userId`, `registrationToken
 3. `POST /auth/register/verify` — sends credential + device signature + device public key + attestation
 4. `SessionStore.saveUserId(userId)` — persists user ID for future launches
 
-On success → navigates to `HomeScreen`.
+On success → returns to `/` so the user can complete a normal login flow.
 
-**Known bugs:**
-- `SessionStore.saveSession()` is **never called after registration**. A session token is not returned by `register/verify` and is not requested — the student must separately log in after registration.
-- Navigation uses `MaterialPageRoute` instead of GoRouter.
+Registration does not create a login session. A session token is not returned by `register/verify`, so the student must separately log in after registration.
 
 ---
 
@@ -128,11 +124,13 @@ The most complete screen. Auto-starts `_authenticate()` on mount. Handles both l
 1. `POST /auth/login/options`
 2. `passkey.login(optionsJson, userId)`
 3. `POST /auth/login/verify`
+4. Persist `session_token` + `expires_in` via `SessionStore.saveSession(...)`
+5. Trigger the daily Play Integrity vouch in the background
 
 **BLE collection (`_collectBleProximity()`):**
 - Requests `bluetoothScan` + `bluetoothConnect` permissions (Android)
 - Checks BLE supported + on; prompts to enable if off
-- Full 30-second scan; collects all RSSI readings as `List<int>` and the strongest advertised device name as `bleToken`
+- Full 30-second scan; groups RSSI readings by advertised BLE token and keeps the strongest advertiser's token plus its readings
 - Returns `({List<int> rssiReadings, String? bleToken})`
 - Throws on missing permissions, unsupported BLE, BT off, or no signal detected
 
@@ -141,12 +139,7 @@ The most complete screen. Auto-starts `_authenticate()` on mount. Handles both l
 - `Geolocator.getCurrentPosition` with 10s timeout; returns `null` on error
 - `gps_is_mock = position?.isMocked ?? false`
 
-**Critical bugs:**
-- **`SessionStore.saveSession()` is never called after a successful login.** The session token returned by `POST /auth/login/verify` is received but discarded. The `LoginSessionBase.session_token` field is present in the response but is never extracted or stored. As a result:
-  - `SessionStore.isSessionValid()` returns `false` on every app relaunch
-  - Every launch sends the user back to `LoginScreen` regardless of prior login
-  - `AuthApi.logout()` calls `SessionStore.getSessionToken()` which returns `null` — logout body sends `null` as session token
-- **Navigation pattern:** on successful login, pushes `HomeScreen` via `MaterialPageRoute` — not GoRouter.
+`AuthenticationScreen` is now the point where the authenticated session becomes durable: successful login persists the backend session token locally, returns through GoRouter, and triggers the daily Play Integrity vouch asynchronously.
 
 ---
 
@@ -154,7 +147,7 @@ The most complete screen. Auto-starts `_authenticate()` on mount. Handles both l
 
 Minimal stub. Loads `SessionStore.getUserId()` in `initState`. Renders a `FutureBuilder` showing the userId string and two buttons: logout + "Check In Now".
 
-"Check In Now" → pushes `AuthenticationScreen(userId, login: false)`.
+"Check In Now" → routes to `/authenticate?user_id=...`.
 
 **Logout flow:** calls `AuthApi.logout(userId, sessionToken)` (silently ignores errors), then `SessionStore.clearSession()`, then pops to `/` via GoRouter.
 
@@ -179,8 +172,8 @@ All methods are `static`. Constructs a fresh `ApiClient` per call. All responses
 |---|---|
 | `registerOptions(userId, token)` | `POST /auth/register/options` |
 | `registerVerify(response)` | `POST /auth/register/verify` |
-| `checkInOptions(userId)` | `POST /auth/check-in/options` |
-| `checkInVerify(response)` | `POST /auth/check-in/verify` (+ `X-Idempotency-Key` header) |
+| `checkInOptions(userId)` | `POST /auth/check-in/options` (`X-Session-Token` attached) |
+| `checkInVerify(response)` | `POST /auth/check-in/verify` (+ `X-Idempotency-Key`, `X-Session-Token`) |
 | `loginOptions(userId)` | `POST /auth/login/options` |
 | `loginVerify(response)` | `POST /auth/login/verify` |
 | `logout(userId, sessionToken)` | `POST /auth/logout` |
@@ -202,11 +195,11 @@ SharedPreferences wrapper with allowList: `deviceId`, `userId`, `sessionToken`, 
 | `getSessionToken()` | Returns `String?` |
 | `clearSession()` | Removes `sessionToken` + `sessionExpiry` only; preserves `userId` and `deviceId` |
 
-**`saveSession()` is complete but is never called anywhere.** The session is always ephemeral.
+`saveSession()` is called after successful login and is the source of truth for authenticated app restarts.
 
 ### `play_integrity_service.dart`
 
-`submitPlayIntegrityVouch()` — called once on app launch from `main()` (unawaited). Requests PI token from Google, submits to `POST /auth/play-integrity/vouch`. Stores last-vouched date in `SharedPreferences`; skips if already vouched today. Silently handles 503 (PI disabled server-side).
+`submitPlayIntegrityVouch()` — called after successful login once a valid session token exists. Requests a PI token from Google, submits it to `POST /auth/play-integrity/vouch` with `X-Session-Token`, stores the last-vouched date in `SharedPreferences`, and skips repeated submissions on the same day.
 
 ### `passkey.dart`
 
@@ -230,7 +223,7 @@ Instance methods `getUser(userId)` and `updateUser(userId, data)`. Not used anyw
 | `ApiPaths` | 7 path constants + `playIntegrityVouch` (no corresponding wrapper) |
 | `AuthStrings` | Progress labels, BLE dialog strings, BLE/GPS error messages |
 | `RegistrationStrings` | Progress labels and error body |
-| `QrStrings` | 2 error messages |
+| `QrStrings` | Registration QR parsing and unexpected-failure error messages |
 | `HomeStrings` | App bar title, labels, `userId(id)` helper |
 | `LoginStrings` | App title, subtitle, 3 button labels |
 
@@ -252,12 +245,7 @@ Set via `--dart-define` at build time or in `launch.json`.
 
 ## Critical Bugs Summary
 
-| Bug | Severity | Effect |
-|---|---|---|
-| `SessionStore.saveSession()` never called after login | Critical | Every login is ephemeral; app re-launches send user to LoginScreen every time; logout sends null session token |
-| Login session token response discarded in `AuthenticationScreen` | Critical | Cascades from above |
-| `AuthApi` has no Play Integrity vouch method | Low | `ApiPaths.playIntegrityVouch` is dead constant; vouch works via `play_integrity_service.dart` internal call |
-| QR error hardcoded string | Low | One non-constant string leak |
+No known blocking auth/session persistence bugs remain in the Flutter client after the current pass. Remaining work is feature-completeness, not transport correctness.
 
 ---
 
@@ -270,7 +258,6 @@ Set via `--dart-define` at build time or in `launch.json`.
 | Offline QR check-in flow | `qr_scanner_screen` is registration-only; offline attendance QR unbuilt |
 | Home screen content | Class context, session status, PI vouch indicator |
 | Profile / settings screen | Doesn't exist |
-| GoRouter migration for imperative pushes | `HomeScreen` and `RegistrationScreen` use `MaterialPageRoute` |
 | `User` model + `UserApi` wired up | Data class exists, unused |
 
 ---

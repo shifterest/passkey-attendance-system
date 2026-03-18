@@ -94,11 +94,7 @@ class CredentialCreate(CredentialBase):
 class CredentialUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    user_id: str | None = None
-    public_key: str | None = None
-    credential_id: str | None = None
     sign_count: int | None = None
-    registered_at: datetime | None = None
 
 
 class CredentialResponse(CredentialBase):
@@ -111,7 +107,6 @@ class CredentialResponse(CredentialBase):
 # Class policies
 class ClassPolicyBase(BaseModel):
     class_id: str | None = None
-    play_integrity_enabled: bool = False
     standard_assurance_threshold: int = Field(default=5, ge=0)
     high_assurance_threshold: int = Field(default=9, ge=0)
     present_cutoff_minutes: int = Field(default=5, ge=0)
@@ -128,7 +123,6 @@ class ClassPolicyCreate(ClassPolicyBase):
 class ClassPolicyUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    play_integrity_enabled: bool | None = None
     standard_assurance_threshold: int | None = Field(default=None, ge=0)
     high_assurance_threshold: int | None = Field(default=None, ge=0)
     present_cutoff_minutes: int | None = Field(default=None, ge=0)
@@ -238,7 +232,6 @@ class CheckInSessionBase(BaseModel):
     start_time: datetime
     end_time: datetime
     status: str
-    dynamic_token: str
     present_cutoff_minutes: int = Field(default=5, ge=0)
     late_cutoff_minutes: int = Field(default=15, ge=0)
 
@@ -256,7 +249,6 @@ class CheckInSessionUpdate(BaseModel):
     start_time: datetime | None = None
     end_time: datetime | None = None
     status: str | None = None
-    dynamic_token: str | None = None
     present_cutoff_minutes: int | None = Field(default=None, ge=0)
     late_cutoff_minutes: int | None = Field(default=None, ge=0)
 

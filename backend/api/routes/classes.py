@@ -5,6 +5,7 @@ from api.schemas import (
     ClassCreate,
     ClassResponse,
     ClassUpdate,
+    Schedule,
     UserRole,
 )
 from api.services.session_service import require_role
@@ -15,6 +16,10 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/classes", tags=["classes"])
+
+
+def _serialize_schedule(schedule: list[Schedule]):
+    return [entry.model_dump(mode="json") for entry in schedule]
 
 
 @router.get("/", response_model=list[ClassResponse])
@@ -66,7 +71,7 @@ def create_class(
         teacher_id=class_data.teacher_id,
         course_code=class_data.course_code,
         course_name=class_data.course_name,
-        schedule=class_data.schedule,
+        schedule=_serialize_schedule(class_data.schedule),
         standard_assurance_threshold=class_data.standard_assurance_threshold,
         high_assurance_threshold=class_data.high_assurance_threshold,
     )
@@ -97,7 +102,7 @@ def update_class(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
         )
-    for key, value in updated_data.model_dump(exclude_unset=True).items():
+    for key, value in updated_data.model_dump(mode="json", exclude_unset=True).items():
         setattr(class_, key, value)
     db.commit()
     logger.info(

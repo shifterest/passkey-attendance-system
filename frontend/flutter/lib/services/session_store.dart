@@ -20,15 +20,13 @@ class SessionStore {
   static Future<void> saveSession(
     String userId,
     String sessionToken,
-    String expiresIn,
+    int expiresIn,
   ) async {
     await prefs.setString('userId', userId);
     await prefs.setString('sessionToken', sessionToken);
     await prefs.setString(
       'sessionExpiry',
-      DateTime.now()
-          .add(Duration(seconds: int.parse(expiresIn)))
-          .toIso8601String(),
+      DateTime.now().add(Duration(seconds: expiresIn)).toIso8601String(),
     );
   }
 

@@ -7,7 +7,7 @@ import {
 	IconUserCircle,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { getUser } from "@/app/lib/api";
+import { clearBrowserSession, getUser, logout } from "@/app/lib/api";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -34,6 +34,20 @@ export function NavUser() {
 	const [fullName, setFullName] = useState<string | null>(null);
 	const [email, setEmail] = useState<string | null>(null);
 	const [schoolId, setSchoolId] = useState<string | null>(null);
+
+	const handleLogout = async () => {
+		const userId = localStorage.getItem("user_id");
+		const sessionToken = localStorage.getItem("session_token");
+		if (userId && sessionToken) {
+			try {
+				await logout(userId, sessionToken);
+			} catch (error) {
+				console.error("Failed to logout cleanly", error);
+			}
+		}
+		clearBrowserSession();
+		window.location.href = "/login";
+	};
 
 	useEffect(() => {
 		const run = async () => {
@@ -124,7 +138,7 @@ export function NavUser() {
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem>
+						<DropdownMenuItem onClick={handleLogout}>
 							<IconLogout />
 							Log out
 						</DropdownMenuItem>

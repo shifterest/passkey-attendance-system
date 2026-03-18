@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import fastapi
-from db.migrations import ensure_database_schema
+from database.migrations import ensure_database_schema
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 

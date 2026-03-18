@@ -62,6 +62,9 @@ export type AttendanceRecordDto = {
 	timestamp: string;
 	verification_methods: string[];
 	assurance_score: number;
+	assurance_band_recorded: string | null;
+	standard_threshold_recorded: number | null;
+	high_threshold_recorded: number | null;
 	status: string;
 };
 
@@ -77,7 +80,6 @@ export type TeacherDto = {
 	default_policy: {
 		id: string;
 		class_id: string | null;
-		play_integrity_enabled: boolean;
 		standard_assurance_threshold: number;
 		high_assurance_threshold: number;
 		present_cutoff_minutes: number;
@@ -93,7 +95,6 @@ export type CheckInSessionDto = {
 	start_time: string;
 	end_time: string;
 	status: string;
-	dynamic_token: string;
 	present_cutoff_minutes: number;
 	late_cutoff_minutes: number;
 };
@@ -114,26 +115,93 @@ export type RegistrationSessionDto = {
 	url: string;
 };
 
+export type LoginSessionDto = {
+	user_id: string;
+	session_token: string;
+	created_at: string;
+	expires_at: string;
+	expires_in: number;
+};
+
+function setSessionCookie(sessionToken: string, expiresIn: number) {
+	document.cookie = `session_token=${encodeURIComponent(sessionToken)}; path=/; max-age=${expiresIn}; samesite=lax`;
+}
+
+export function persistBrowserSession(session: LoginSessionDto) {
+	if (typeof window === "undefined") return;
+	localStorage.setItem("user_id", session.user_id);
+	localStorage.setItem("session_token", session.session_token);
+	localStorage.setItem("expires_in", String(session.expires_in));
+	setSessionCookie(session.session_token, session.expires_in);
+}
+
+export function clearBrowserSession() {
+	if (typeof window === "undefined") return;
+	localStorage.removeItem("user_id");
+	localStorage.removeItem("session_token");
+	localStorage.removeItem("expires_in");
+	document.cookie = "session_token=; path=/; max-age=0; samesite=lax";
+}
+
+async function getSessionToken() {
+	if (typeof window !== "undefined") {
+		return window.localStorage.getItem("session_token");
+	}
+	const { cookies } = await import("next/headers");
+	const cookieStore = await cookies();
+	return cookieStore.get("session_token")?.value ?? null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const apiOrigin = getApiOrigin();
 	if (!apiOrigin) throw new Error(ErrorMessages.apiOriginNotSet);
+	const headers = new Headers(init?.headers);
+	const sessionToken = await getSessionToken();
+	if (sessionToken) {
+		headers.set("X-Session-Token", sessionToken);
+	}
 	const requestInit: RequestInit | undefined =
 		// Same browser check!
 		typeof window === "undefined"
 			? // no-store ensures data freshness so that any server requests are up to date
-				{ ...init, cache: (init?.cache ?? "no-store") as RequestCache }
-			: init;
+				{ ...init, headers, cache: (init?.cache ?? "no-store") as RequestCache }
+			: { ...init, headers };
 	const res = await fetch(`${apiOrigin}${path}`, requestInit);
 	if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+	if (res.status === 204) return undefined as T;
 	return res.json() as Promise<T>;
 }
 
-export function getBootstrapOperator() {
-	return request<UserDto>(ApiPaths.bootstrapOperator, { method: "POST" });
+async function requestAll<T>(
+	pathFactory: (offset: number, limit: number) => string,
+	pageSize = 500,
+) {
+	const results: T[] = [];
+	let offset = 0;
+	while (true) {
+		const page = await request<T[]>(pathFactory(offset, pageSize));
+		results.push(...page);
+		if (page.length < pageSize) break;
+		offset += page.length;
+	}
+	return results;
+}
+
+export function getBootstrapStatus() {
+	return request<boolean>(ApiPaths.bootstrapStatus);
+}
+
+export function bootstrapOperator(bootstrapToken: string) {
+	return request<LoginSessionDto>(ApiPaths.bootstrapOperator, {
+		method: "POST",
+		headers: {
+			"X-Bootstrap-Token": bootstrapToken,
+		},
+	});
 }
 
 export function getUser(userId: string) {
-	return request<UserExtendedDto>(ApiPaths.user(userId));
+	return request<UserDto>(ApiPaths.user(userId));
 }
 
 export function getUsers(role?: string) {
@@ -143,6 +211,10 @@ export function getUsers(role?: string) {
 
 export function getStudents() {
 	return request<UserExtendedDto[]>(ApiPaths.students);
+}
+
+export function getStudent(studentId: string) {
+	return request<UserExtendedDto>(ApiPaths.student(studentId));
 }
 
 export function registerUser(userId: string) {
@@ -175,6 +247,13 @@ export function getSessions(params?: { limit?: number; offset?: number }) {
 	return request<CheckInSessionDto[]>(`${ApiPaths.sessions}${qs ? `?${qs}` : ""}`);
 }
 
+export function getAllSessions() {
+	return requestAll<CheckInSessionDto>(
+		(offset, limit) => `${ApiPaths.sessions}?limit=${limit}&offset=${offset}`,
+		200,
+	);
+}
+
 export function getSessionsByClass(
 	classId: string,
 	params?: { limit?: number; offset?: number; order?: string },
@@ -199,6 +278,13 @@ export function getRecords(params?: { limit?: number; offset?: number }) {
 	if (params?.offset !== undefined) q.set("offset", String(params.offset));
 	const qs = q.toString();
 	return request<AttendanceRecordDto[]>(`${ApiPaths.records}${qs ? `?${qs}` : ""}`);
+}
+
+export function getAllRecords() {
+	return requestAll<AttendanceRecordDto>(
+		(offset, limit) => `${ApiPaths.records}?limit=${limit}&offset=${offset}`,
+		500,
+	);
 }
 
 export function getRecordsBySession(
@@ -245,8 +331,46 @@ export function getAuditEvents(params?: {
 	return request<AuditEventDto[]>(`${ApiPaths.auditEvents}${qs ? `?${qs}` : ""}`);
 }
 
-export function getUsers() {
-	return request<UserDto[]>(ApiPaths.users);
+export function closeSession(sessionId: string) {
+	return request<CheckInSessionDto>(ApiPaths.closeSession(sessionId), {
+		method: "POST",
+	});
+}
+
+export function approveRecord(recordId: string, reason?: string) {
+	return request<AttendanceRecordDto>(ApiPaths.manualApproval(recordId), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ reason }),
+	});
+}
+
+export function createManualRecord(payload: {
+	session_id: string;
+	student_id: string;
+	reason: string;
+	backdated_timestamp?: string;
+	status?: string;
+}) {
+	return request<AttendanceRecordDto>(ApiPaths.manualRecord, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(payload),
+	});
+}
+
+export function logout(userId: string, sessionToken: string) {
+	return request<void>("/auth/logout", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ user_id: userId, session_token: sessionToken }),
+	});
 }
 
 export function getAuditExportUrl(params?: {
@@ -263,6 +387,6 @@ export function getAuditExportUrl(params?: {
 	if (params?.start_at) q.set("start_at", params.start_at);
 	if (params?.end_at) q.set("end_at", params.end_at);
 	const qs = q.toString();
-	const origin = typeof window === "undefined" ? SERVER_API_ORIGIN : CLIENT_API_ORIGIN;
+	const origin = getApiOrigin();
 	return `${origin}${ApiPaths.auditExport}${qs ? `?${qs}` : ""}`;
 }

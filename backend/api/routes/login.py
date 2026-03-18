@@ -224,10 +224,7 @@ def logout(options_data: LogoutOptionsBase, db: Session = Depends(get_db)):
         f"login_session_token:{options_data.session_token}"
     )
     if not isinstance(session_token_bytes, bytes):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.LOGIN_SESSION_NOT_FOUND,
-        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     session_token = session_token_bytes.decode()
     if session_token != options_data.user_id:
         raise HTTPException(

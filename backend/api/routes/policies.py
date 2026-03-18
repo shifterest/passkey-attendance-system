@@ -95,7 +95,6 @@ def create_policy(
         id=str(uuid.uuid4()),
         created_by=created_by,
         class_id=policy_data.class_id,
-        play_integrity_enabled=policy_data.play_integrity_enabled,
         standard_assurance_threshold=policy_data.standard_assurance_threshold,
         high_assurance_threshold=policy_data.high_assurance_threshold,
         present_cutoff_minutes=policy_data.present_cutoff_minutes,

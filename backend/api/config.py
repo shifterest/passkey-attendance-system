@@ -35,11 +35,13 @@ class Settings(BaseSettings):
     auth_user_ratelimit_window: int = 60
 
     # Play Integrity
+    play_integrity_enabled: bool = False
     play_integrity_package_name: str = ""
     play_integrity_api_key: str = ""
+    android_key_attestation_required: bool = True
 
-    # Internet-dependent features
-    internet_features_enabled: bool = False
+    # Outbound integrity checks
+    outbound_integrity_checks_enabled: bool = False
     crl_check_enabled: bool = True
 
     # Bootstrap
@@ -49,6 +51,7 @@ class Settings(BaseSettings):
     # Network proximity
     subnet_cidr: str | None = None
     trusted_proxy: str | None = None
+    ble_token_ttl_seconds: int = 30
 
     # School geofence
     school_lat: float | None = None

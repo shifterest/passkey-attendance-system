@@ -252,6 +252,7 @@ def approve_record(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
             )
+    was_manually_approved = bool(record.manually_approved)
     record.manually_approved = True
     record.manually_approved_by = current_user.id
     record.manually_approved_reason = body.reason
@@ -263,13 +264,13 @@ def approve_record(
         detail=ManualApprovalDetail(
             reason=body.reason,
             record_user_id=record.user_id,
-            old_value=ApprovalStateDetail(manually_approved=False),
+            old_value=ApprovalStateDetail(manually_approved=was_manually_approved),
             new_value=ApprovalStateDetail(manually_approved=True),
         ).model_dump(),
         db=db,
     )
     logger.info(
-        Logs.RECORD_APPROVED.format(record_id=record.id, actor_id=current_user.id)
+        Logs.RECORD_APPROVED.format(record_id=record.id, user_id=current_user.id)
     )
     return record
 
@@ -318,6 +319,30 @@ def create_manual_record(
         if body.status is not None
         else resolve_attendance_status(attempted_at=timestamp, session=session).value
     )
+    effective_policy = (
+        db.query(ClassPolicy)
+        .filter(
+            ClassPolicy.created_by == session.attended_class.teacher_id,
+            ClassPolicy.class_id == session.class_id,
+        )
+        .first()
+        or db.query(ClassPolicy)
+        .filter(
+            ClassPolicy.created_by == session.attended_class.teacher_id,
+            ClassPolicy.class_id.is_(None),
+        )
+        .first()
+    )
+    effective_standard = (
+        effective_policy.standard_assurance_threshold
+        if effective_policy
+        else session.attended_class.standard_assurance_threshold
+    )
+    effective_high = (
+        effective_policy.high_assurance_threshold
+        if effective_policy
+        else session.attended_class.high_assurance_threshold
+    )
     new_record = AttendanceRecord(
         id=str(uuid.uuid4()),
         session_id=body.session_id,
@@ -327,6 +352,11 @@ def create_manual_record(
         flag_reason=body.reason,
         verification_methods=[AttendanceRecordVerificationMethods.MANUAL.value],
         assurance_score=0,
+        assurance_band_recorded=compute_assurance_band(
+            0, effective_standard, effective_high
+        ),
+        standard_threshold_recorded=effective_standard,
+        high_threshold_recorded=effective_high,
         status=attendance_status,
         sync_pending=False,
         network_anomaly=False,
@@ -354,7 +384,7 @@ def create_manual_record(
         Logs.MANUAL_RECORD_CREATED.format(
             record_id=new_record.id,
             user_id=body.student_id,
-            actor_id=current_user.id,
+            performed_by_user_id=current_user.id,
         )
     )
     return new_record
@@ -488,45 +518,6 @@ def evaluate_assurance(
         )
 
     return results
-
-
-@router.post("/")
-def create_record():
-    raise HTTPException(
-        status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-        detail=Messages.RECORD_CREATE_FORBIDDEN,
-    )
-    # session = (
-    #     db.query(AttendanceSession)
-    #     .filter(AttendanceSession.id == record_data["session_id"])
-    #     .first()
-    # )
-    # user = db.query(User).filter(User.id == record_data["user_id"]).first()
-    # if session is None:
-    #     return {"message": "Error adding record: session not found"}
-    # if user is None:
-    #     return {"message": "Error adding record: user not found"}
-    # new_uuid = str(uuid.uuid4())
-    # while True:
-    #     record = (
-    #         db.query(AttendanceRecord).filter(AttendanceRecord.id == new_uuid).first()
-    #     )
-    #     if record is None:
-    #         break
-    #     new_uuid = str(uuid.uuid4())
-    # new_record = AttendanceRecord(
-    #     id=new_uuid,
-    #     session_id=record_data["session_id"],
-    #     user_id=record_data["user_id"],
-    #     timestamp=record_data["timestamp"],
-    #     verification_methods=record_data["verification_methods"],
-    #     status=record_data["status"],
-    # )
-    # db.add(new_record)
-    # db.commit()
-    # db.refresh(new_record)
-    # logger.info(f"Added record: {new_record.id}")
-    # return new_record
 
 
 @router.put("/{record_id}", response_model=AttendanceRecordResponse)

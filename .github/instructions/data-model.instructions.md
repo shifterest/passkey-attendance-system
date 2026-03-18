@@ -130,14 +130,13 @@ A user can hold only **one role**. The deferred Organizations model allows a sin
 | `id` | `str` PK | UUID |
 | `created_by` | `str \| None` | User ID of creating teacher or admin |
 | `class_id` | `str \| None` FK → `classes.id` | Null = deployment default policy; non-null = class-scoped override |
-| `play_integrity_enabled` | `bool` | Default `False` |
 | `standard_assurance_threshold` | `int` | Default 5 |
 | `high_assurance_threshold` | `int` | Default 9 |
 | `present_cutoff_minutes` | `int` | Default 5 |
 | `late_cutoff_minutes` | `int` | Default 15 |
 | `max_check_ins` | `int` | Default 3 |
 
-**Two-tier inheritance:** A null-`class_id` policy is the deployment default. A class-scoped policy overrides the default for that class. Only one policy per (creator, class_id) pair is allowed. The `Class` model also directly stores `standard_assurance_threshold` and `high_assurance_threshold` — these are the authoritative values used at band computation time; `ClassPolicy` thresholds are an override input.
+**Two-tier inheritance:** A null-`class_id` policy is the deployment default for class-specific thresholds and timing. A class-scoped policy overrides the default for that class. Only one policy per (creator, class_id) pair is allowed. The `Class` model also directly stores `standard_assurance_threshold` and `high_assurance_threshold` — these are the authoritative values used at band computation time; `ClassPolicy` thresholds are an override input. Play Integrity and Android Key Attestation enforcement are deployment-level config, not per-class fields.
 
 ---
 
@@ -166,13 +165,14 @@ Uniqueness: one enrollment per (class_id, student_id) pair enforced in the route
 | `start_time` | `datetime` | UTC; when teacher opened the window |
 | `end_time` | `datetime` | UTC; `start_time + late_cutoff_minutes` |
 | `status` | `str` | `open` or `closed` |
-| `dynamic_token` | `str` | Initial BLE session nonce; also stored in Redis with 30s TTL |
 | `present_cutoff_minutes` | `int` | Default 5; copied from policy at session open time |
 | `late_cutoff_minutes` | `int` | Default 15; copied from policy at session open time |
 
 **Status semantics:** `open` allows new check-in attempts. `closed` makes the window immutable. After close, attendance status on all records for this session becomes immutable. Only one `open` session per class at a time (enforced in route layer).
 
-**Session window:** `status` transitions from `open` → `closed` when the teacher explicitly closes it, or when the late cutoff elapses (the system does not auto-close — the teacher must close manually or via the dashboard).
+**BLE nonce storage:** the live BLE nonce is stored in Redis at `ble_token:{session_id}` with TTL controlled by deployment config (`BLE_TOKEN_TTL_SECONDS`, default 30). It is not stored on the SQL row.
+
+**Session window:** `status` transitions from `open` → `closed` when the teacher explicitly closes it, or when the late cutoff elapses (the system does not auto-close — the teacher must close manually or via the dashboard). Within one active schedule block, the first opened session is treated as the attendance window; any later sessions are implicit presence checks. No stored `session_type` field exists.
 
 ---
 

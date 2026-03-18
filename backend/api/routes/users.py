@@ -80,7 +80,7 @@ def update_user(
     user_id: str,
     updated_data: UserUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
@@ -94,7 +94,7 @@ def update_user(
     db.commit()
     log_audit_event(
         event_type=AuditEvents.USER_UPDATED,
-        actor_id=None,
+        actor_id=current_user.id,
         target_id=user.id,
         detail=UserUpdatedDetail(
             updated_fields=list(updated_fields.keys()),

@@ -43,7 +43,12 @@ def play_integrity_vouch(
     current_user: User = Depends(require_role("student")),
     db: Session = Depends(get_db),
 ):
-    if not settings.play_integrity_package_name or not settings.play_integrity_api_key:
+    if (
+        not settings.outbound_integrity_checks_enabled
+        or not settings.play_integrity_enabled
+        or not settings.play_integrity_package_name
+        or not settings.play_integrity_api_key
+    ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=Messages.PLAY_INTEGRITY_DISABLED,

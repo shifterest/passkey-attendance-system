@@ -47,6 +47,9 @@ class Messages:
     SESSION_ALREADY_OPEN = "An attendance session is already open for this class"
     SESSION_ALREADY_CLOSED = "Session is already closed"
     SESSION_DELETED = "Session deleted"
+    SESSION_CREATE_FORBIDDEN = (
+        "Sessions can only be opened through the teacher session open endpoint"
+    )
 
     # Attendance records
     RECORD_NOT_FOUND = "Record not found"
@@ -162,7 +165,7 @@ class Logs:
     BLE_TOKEN_ROTATED = "BLE token rotated for session {session_id}"
     SESSION_ADDED = "Added session: {session_id}"
     SESSION_EDITED = "Updated session: {session_id}"
-    SESSION_CLOSED = "Session {session_id} closed by {actor_id}"
+    SESSION_CLOSED = "Session {session_id} closed by user {user_id}"
     SESSION_TIMEZONE_MISMATCH = (
         "Teacher {teacher_id} client timezone offset {client_offset} differs "
         "from server timezone {server_timezone} by {diff_minutes:.0f} minutes"
@@ -171,10 +174,8 @@ class Logs:
     # Attendance records
     RECORD_ADDED = "Added record: {record_id} for user {full_name} (ID: {user_id})"
     RECORD_EDITED = "Updated record: {record_id}"
-    RECORD_APPROVED = "Record {record_id} manually approved by {actor_id}"
-    MANUAL_RECORD_CREATED = (
-        "Manual attendance record {record_id} created for user {user_id} by {actor_id}"
-    )
+    RECORD_APPROVED = "Record {record_id} manually approved by user {user_id}"
+    MANUAL_RECORD_CREATED = "Manual attendance record {record_id} created for user {user_id} by user {performed_by_user_id}"
 
     # Audit events
     AUDIT_EVENT_LOGGED = (
@@ -190,7 +191,9 @@ class Logs:
         "Legacy Android attestation root accepted for user_id={user_id} "
         "credential_id={credential_id} root_serial={root_serial_hex}"
     )
-    CREDENTIAL_REVOKED = "Credential {credential_id} revoked by {actor_id}"
+    CREDENTIAL_REVOKED = (
+        "Credential {credential_id} revoked by user {performed_by_user_id}"
+    )
     CREDENTIAL_CRL_VERIFIED = "CRL check passed for credential: {credential_id}"
     CREDENTIAL_CRL_REVOKED = "CRL check failed — credential revoked: {credential_id}"
     REGISTER_VERIFY_FAILED = "Registration verification failed: {error}"

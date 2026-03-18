@@ -86,11 +86,13 @@ The UI uses server-returned values to render both interpretations. A policy drif
 
 ## Class Policy Configuration
 
-Two-tier inheritance: admin sets deployment defaults; teachers set class-level overrides with "Use defaults" toggle.
+Two-tier inheritance applies to per-class thresholds and timing. Outbound integrity gates stay deployment-level.
 
 | Parameter | Default | Current storage |
 |---|---|---|
-| `play_integrity_enabled` | false | `ClassPolicy` |
+| `play_integrity_enabled` | false | deployment config (`PLAY_INTEGRITY_ENABLED`) |
+| `outbound_integrity_checks_enabled` | true | deployment config (`OUTBOUND_INTEGRITY_CHECKS_ENABLED`) |
+| `android_key_attestation_required` | true | deployment config (`ANDROID_KEY_ATTESTATION_REQUIRED`) |
 | `standard_assurance_threshold` | 5 | `Class` (also `ClassPolicy`) |
 | `high_assurance_threshold` | 9 | `Class` (also `ClassPolicy`) |
 | `present_cutoff_minutes` | 5 | `CheckInSession` (from policy/config at session open) |
@@ -104,7 +106,7 @@ Play Integrity is off by default. Only enable in internet-connected deployments 
 
 - PI is verified once per day per device, not per check-in, to avoid per-check-in Google API quota costs.
 - Student app calls `POST /auth/play-integrity/vouch` with a verdict token. Backend verifies with Google, evaluates verdict (requires `MEETS_DEVICE_INTEGRITY` at minimum), stores vouch in Redis keyed on `credential_id` with 24h TTL.
-- At check-in: `integrity_vouched = play_integrity_enabled AND has_valid_vouch(credential_id)`.
+- At check-in: `integrity_vouched = OUTBOUND_INTEGRITY_CHECKS_ENABLED AND PLAY_INTEGRITY_ENABLED AND has_valid_vouch(credential_id)`.
 - Rate limit: 3 successful submissions per `credential_id` per calendar day. Redis key: `pi_vouch_daily_count:{credential_id}:{date}`. Failed submissions do not consume a slot.
 - A failed vouch attempt does not invalidate an existing valid vouch — only successful submissions replace stored state.
 - Vouch keyed on credential ID, not user ID. Multi-credential deployments have independent vouch state per enrolled device.

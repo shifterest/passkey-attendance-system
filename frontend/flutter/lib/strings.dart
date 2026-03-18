@@ -36,6 +36,10 @@ final class AuthStrings {
   static const String errorNoBleSignal = 'No BLE proximity signal detected';
   static const String errorMissingSessionId =
       'Missing session ID in check-in options';
+  static const String errorMissingSessionToken =
+      'Missing session token in login response';
+  static const String errorMissingSessionExpiry =
+      'Missing session expiry in login response';
 }
 
 final class RegistrationStrings {
@@ -50,6 +54,8 @@ final class RegistrationStrings {
 final class QrStrings {
   static const String errorInvalidQr = 'Invalid registration QR code';
   static const String errorMissingData = 'Missing registration data';
+  static const String errorUnexpectedFailure =
+      'Unable to process the scanned QR code';
 }
 
 final class HomeStrings {

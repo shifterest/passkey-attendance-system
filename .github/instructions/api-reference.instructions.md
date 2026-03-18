@@ -135,19 +135,20 @@ Checks: open session exists for student's enrolled class, enrollment is valid, r
 **Response:** `AttendanceRecordResponse`  
 
 Full check-in pipeline in order:
-1. Verify passkey (UV required)
-2. Verify device public key matches enrolled credential; emit `DEVICE_KEY_MISMATCH` audit if not
-3. Verify device signature over PAS JSON v1 (`flow: "check_in"`); emit `DEVICE_SIGNATURE_FAILURE` audit if not
-4. Check enrollment
-5. Check retry limit
-6. Check BLE token matches Redis or DB `dynamic_token`
-7. Average RSSI readings; bucket into BLE score
-8. Evaluate GPS geofence (if configured), store `gps_in_geofence`, store `gps_is_mock`
-9. Check PI vouch state (`play_integrity_enabled` from class policy → Redis vouch key)
-10. Consume network proximity flag from Redis
-11. Lazy CRL check on `Credential.attestation_crl_verified` (if `INTERNET_FEATURES_ENABLED` and `CRL_CHECK_ENABLED`)
-12. Compute `assurance_score`, `assurance_band`, attendance `status`
-13. Write `AttendanceRecord`; cache idempotency response in Redis
+1. Check retry budget for `{session_id}:{user_id}`
+2. Consume pending challenge + `issued_at_ms`; reject stale device payloads
+3. Reject immediately if the credential is already marked `attestation_crl_verified = false`
+4. Verify passkey (UV required)
+5. Re-check enrollment against the resolved session
+6. Verify device public key matches enrolled credential; emit `DEVICE_KEY_MISMATCH` audit if not
+7. Verify device signature over PAS JSON v1 (`flow: "check_in"`); emit `DEVICE_SIGNATURE_FAILURE` audit if not
+8. Check BLE token against Redis `ble_token:{session_id}` only
+9. Average RSSI readings; bucket into BLE score
+10. Evaluate GPS geofence (if configured), store `gps_in_geofence`, store `gps_is_mock`
+11. Check PI vouch state (`OUTBOUND_INTEGRITY_CHECKS_ENABLED && PLAY_INTEGRITY_ENABLED` → Redis vouch key)
+12. Consume network proximity flag from `check_in_network_ok:{user_id}:{session_id}`
+13. Compute `assurance_score`, `assurance_band`, attendance `status`
+14. Write `AttendanceRecord`; cache idempotency response in Redis
 
 ---
 
@@ -311,20 +312,20 @@ Emits `ENROLLMENT_DELETED` audit event.
 
 ### `POST /sessions/`
 **Auth:** admin, operator  
-**Body:** `CheckInSessionCreate`  
-**Response:** `CheckInSessionResponse`  
-Manual session creation (admin override).
+**Body:** none  
+**Response:** 405  
+Direct session creation is disabled. Use `POST /sessions/open/teacher` so the backend can resolve the active scheduled class and initialize Redis state correctly.
 
 ### `POST /sessions/open/teacher`
 **Auth:** teacher (self), admin, operator  
 **Body:** `{ teacher_id, present_cutoff_minutes?, late_cutoff_minutes?, client_time? }`  
 **Response:** `CheckInSessionResponse`  
-Matches current server time (adjusted to `SERVER_TIMEZONE`) against all schedule blocks for all of teacher's classes. Rejects if 0 matching blocks (409) or >1 matching block (409 ambiguous). Creates session with `dynamic_token`, stores BLE nonce in Redis (`ble_token:{session_id}`) with 30s TTL.
+Matches current server time (adjusted to `SERVER_TIMEZONE`) against all schedule blocks for all of teacher's classes. Rejects if 0 matching blocks (404) or >1 matching block (409 ambiguous). Creates a session and stores the BLE nonce in Redis (`ble_token:{session_id}`) with TTL from `BLE_TOKEN_TTL_SECONDS`.
 
 ### `GET /sessions/{session_id}/ble-token`
 **Auth:** teacher (own only), admin, operator  
 **Response:** `{ ble_token: str, ttl: int }`  
-Returns current BLE token from Redis. If key has expired, generates and stores a new 30s nonce. Teacher device polls this to get the current broadcast value.
+Returns current BLE token from Redis. If the key has expired, generates and stores a new nonce using `BLE_TOKEN_TTL_SECONDS`. Teacher device polls this to get the current broadcast value.
 
 ### `POST /sessions/{session_id}/close`
 **Auth:** teacher (own only), admin, operator  
@@ -387,7 +388,12 @@ Sets `manually_approved = True`, stores `manually_approved_by` and `manually_app
 }
 ```
 **Response:** `AttendanceRecordResponse`  
-Creates record with `assurance_score = 0`, `is_flagged = True`, `verification_methods = ["manual"]`. `backdated_timestamp` is optional. `status` defaults to `present`. Emits `MANUAL_ATTENDANCE` audit event.
+Creates record with `assurance_score = 0`, `is_flagged = True`, `verification_methods = ["manual"]`, and the recorded threshold snapshot fields populated from the effective class policy. `backdated_timestamp` is optional. If `status` is omitted, the backend resolves it from the provided timestamp and session window. Emits `MANUAL_ATTENDANCE` audit event.
+
+### `PUT /records/{record_id}`
+**Auth:** teacher (own), admin, operator  
+**Body:** `AttendanceRecordUpdate` → `{ is_flagged?, flag_reason?, sync_pending? }`  
+**Response:** `AttendanceRecordResponse`
 
 ### `POST /records/assurance/evaluate`
 **Auth:** teacher (own), admin, operator  
@@ -424,9 +430,9 @@ Teachers see only policies they created.
 
 ### `POST /policies`
 **Auth:** teacher, admin, operator  
-**Body:** `ClassPolicyCreate` → `{ class_id?, play_integrity_enabled?, standard_assurance_threshold?, high_assurance_threshold?, present_cutoff_minutes?, late_cutoff_minutes?, max_check_ins? }`  
+**Body:** `ClassPolicyCreate` → `{ class_id?, standard_assurance_threshold?, high_assurance_threshold?, present_cutoff_minutes?, late_cutoff_minutes?, max_check_ins? }`  
 **Response:** `ClassPolicyResponse`  
-`created_by` is set to the requesting user's ID. 409 if a policy for this (creator, class_id) already exists.
+For teacher-created policies, `created_by` is the teacher's user ID. Admin/operator-created default policies use `created_by = null`. 409 if a policy for this `(created_by, class_id)` pair already exists.
 
 ### `PUT /policies/{policy_id}`
 **Auth:** teacher (own), admin, operator  

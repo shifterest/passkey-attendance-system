@@ -89,7 +89,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                   } catch (e) {
                     GoRouter.of(context).go('/');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('An error occurred')),
+                      const SnackBar(
+                        content: Text(QrStrings.errorUnexpectedFailure),
+                      ),
                     );
                   } finally {
                     _isBusy = false;
