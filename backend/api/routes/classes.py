@@ -10,7 +10,8 @@ from api.schemas import (
 )
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
-from database import Class, User, get_db
+from database.connection import get_db
+from database.models import Class, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -126,4 +127,4 @@ def delete_class(
         )
     db.delete(class_)
     db.commit()
-    return Response(status_code=204)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

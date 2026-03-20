@@ -1,16 +1,18 @@
 import logging
 import uuid
 
-from api.models import UserRoleChange, UserUpdatedDetail
 from api.schemas import (
     UserCreate,
     UserResponse,
+    UserRoleChange,
     UserUpdate,
+    UserUpdatedDetail,
 )
 from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
-from database import User, get_db
+from database.connection import get_db
+from database.models import User
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -48,9 +50,6 @@ def get_user(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
     return user
-
-
-# TODO: Implement get users by filter
 
 
 @router.post("/", response_model=UserResponse)

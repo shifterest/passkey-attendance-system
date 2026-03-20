@@ -1,18 +1,17 @@
 import cbor2
-from api.services.android.roots_service import (
+from api.helpers.android.roots import (
     google_hardware_attestation_roots as _google_hardware_attestation_roots,
 )
-from api.services.android.roots_service import (
+from api.helpers.android.roots import (
     is_legacy_google_hardware_attestation_root,
     is_trusted_google_attestation_root,
 )
+from api.strings import Messages
 from cryptography import x509
 from cryptography.x509 import ObjectIdentifier
 from pyasn1.codec.der.decoder import decode as der_decode
 from webauthn.helpers.asn1.android_key import KeyDescription
 from webauthn.helpers.structs import AttestationFormat
-
-from api.strings import Messages
 
 _ANDROID_KEY_ATTESTATION_OID = "1.3.6.1.4.1.11129.2.1.17"
 _ATTESTATION_KEY_OID = ObjectIdentifier(_ANDROID_KEY_ATTESTATION_OID)
@@ -92,4 +91,3 @@ def validate_android_key_attestation(
 
     is_legacy_root = is_legacy_google_hardware_attestation_root(root_certificate)
     return key_security_level, is_legacy_root, root_serial_hex
-

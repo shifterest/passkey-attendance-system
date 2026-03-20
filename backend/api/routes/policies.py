@@ -4,7 +4,8 @@ import uuid
 from api.schemas import ClassPolicyCreate, ClassPolicyResponse, ClassPolicyUpdate
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
-from database import Class, ClassPolicy, User, get_db
+from database.connection import get_db
+from database.models import Class, ClassPolicy, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -144,4 +145,4 @@ def delete_policy(
     _assert_can_modify(policy, current_user)
     db.delete(policy)
     db.commit()
-    return Response(status_code=204)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

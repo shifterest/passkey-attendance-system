@@ -4,7 +4,8 @@ from api.schemas import UserRole, UserStudentResponse
 from api.services.session_service import require_role
 from api.services.user_service import get_student_details
 from api.strings import Messages
-from database import Class, ClassEnrollment, User, get_db
+from database.connection import get_db
+from database.models import Class, ClassEnrollment, User
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 

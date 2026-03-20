@@ -3,7 +3,7 @@ import io
 import uuid
 from typing import Literal
 
-from database import User
+from database.models import User
 from sqlalchemy.orm import Session
 
 ImportFormat = Literal["generic", "banner"]

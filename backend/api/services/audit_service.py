@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from database import AuditEvent
+from database.models import AuditEvent
 from sqlalchemy.orm import Session
 
 

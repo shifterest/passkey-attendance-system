@@ -1,7 +1,7 @@
 import logging
 
 from api.redis import redis_client
-from database import get_db
+from database.connection import get_db
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text

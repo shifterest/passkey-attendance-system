@@ -12,12 +12,11 @@ import {
 	IconUserEdit,
 } from "@tabler/icons-react";
 import type * as React from "react";
-import { useEffect, useState } from "react";
-import { getUser } from "@/app/lib/api";
 import { type IconItem, navigation } from "@/app/lib/navigation";
 import { NavInformation } from "@/components/custom/nav-information";
 import { NavManagement } from "@/components/custom/nav-management";
 import { NavUser } from "@/components/custom/nav-user";
+import { useUser } from "@/components/custom/user-context";
 import {
 	Sidebar,
 	SidebarContent,
@@ -44,24 +43,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		records: IconClipboard,
 	};
 
-	const [loading, setLoading] = useState(true);
-	const [role, setRole] = useState<string | null>(null);
-
-	useEffect(() => {
-		const run = async () => {
-			try {
-				const userId = localStorage.getItem("user_id");
-				if (!userId) throw new Error("Missing user ID");
-				const data = await getUser(userId);
-				setRole(data.role);
-			} catch (error) {
-				console.error("Failed to fetch user data", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-		run();
-	}, []);
+	const { user, loading } = useUser();
+	const role = user?.role ?? null;
 
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>

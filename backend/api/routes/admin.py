@@ -8,7 +8,8 @@ from api.services.auth_service import create_registration_session
 from api.services.import_service import process_import
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
-from database import Credential, RegistrationSession, User, get_db
+from database.connection import get_db
+from database.models import Credential, RegistrationSession, User
 from fastapi import (
     APIRouter,
     Depends,

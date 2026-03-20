@@ -3,15 +3,16 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from api.models import (
-    DeviceAttestationFailureDetail,
-    DeviceAttestationVerifiedDetail,
-)
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
+from api.helpers.base64url import encode_base64url
+from api.helpers.credential import normalize_credential_id_base64url
+from api.helpers.device_payload import build_device_payload
 from api.redis import redis_client
 from api.schemas import (
     CredentialResponse,
+    DeviceAttestationFailureDetail,
+    DeviceAttestationVerifiedDetail,
     RegistrationOptionsBase,
     RegistrationResponseBase,
 )
@@ -21,19 +22,16 @@ from api.services.attestation_service import (
 )
 from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
-    build_device_payload,
     check_auth_rate_limit,
     credential_limit_reached,
     issued_at_ms_now,
     load_issued_at_ms,
+    validate_registration_token,
     verify_device_signature,
 )
-from api.services.device_service import (
-    encode_base64url,
-    normalize_credential_id_base64url,
-)
 from api.strings import AuditEvents, Logs, Messages
-from database import Credential, User, get_db
+from database.connection import get_db
+from database.models import Credential, User
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -66,21 +64,7 @@ def register_options(
             detail=Messages.USER_NOT_FOUND,
         )
 
-    user_id_bytes = redis_client.get(
-        f"registration_session_token:{options_data.registration_token}"
-    )
-    if not isinstance(user_id_bytes, bytes):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.REGISTRATION_TOKEN_INVALID,
-        )
-    user_id = user_id_bytes.decode()
-
-    if user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
-        )
+    validate_registration_token(options_data.registration_token, user.id)
 
     if credential_limit_reached(user.id, db):
         raise HTTPException(
@@ -131,21 +115,7 @@ def register_verify(
             detail=Messages.USER_NOT_FOUND,
         )
 
-    user_id_bytes = redis_client.getdel(
-        f"registration_session_token:{response_data.registration_token}"
-    )
-    if not isinstance(user_id_bytes, bytes):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.REGISTRATION_TOKEN_INVALID,
-        )
-    user_id = user_id_bytes.decode()
-
-    if user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
-        )
+    validate_registration_token(response_data.registration_token, user.id, consume=True)
 
     challenge_key = f"registration_challenge:{user.id}"
     issued_at_ms_key = f"registration_issued_at_ms:{user.id}"
@@ -245,6 +215,7 @@ def register_verify(
         db.commit()
         db.refresh(new_credential)
         if settings.android_key_attestation_required:
+            assert key_security_level is not None
             log_audit_event(
                 AuditEvents.DEVICE_ATTESTATION_VERIFIED,
                 None,

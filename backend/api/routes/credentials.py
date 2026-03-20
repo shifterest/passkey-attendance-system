@@ -1,11 +1,16 @@
 import logging
 
-from api.models import CredentialKeyDetail, CredentialRevokedDetail
-from api.schemas import CredentialResponse, CredentialUpdate
+from api.schemas import (
+    CredentialKeyDetail,
+    CredentialResponse,
+    CredentialRevokedDetail,
+    CredentialUpdate,
+)
 from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
-from database import Credential, User, get_db
+from database.connection import get_db
+from database.models import Credential, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -109,4 +114,4 @@ def delete_credential(
             performed_by_user_id=current_user.id,
         )
     )
-    return Response(status_code=204)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

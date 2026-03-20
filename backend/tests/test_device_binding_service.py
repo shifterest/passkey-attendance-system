@@ -1,10 +1,10 @@
 from api.contracts.device import DeviceBindingFlow
 from api.schemas import DeviceBindingPayload
-from api.services.device_service import (
-    canonical_payload_bytes,
+from api.helpers.credential import (
     credential_id_matches,
     normalize_credential_id_base64url,
 )
+from api.helpers.device_payload import canonical_payload_bytes
 
 
 def test_canonical_payload_bytes_pas_json_v1_shape():

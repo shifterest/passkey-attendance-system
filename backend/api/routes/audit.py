@@ -5,7 +5,8 @@ from datetime import datetime
 from api.schemas import AuditEventResponse
 from api.services.session_service import require_role
 from api.strings import Messages
-from database import AuditEvent, User, get_db
+from database.connection import get_db
+from database.models import AuditEvent, User
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session

@@ -78,6 +78,7 @@ class Messages:
     REGISTRATION_TOKEN_INVALID = "Registration token is invalid or expired"
     REGISTRATION_TOKEN_USER_MISMATCH = "Registration token does not match user"
     INVALID_CHALLENGE_DATA = "Invalid challenge data"
+    BLE_TOKEN_RATE_LIMITED = "BLE token polling rate limit exceeded"
     DEVICE_PAYLOAD_STALE = "Authentication request has expired. Please try again."
     CHECKIN_RETRY_LIMIT_REACHED = "Check-in attempt limit reached for this session."
     AUTH_RATE_LIMITED = "Too many authentication attempts. Try again later."

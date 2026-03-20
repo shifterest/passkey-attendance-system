@@ -217,6 +217,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project-specific ignores
-users.json
-classes.json
-enrollments.json
+sqlite/

@@ -2,7 +2,7 @@ from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from api.config import settings
-from database import (
+from database.models import (
     AttendanceRecord,
     CheckInSession,
     Class,

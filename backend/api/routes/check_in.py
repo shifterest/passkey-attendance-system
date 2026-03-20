@@ -7,48 +7,44 @@ from datetime import datetime, timezone
 
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
-from api.models import (
-    DeviceKeyMismatchDetail,
-    DeviceSignatureFailureDetail,
-    SignCountAnomalyDetail,
+from api.helpers.assurance import (
+    assurance_score_from_verification_methods,
+    compute_assurance_band,
+    is_within_geofence,
+    resolve_attendance_status,
 )
+from api.helpers.base64url import encode_base64url
+from api.helpers.credential import normalize_credential_id_base64url
+from api.helpers.device_payload import build_device_payload
 from api.redis import redis_client
 from api.schemas import (
     AttendanceRecordResponse,
     AttendanceRecordVerificationMethods,
     CheckInOptionsBase,
     CheckInResponseBase,
-)
-from api.services.assurance_service import (
-    assurance_score_from_verification_methods,
-    compute_assurance_band,
-    is_within_geofence,
-    resolve_attendance_status,
+    DeviceKeyMismatchDetail,
+    DeviceSignatureFailureDetail,
+    SignCountAnomalyDetail,
 )
 from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
-    build_device_payload,
     check_auth_rate_limit,
     get_user_credential_for_assertion,
     issued_at_ms_now,
     load_issued_at_ms,
     verify_device_signature,
 )
-from api.services.device_service import (
-    encode_base64url,
-    normalize_credential_id_base64url,
-)
 from api.services.integrity_service import has_valid_vouch
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
-from database import (
+from database.connection import get_db
+from database.models import (
     AttendanceRecord,
     CheckInSession,
     Class,
     ClassEnrollment,
     ClassPolicy,
     User,
-    get_db,
 )
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -136,19 +132,26 @@ def check_in_options(
         issued_at_ms,
         ex=settings.challenge_timeout,
     )
-    if settings.subnet_cidr:
+    if settings.school_subnet_cidr:
         client_host = request.client.host if request.client else None
         network_ok = False
         if client_host:
             try:
                 network_ok = ipaddress.ip_address(client_host) in ipaddress.ip_network(
-                    settings.subnet_cidr, strict=False
+                    settings.school_subnet_cidr, strict=False
                 )
             except ValueError:
                 pass
         redis_client.set(
             f"check_in_network_ok:{user.id}:{session.id}",
             "1" if network_ok else "0",
+            ex=settings.challenge_timeout,
+        )
+    ble_token_raw = redis_client.get(f"ble_token:{session.id}")
+    if ble_token_raw:
+        redis_client.set(
+            f"check_in_ble_token:{user.id}:{session.id}",
+            ble_token_raw,
             ex=settings.challenge_timeout,
         )
 
@@ -255,26 +258,22 @@ def check_in_verify(
         settings.challenge_timeout,
         1,
     )
-    retry_count_raw = redis_client.get(retry_key)
-    if retry_count_raw:
-        retry_count = int(retry_count_raw)
-    else:
-        retry_count = (
+    retry_attempt_number = redis_client.incr(retry_key)
+    if retry_attempt_number == 1:
+        db_count = (
             db.query(AttendanceRecord)
             .filter(AttendanceRecord.session_id == response_data.session_id)
             .filter(AttendanceRecord.user_id == user.id)
             .count()
         )
-        if retry_count > 0:
-            redis_client.set(retry_key, retry_count, ex=retry_ttl_seconds)
-    if retry_count >= effective_max_check_ins:
+        if db_count > 0:
+            retry_attempt_number = redis_client.incrby(retry_key, db_count)
+        redis_client.expire(retry_key, retry_ttl_seconds)
+    if retry_attempt_number > effective_max_check_ins:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=Messages.CHECKIN_RETRY_LIMIT_REACHED,
         )
-    retry_attempt_number = redis_client.incr(retry_key)
-    if retry_attempt_number == 1 or retry_count > 0:
-        redis_client.expire(retry_key, retry_ttl_seconds)
 
     challenge_key = f"check_in_challenge:{user.id}"
     issued_at_ms_key = f"check_in_issued_at_ms:{user.id}"
@@ -338,7 +337,7 @@ def check_in_verify(
         if response_data.device_public_key != user_credential.device_public_key:
             log_audit_event(
                 AuditEvents.DEVICE_KEY_MISMATCH,
-                None,
+                current_user.id,
                 user.id,
                 DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
                 db,
@@ -366,7 +365,7 @@ def check_in_verify(
         except HTTPException:
             log_audit_event(
                 AuditEvents.DEVICE_SIGNATURE_FAILURE,
-                None,
+                current_user.id,
                 user.id,
                 DeviceSignatureFailureDetail(
                     credential_id=user_credential.id
@@ -385,9 +384,16 @@ def check_in_verify(
                 r for r in response_data.bluetooth_rssi_readings if -127 <= r <= 20
             ]
             if readings and response_data.ble_token is not None:
-                redis_token = redis_client.get(f"ble_token:{session.id}")
-                valid_token = redis_token.decode() if redis_token else None
-                if valid_token is not None and response_data.ble_token == valid_token:
+                expected_token_raw = redis_client.getdel(
+                    f"check_in_ble_token:{user.id}:{session.id}"
+                )
+                expected_ble_token = (
+                    expected_token_raw.decode() if expected_token_raw else None
+                )
+                if (
+                    expected_ble_token is not None
+                    and response_data.ble_token == expected_ble_token
+                ):
                     avg_rssi = round(sum(readings) / len(readings))
                     verification_methods.append(
                         f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:{avg_rssi}"
@@ -435,7 +441,7 @@ def check_in_verify(
                 AttendanceRecordVerificationMethods.PLAY_INTEGRITY.value
             )
         network_anomaly = False
-        if settings.subnet_cidr:
+        if settings.school_subnet_cidr:
             network_ok_raw = redis_client.getdel(
                 f"check_in_network_ok:{user.id}:{session.id}"
             )
@@ -475,7 +481,7 @@ def check_in_verify(
             user_credential.sign_count_anomaly = True
             log_audit_event(
                 AuditEvents.SIGN_COUNT_ANOMALY,
-                None,
+                current_user.id,
                 user.id,
                 SignCountAnomalyDetail(
                     credential_id=user_credential.id,

@@ -12,7 +12,8 @@ from api.services.integrity_service import (
 )
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
-from database import Credential, User, get_db
+from database.connection import get_db
+from database.models import Credential, User
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 

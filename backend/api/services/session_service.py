@@ -1,6 +1,7 @@
 from api.redis import redis_client
 from api.strings import Messages
-from database import User, get_db
+from database.connection import get_db
+from database.models import User
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 

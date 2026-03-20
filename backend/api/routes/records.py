@@ -3,35 +3,33 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
-from api.models import (
-    ApprovalStateDetail,
-    ManualApprovalDetail,
-    ManualAttendanceDetail,
+from api.helpers.assurance import (
+    compute_assurance_band,
+    resolve_attendance_status,
 )
 from api.schemas import (
+    ApprovalStateDetail,
     AssuranceEvaluateRequest,
     AssuranceEvaluateRowResponse,
     AttendanceRecordResponse,
     AttendanceRecordUpdate,
     AttendanceRecordVerificationMethods,
+    ManualApprovalDetail,
     ManualApprovalRequest,
+    ManualAttendanceDetail,
     ManualAttendanceRequest,
-)
-from api.services.assurance_service import (
-    compute_assurance_band,
-    resolve_attendance_status,
 )
 from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
-from database import (
+from database.connection import get_db
+from database.models import (
     AttendanceRecord,
     CheckInSession,
     Class,
     ClassEnrollment,
     ClassPolicy,
     User,
-    get_db,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
@@ -565,4 +563,4 @@ def delete_record(
         )
     db.delete(record)
     db.commit()
-    return Response(status_code=204)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

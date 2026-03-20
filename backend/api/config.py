@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     bootstrap_token_ttl_seconds: int = 300
 
     # Network proximity
-    subnet_cidr: str | None = None
+    school_subnet_cidr: str | None = None
     trusted_proxy: str | None = None
     ble_token_ttl_seconds: int = 30
 

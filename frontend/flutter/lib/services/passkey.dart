@@ -58,7 +58,10 @@ Future<Map<String, String>> _createDeviceBinding({
   required String? challenge,
   required int? issuedAtMs,
 }) async {
-  await SecureStore.ensureKeyExists();
+  final keyReady = await SecureStore.ensureKeyExists();
+  if (!keyReady) {
+    throw Exception('Device key initialization failed');
+  }
 
   final publicKeyBytes = await SecureStore.getPublicKey();
   if (publicKeyBytes == null) {

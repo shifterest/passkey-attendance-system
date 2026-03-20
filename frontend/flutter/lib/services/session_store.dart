@@ -1,18 +1,17 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class SessionStore {
   static late final SharedPreferencesWithCache prefs;
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
       cacheOptions: const SharedPreferencesWithCacheOptions(
-        allowList: <String>{
-          'deviceId',
-          'userId',
-          'sessionToken',
-          'sessionExpiry',
-        },
+        allowList: <String>{'deviceId', 'userId', 'sessionExpiry'},
       ),
     );
   }
@@ -23,7 +22,7 @@ class SessionStore {
     int expiresIn,
   ) async {
     await prefs.setString('userId', userId);
-    await prefs.setString('sessionToken', sessionToken);
+    await _secureStorage.write(key: 'sessionToken', value: sessionToken);
     await prefs.setString(
       'sessionExpiry',
       DateTime.now().add(Duration(seconds: expiresIn)).toIso8601String(),
@@ -59,11 +58,11 @@ class SessionStore {
   }
 
   static Future<String?> getSessionToken() async {
-    return prefs.getString('sessionToken');
+    return _secureStorage.read(key: 'sessionToken');
   }
 
   static Future<void> clearSession() async {
-    await prefs.remove("sessionToken");
+    await _secureStorage.delete(key: 'sessionToken');
     await prefs.remove("sessionExpiry");
   }
 }

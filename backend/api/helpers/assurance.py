@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 import math
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from api.schemas import AttendanceRecordStatus, AttendanceRecordVerificationMethods
-from database import CheckInSession
+
+if TYPE_CHECKING:
+    from database.models import CheckInSession
 
 
 def is_within_geofence(
@@ -25,7 +30,7 @@ def is_within_geofence(
     return distance_m <= radius_m
 
 
-def _bluetooth_score_from_method(method: str) -> int:
+def _bluetooth_score(method: str, integrity_vouched: bool) -> int:
     bluetooth_prefix = f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:"
     if not method.startswith(bluetooth_prefix):
         return 0
@@ -38,13 +43,13 @@ def _bluetooth_score_from_method(method: str) -> int:
         return 0
 
     if rssi > -65:
-        return 7
-    if rssi >= -80:
-        return 4
-    if rssi >= -90:
-        return 2
-
-    return 0
+        return 7 if integrity_vouched else 4
+    elif rssi >= -80:
+        return 4 if integrity_vouched else 2
+    elif rssi >= -90:
+        return 2 if integrity_vouched else 1
+    else:
+        return 0
 
 
 def resolve_attendance_status(
@@ -64,17 +69,6 @@ def resolve_attendance_status(
     if attempted_at <= session_close:
         return AttendanceRecordStatus.LATE
     return AttendanceRecordStatus.ABSENT
-
-
-def _bluetooth_score_vouched(method: str, integrity_vouched: bool) -> int:
-    base = _bluetooth_score_from_method(method)
-    if integrity_vouched or base == 0:
-        return base
-    if base == 7:
-        return 4
-    if base == 4:
-        return 2
-    return 1
 
 
 def assurance_score_from_verification_methods(
@@ -102,7 +96,7 @@ def assurance_score_from_verification_methods(
         elif method.startswith(
             f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:"
         ):
-            score += _bluetooth_score_vouched(method, integrity_vouched)
+            score += _bluetooth_score(method, integrity_vouched)
 
     return score
 

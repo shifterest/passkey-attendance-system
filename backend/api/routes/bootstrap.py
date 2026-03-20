@@ -8,7 +8,8 @@ from api.schemas import UserRole
 from api.services.audit_service import log_audit_event
 from api.services.auth_service import create_login_session
 from api.strings import AuditEvents, Logs, Messages
-from database import LoginSession, User, get_db
+from database.connection import get_db
+from database.models import LoginSession, User
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 

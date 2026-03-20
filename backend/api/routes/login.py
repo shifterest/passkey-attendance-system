@@ -3,23 +3,23 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from api.models import (
-    DeviceKeyMismatchDetail,
-    DeviceSignatureFailureDetail,
-    SignCountAnomalyDetail,
-)
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
+from api.helpers.base64url import encode_base64url
+from api.helpers.credential import normalize_credential_id_base64url
+from api.helpers.device_payload import build_device_payload
 from api.redis import redis_client
 from api.schemas import (
+    DeviceKeyMismatchDetail,
+    DeviceSignatureFailureDetail,
     LoginOptionsBase,
     LoginResponseBase,
     LoginSessionBase,
     LogoutOptionsBase,
+    SignCountAnomalyDetail,
 )
 from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
-    build_device_payload,
     check_auth_rate_limit,
     create_login_session,
     get_user_credential_for_assertion,
@@ -27,12 +27,9 @@ from api.services.auth_service import (
     load_issued_at_ms,
     verify_device_signature,
 )
-from api.services.device_service import (
-    encode_base64url,
-    normalize_credential_id_base64url,
-)
 from api.strings import AuditEvents, Logs, Messages
-from database import LoginSession, User, get_db
+from database.connection import get_db
+from database.models import LoginSession, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -132,7 +129,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         if response_data.device_public_key != user_credential.device_public_key:
             log_audit_event(
                 AuditEvents.DEVICE_KEY_MISMATCH,
-                None,
+                user.id,
                 user.id,
                 DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
                 db,
@@ -160,7 +157,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         except HTTPException:
             log_audit_event(
                 AuditEvents.DEVICE_SIGNATURE_FAILURE,
-                None,
+                user.id,
                 user.id,
                 DeviceSignatureFailureDetail(
                     credential_id=user_credential.id
@@ -177,7 +174,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             user_credential.sign_count_anomaly = True
             log_audit_event(
                 AuditEvents.SIGN_COUNT_ANOMALY,
-                None,
+                user.id,
                 user.id,
                 SignCountAnomalyDetail(
                     credential_id=user_credential.id,

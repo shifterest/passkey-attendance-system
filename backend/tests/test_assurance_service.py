@@ -1,5 +1,5 @@
 from api.schemas import AttendanceRecordVerificationMethods
-from api.services.assurance_service import (
+from api.helpers.assurance import (
     assurance_score_from_verification_methods,
     compute_assurance_band,
 )

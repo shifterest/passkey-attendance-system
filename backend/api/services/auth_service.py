@@ -5,27 +5,25 @@ from datetime import datetime, timezone
 from typing import Any
 
 from api.config import settings
-from api.contracts.device import DEVICE_PAYLOAD_VERSION, DeviceBindingFlow
+from api.helpers.credential import (
+    credential_id_matches,
+    normalize_credential_id_base64url,
+)
+from api.helpers.device_payload import canonical_payload_bytes
 from api.redis import redis_client
 from api.schemas import (
     DeviceBindingPayload,
     LoginSessionBase,
     RegistrationSessionBase,
 )
-from api.services.device_service import (
-    canonical_payload_bytes,
-    credential_id_matches,
-    normalize_credential_id_base64url,
-)
+from api.strings import Messages
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from database import Credential, LoginSession, RegistrationSession
+from database.models import Credential, LoginSession, RegistrationSession
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
-from api.strings import Messages
 
 AUTH_RATELIMIT_USER_PREFIX = "auth:ratelimit:user:"
 
@@ -82,13 +80,26 @@ def create_registration_session(session: RegistrationSession):
     )
 
 
-def validate_registration_token(user_id: str, token: str):
-    user_id_bytes = redis_client.get(f"registration_session_token:{token}")
+def validate_registration_token(
+    token: str,
+    expected_user_id: str | None = None,
+    *,
+    consume: bool = False,
+) -> str:
+    key = f"registration_session_token:{token}"
+    user_id_bytes = redis_client.getdel(key) if consume else redis_client.get(key)
     if not isinstance(user_id_bytes, bytes):
-        return False
-    if user_id == user_id_bytes.decode():
-        return True
-    return False
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.REGISTRATION_TOKEN_INVALID,
+        )
+    user_id = user_id_bytes.decode()
+    if expected_user_id is not None and user_id != expected_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.REGISTRATION_TOKEN_USER_MISMATCH,
+        )
+    return user_id
 
 
 def issued_at_ms_now() -> int:
@@ -115,25 +126,6 @@ def credential_limit_reached(user_id: str, db: Session) -> bool:
     return (
         db.query(Credential).filter(Credential.user_id == user_id).count()
         >= settings.max_active_credentials_per_user
-    )
-
-
-def build_device_payload(
-    flow: DeviceBindingFlow,
-    user_id: str,
-    session_id: str | None,
-    credential_id: str | None,
-    challenge: str,
-    issued_at_ms: int,
-) -> DeviceBindingPayload:
-    return DeviceBindingPayload(
-        v=DEVICE_PAYLOAD_VERSION,
-        flow=flow,
-        user_id=user_id,
-        session_id=session_id,
-        credential_id=credential_id,
-        challenge=challenge,
-        issued_at_ms=issued_at_ms,
     )
 
 
@@ -223,4 +215,3 @@ def load_issued_at_ms(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=Messages.INVALID_CHALLENGE_DATA,
         )
-

@@ -4,7 +4,8 @@ from api.schemas import ClassResponse, UserTeacherResponse
 from api.services.session_service import require_role
 from api.services.user_service import get_teacher_details
 from api.strings import Messages
-from database import Class, User, get_db
+from database.connection import get_db
+from database.models import Class, User
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 

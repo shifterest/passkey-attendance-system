@@ -359,9 +359,9 @@ class AssuranceEvaluateRowResponse(BaseModel):
     record_id: str
     user_id: str
     assurance_score: int
-    assurance_band_recorded: str | None
-    standard_threshold_recorded: int | None
-    high_threshold_recorded: int | None
+    assurance_band_recorded: str | None = None
+    standard_threshold_recorded: int | None = None
+    high_threshold_recorded: int | None = None
     assurance_band_current: str
     standard_threshold_current: int
     high_threshold_current: int
@@ -412,8 +412,8 @@ class DeviceBindingPayload(BaseModel):
     v: DevicePayloadVersion
     flow: DeviceBindingFlow
     user_id: str
-    session_id: str | None
-    credential_id: str | None
+    session_id: str | None = None
+    credential_id: str | None = None
     challenge: str
     issued_at_ms: int
 
@@ -477,3 +477,77 @@ class PlayIntegrityVouchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     integrity_token: str
+
+
+# Audit event detail shapes
+class CredentialKeyDetail(BaseModel):
+    credential_id: str
+    key_security_level: str | None = None
+
+
+class CredentialRevokedDetail(BaseModel):
+    credential_id: str
+    old_value: CredentialKeyDetail
+
+
+class DeviceKeyMismatchDetail(BaseModel):
+    credential_id: str
+
+
+class DeviceSignatureFailureDetail(BaseModel):
+    credential_id: str
+
+
+class SignCountAnomalyDetail(BaseModel):
+    credential_id: str
+    old_count: int
+    new_count: int
+
+
+class DeviceAttestationFailureDetail(BaseModel):
+    reason: str
+
+
+class DeviceAttestationVerifiedDetail(BaseModel):
+    credential_id: str
+    root_serial_hex: str
+    is_legacy_root: bool
+    key_security_level: str
+
+
+class EnrollmentDeletedOldValue(BaseModel):
+    student_id: str
+    class_id: str
+
+
+class EnrollmentDeletedDetail(BaseModel):
+    old_value: EnrollmentDeletedOldValue
+
+
+class ApprovalStateDetail(BaseModel):
+    manually_approved: bool
+
+
+class ManualApprovalDetail(BaseModel):
+    reason: str | None = None
+    record_user_id: str
+    old_value: ApprovalStateDetail
+    new_value: ApprovalStateDetail
+
+
+class ManualAttendanceDetail(BaseModel):
+    student_id: str
+    session_id: str
+    reason: str
+    backdated_timestamp: str | None = None
+    status: str | None = None
+
+
+class UserRoleChange(BaseModel):
+    role: str
+
+
+class UserUpdatedDetail(BaseModel):
+    updated_fields: list[str]
+    old_value: UserRoleChange | None = None
+    new_value: UserRoleChange | None = None

@@ -6,8 +6,8 @@ import {
 	IconSettings,
 	IconUserCircle,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { clearBrowserSession, getUser, logout } from "@/app/lib/api";
+import { clearBrowserSession, logout } from "@/app/lib/api";
+import { useUser } from "@/components/custom/user-context";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -29,11 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 // TODO: Use user id in loading state
 export function NavUser() {
 	const { isMobile } = useSidebar();
-	const [loading, setLoading] = useState(true);
-
-	const [fullName, setFullName] = useState<string | null>(null);
-	const [email, setEmail] = useState<string | null>(null);
-	const [schoolId, setSchoolId] = useState<string | null>(null);
+	const { user, loading } = useUser();
 
 	const handleLogout = async () => {
 		const userId = localStorage.getItem("user_id");
@@ -48,24 +44,6 @@ export function NavUser() {
 		clearBrowserSession();
 		window.location.href = "/login";
 	};
-
-	useEffect(() => {
-		const run = async () => {
-			try {
-				const userId = localStorage.getItem("user_id");
-				if (!userId) throw new Error("Missing user ID");
-				const data = await getUser(userId);
-				setFullName(data.full_name);
-				setEmail(data.email);
-				setSchoolId(data.school_id);
-			} catch (error) {
-				console.error("Failed to fetch user data", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-		run();
-	}, []);
 
 	if (loading) {
 		return (
@@ -97,9 +75,11 @@ export function NavUser() {
 							<AvatarFallback className="rounded-lg">CN</AvatarFallback>
 						</Avatar> */}
 						<div className="grid flex-1 text-left text-sm leading-tight">
-							<span className="truncate font-medium">{fullName}</span>
+							<span className="truncate font-medium">{user?.full_name}</span>
 							<span className="text-foreground/70 truncate text-xs">
-								{schoolId ? `${schoolId}· ${email}` : email}
+								{user?.school_id
+									? `${user.school_id} · ${user.email}`
+									: user?.email}
 							</span>
 						</div>
 						<IconDotsVertical className="ml-auto size-4" />
@@ -118,9 +98,11 @@ export function NavUser() {
 										<AvatarFallback className="rounded-lg">CN</AvatarFallback>
 									</Avatar> */}
 									<div className="grid flex-1 text-left text-sm leading-tight">
-										<span className="truncate font-medium">{fullName}</span>
+										<span className="truncate font-medium">
+											{user?.full_name}
+										</span>
 										<span className="text-muted-foreground truncate text-xs">
-											{email}
+											{user?.email}
 										</span>
 									</div>
 								</div>

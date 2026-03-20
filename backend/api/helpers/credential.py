@@ -1,21 +1,7 @@
-import base64
 import binascii
-import json
 from typing import Any
 
-from api.contracts.device import DEVICE_PAYLOAD_KEYS
-from api.schemas import DeviceBindingPayload
-
-from api.strings import Messages
-
-
-def encode_base64url(value: bytes) -> str:
-    return base64.urlsafe_b64encode(value).decode("utf-8").rstrip("=")
-
-
-def decode_base64url(value: str) -> bytes:
-    padded = value + ("=" * ((4 - len(value) % 4) % 4))
-    return base64.urlsafe_b64decode(padded)
+from api.helpers.base64url import decode_base64url, encode_base64url
 
 
 def extract_credential_id(credential: dict[str, Any]) -> str | None:
@@ -55,24 +41,3 @@ def credential_id_matches(
         )
     except (binascii.Error, ValueError):
         return False
-
-
-def canonical_payload_bytes(payload: DeviceBindingPayload) -> bytes:
-    canonical_payload = {
-        "v": payload.v,
-        "flow": payload.flow,
-        "user_id": payload.user_id,
-        "session_id": payload.session_id,
-        "credential_id": payload.credential_id,
-        "challenge": payload.challenge,
-        "issued_at_ms": payload.issued_at_ms,
-    }
-    if tuple(canonical_payload.keys()) != DEVICE_PAYLOAD_KEYS:
-        raise ValueError(Messages.DEVICE_BINDING_PAYLOAD_KEYS_INVALID)
-
-    return json.dumps(
-        canonical_payload,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-

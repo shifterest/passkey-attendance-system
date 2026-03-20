@@ -8,69 +8,44 @@ name: "Backend Conventions and Configuration"
 
 ## Project Layout
 
-```
-backend/
-  main.py                    — entry point: uvicorn launch
-  pyproject.toml             — dependencies (uv)
-  api/
-    api.py                   — FastAPI app, middleware, router registration
-    config.py                — Settings via pydantic-settings
-    schemas.py               — All Pydantic DTOs
-    strings.py               — All message/log string constants
-    redis.py                 — Redis client dependency
-    contracts/
-      device.py              — DeviceBindingFlow and DevicePayloadVersion enums
-    routes/
-      admin.py               — /admin
-      audit.py               — /audit
-      bootstrap.py           — /bootstrap
-      check_in.py            — /auth/check-in
-      classes.py             — /classes
-      credentials.py         — /credentials
-      enrollments.py         — /enrollments
-      integrity.py           — /auth/play-integrity
-      login.py               — /auth/login + /auth/logout
-      policies.py            — /policies
-      records.py             — /records
-      register.py            — /auth/register
-      root.py                — /health
-      sessions.py            — /sessions
-      students.py            — /students
-      teachers.py            — /teachers
-      users.py               — /users
-    services/
-      assurance_service.py   — scoring, band computation, attendance status
-      attestation_service.py — Android Key Attestation chain verification
-      device_binding_service.py — device signature verification (PAS JSON v1)
-      import_service.py      — bulk user import (CSV/JSON)
-      audit_service.py       — log_audit_event() helper
-  database/
-    models.py                — SQLAlchemy ORM models
-    connection.py            — Base, engine, SessionLocal
-    migrations.py            — ensure_database_schema() (create_all on startup)
-  db/
-    migrations.py            — re-export of database/migrations.py (legacy path)
-  alembic/                   — migration history (frozen; see migration notes)
-  tests/
-    conftest.py              — pytest fixtures
-    test_assurance_service.py
-    test_attestation_service.py
-    test_device_binding_service.py
-    test_register_options_route.py
-  tools/
-    issue_bootstrap_token.py — CLI to issue a one-time bootstrap OTP
-```
+The backend is a single Python package rooted at `backend/`. Key directories:
+
+- `api/routes/` — HTTP handlers only; one file per resource/feature area
+- `api/services/` — side-effectful business logic (DB, Redis, external calls)
+- `api/helpers/` — pure stateless functions; no DB, Redis, or I/O
+- `api/contracts/` — shared enums and constants (e.g. `DeviceBindingFlow`)
+- `api/schemas.py` — all Pydantic DTOs
+- `api/strings.py` — all message/log string constants
+- `api/config.py` — pydantic-settings `Settings` object
+- `database/models.py` — SQLAlchemy ORM models
+- `database/connection.py` — `Base`, `engine`, `get_db`, `SessionLocal`
+- `tests/` — pytest tests; parallel to source, one file per tested module
 
 ---
 
 ## Code Organisation Rules
 
 - **HTTP handlers live in `routes/`.** Route files import services; they do not contain business logic directly.
-- **Reusable logic lives in `services/`.** Services are plain Python functions (not classes), imported directly by routes. Services do not import from `routes/`.
+- **Pure helper functions live in `api/helpers/`.** Helpers are stateless, side-effect-free functions. They do not call the database, Redis, or external services. They take plain values and return plain values.
+- **Side-effectful logic lives in `api/services/`.** Services may call the database, Redis, or external services and are imported directly by routes. Services do not import from `routes/`.
 - **Models live in `database/models.py`.** Do not split models across files.
 - **All messages are constants in `api/strings.py:Messages`.** Never write inline error strings in route or service files. New messages go in `Messages` before use.
 - **All Pydantic schemas live in `api/schemas.py`.** Follow the `Base → Create → Update → Response` pattern and set `extra="forbid"` on Create and Update schemas.
 - **Config is accessed via `from api.config import settings`.** Never read `os.environ` directly in application code.
+- **Route handler functions are named as descriptive verb-noun phrases** (`get_record`, `approve_record`, `create_manual_record`). Never prefix with the HTTP method.
+- **HTTP status codes always use `status.HTTP_*` constants** from fastapi, never raw integers.
+- **The DB session dependency parameter is always named `db`:** `db: Session = Depends(get_db)`. Never `session`, `conn`, or anything else.
+- **Schema `model_config` follows a fixed pattern by schema tier:**
+  - `Base`: `ConfigDict(use_enum_values=True)` when the schema contains enums, else omit
+  - `Create` / `Update`: `ConfigDict(extra="forbid")` always; add `use_enum_values=True` if enums present
+  - `Response`: `ConfigDict(from_attributes=True)` always
+
+### Import Convention (Locked)
+
+- **Use absolute imports only.**
+- **Use explicit module imports always:** `from database.models import User` and `from database.connection import get_db`, not `from database import User`.
+- **Do not use wildcard imports (`from x import *`).**
+- **Do not use relative imports.**
 
 ---
 
@@ -181,41 +156,14 @@ All Redis keys are prefixed with a namespace. TTLs are set at write time.
 
 ## Service Layer Reference
 
-### `assurance_service.py`
-
-| Function | Description |
-|---|---|
-| `is_within_geofence(lat, lng, school_lat, school_lng, radius_m)` | Haversine distance check; returns `bool` |
-| `resolve_attendance_status(attempted_at, session)` | Returns `present`/`late`/`absent` based on cutoffs |
-| `assurance_score_from_verification_methods(methods, *, integrity_vouched)` | Additive proximity scorer; passkey/device/PI are gates, not score terms |
-| `compute_assurance_band(score, standard_threshold, high_threshold)` | Returns `"low"`, `"standard"`, or `"high"` |
-
-See `assurance-scoring.instructions.md` for full scoring table and band semantics.
-
-### `attestation_service.py`
-
-Verifies Android Key Attestation certificate chains at registration. Validates:
-- Chain roots to pinned Google Hardware Attestation Root
-- Security level is `tee` or `strongbox` (emulator paths are rejected)
-- Key purpose is signing only
-- Algorithm is ECDSA P-256
-- Challenge in attestation extension matches the registration challenge
-
-### `device_binding_service.py`
-
-Verifies device signatures (PAS JSON v1). Validates:
-- Canonical JSON serialization (fixed key order: `v, flow, user_id, session_id, credential_id, challenge, issued_at_ms`)
-- Signature over canonical bytes using stored `device_public_key`
-- `issued_at_ms` freshness within `DEVICE_PAYLOAD_MAX_AGE_MS`
-- Payload hash not already in Redis device sig hash cache
-
-### `import_service.py`
-
-Processes bulk user imports. Supports `generic` format (CSV with `full_name, email, role, school_id` columns) and `banner` format (institution-specific CSV). Returns counts: `created`, `updated`, `skipped`, `errors`. `dry_run=True` validates without writing.
-
-### `audit_service.py`
-
-`log_audit_event(db, event_type, actor_id, target_id, detail)` — creates an `AuditEvent` row. Detail shape is determined by event type and documented in `api/models.py`.
+- **`assurance_service.py`** — scoring, band computation, attendance status. See `assurance-scoring.instructions.md` for the full scoring table.
+- **`attestation_service.py`** — Android Key Attestation chain verification at registration.
+- **`auth_service.py`** — WebAuthn credential lookup, device signature verification (PAS JSON v1), rate limiting, session management.
+- **`audit_service.py`** — `log_audit_event(db, event_type, actor_id, target_id, detail)`. Detail shapes are Pydantic models in `api/schemas.py`.
+- **`import_service.py`** — bulk user import; supports `generic` CSV and `banner` CSV formats.
+- **`integrity_service.py`** — Play Integrity vouch verification and daily rate limiting.
+- **`session_service.py`** — `require_role(...)` FastAPI dependency for session-token auth.
+- **`user_service.py`** — computed user detail aggregations for student/teacher responses.
 
 ---
 
