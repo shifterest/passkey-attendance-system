@@ -172,12 +172,14 @@ def register_verify(
         key_security_level = None
         is_legacy_root = False
         root_serial_hex = ""
+        crl_verified: bool | None = None
         if settings.android_key_attestation_required:
             try:
                 (
                     key_security_level,
                     is_legacy_root,
                     root_serial_hex,
+                    crl_verified,
                 ) = validate_android_key_attestation(
                     registration_verification.fmt,
                     registration_verification.attestation_object,
@@ -195,6 +197,12 @@ def register_verify(
                     detail=Messages.DEVICE_KEY_INSECURE,
                 ) from e
 
+        if crl_verified is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=Messages.ATTESTATION_CRL_REVOKED,
+            )
+
         if credential_limit_reached(user.id, db):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -209,6 +217,7 @@ def register_verify(
             credential_id=encode_base64url(registration_verification.credential_id),
             sign_count=0,
             key_security_level=key_security_level,
+            attestation_crl_verified=crl_verified,
             registered_at=datetime.now(timezone.utc),
         )
         db.add(new_credential)
