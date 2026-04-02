@@ -6,11 +6,15 @@ class ApiClient {
 
   ApiClient(this.apiBaseUrl);
 
-  Future<dynamic> get(String path, Map body) async {
+  Future<dynamic> get(String path, Map body, {Map<String, String>? extraHeaders}) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (extraHeaders != null) ...extraHeaders,
+      };
       final response = await http.get(
         Uri.parse('$apiBaseUrl$path'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
       );
 
       if (response.statusCode == 200) {
