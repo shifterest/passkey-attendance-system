@@ -66,6 +66,20 @@ final class HomeStrings {
   static String userId(String id) => 'User ID: $id';
 }
 
+final class CheckInResultStrings {
+  static const String appBarTitle = 'Check-In Result';
+  static const String present = 'Present';
+  static const String late = 'Late';
+  static const String absent = 'Absent';
+  static const String bandHigh = 'High assurance';
+  static const String bandStandard = 'Standard assurance';
+  static const String bandLow =
+      'Low assurance — re-attempt may improve proximity score';
+  static const String proximityScore = 'Proximity score';
+  static const String done = 'Done';
+  static const String unknownStatus = 'Unknown';
+}
+
 final class LoginStrings {
   static const String appTitle = 'Passkey attendance system';
   static const String selectOptions = 'Select any of the options below';

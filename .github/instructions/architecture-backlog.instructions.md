@@ -98,7 +98,7 @@ name: "Architecture Backlog Guidance"
 
 ## P1 — Flutter Client Gaps
 
-- ✅ **Daily PI vouch call** — `play_integrity_service.dart`; triggered after successful login once an authenticated session exists
+- ❌ **Daily PI vouch call** — `play_integrity_service.dart` exists but is a no-op stub: `play_integrity_flutter` v0.0.1 exposes a Classic API requiring server-side decryption/verification keys; the app-side raw token submission pattern needs a different package or a newer package version
 - ❌ **Post-check-in outcome screen** — display assurance band and whether a retry would improve it
 - ✅ **`gps_is_mock` flag submission** — `Position.isMocked` read from `geolocator`, included in check-in verify payload, stored as `gps_is_mock` on `AttendanceRecord`
 - ❌ **Offline QR attendance UI** — device-signed QR generation screen for offline sessions

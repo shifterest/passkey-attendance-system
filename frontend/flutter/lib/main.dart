@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/authentication_screen.dart';
+import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
 
@@ -54,6 +55,16 @@ final _router = GoRouter(
         registrationToken: state.uri.queryParameters['token'] ?? '',
         userId: state.uri.queryParameters['user_id'] ?? '',
       ),
+    ),
+    GoRoute(
+      path: '/check-in-result',
+      builder: (context, state) {
+        final record = state.extra;
+        if (record is! Map<String, dynamic>) {
+          return const HomeScreen();
+        }
+        return CheckInResultScreen(record: record);
+      },
     ),
   ],
 );
