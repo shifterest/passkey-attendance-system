@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCalendar, IconChevronRight } from "@tabler/icons-react";
+import { IconCalendar, IconDotsVertical } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -12,6 +12,13 @@ import type { ClassDto } from "@/app/lib/api";
 import { DataTable } from "@/components/custom/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function formatSchedule(schedule: ClassDto["schedule"]) {
 	return schedule
@@ -64,15 +71,32 @@ export function DataTableClasses({ data }: { data: ClassDto[] }) {
 				id: "actions",
 				header: "",
 				cell: ({ row }) => (
-					<Button
-						variant="ghost"
-						size="sm"
-						className="gap-1"
-						onClick={() => router.push(`/classes/${row.original.id}/sessions`)}
-					>
-						Sessions
-						<IconChevronRight className="size-4" />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="ghost" size="icon" className="size-8" />}
+						>
+							<IconDotsVertical />
+							<span className="sr-only">Open menu</span>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuGroup>
+								<DropdownMenuItem
+									onClick={() =>
+										router.push(`/classes/${row.original.id}/sessions`)
+									}
+								>
+									Sessions
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={() =>
+										router.push(`/enrollments?class_id=${row.original.id}`)
+									}
+								>
+									Manage enrollment
+								</DropdownMenuItem>
+							</DropdownMenuGroup>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				),
 			},
 		],

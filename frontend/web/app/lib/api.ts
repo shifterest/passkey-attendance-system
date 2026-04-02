@@ -99,6 +99,12 @@ export type CheckInSessionDto = {
 	late_cutoff_minutes: number;
 };
 
+export type ClassEnrollmentDto = {
+	id: string;
+	class_id: string;
+	student_id: string;
+};
+
 export type AuditEventDto = {
 	id: string;
 	event_type: string;
@@ -239,12 +245,45 @@ export function getClass(classId: string) {
 	return request<ClassDto>(ApiPaths.class(classId));
 }
 
+export function getEnrollments() {
+	return request<ClassEnrollmentDto[]>(ApiPaths.enrollments);
+}
+
+export function getEnrollmentsByClass(classId: string) {
+	return request<ClassEnrollmentDto[]>(`/enrollments/by-class/${classId}`);
+}
+
+export function getEnrollmentsByStudent(studentId: string) {
+	return request<ClassEnrollmentDto[]>(`/enrollments/by-student/${studentId}`);
+}
+
+export function createEnrollment(payload: {
+	class_id: string;
+	student_id: string;
+}) {
+	return request<ClassEnrollmentDto>(ApiPaths.enrollments, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(payload),
+	});
+}
+
+export function deleteEnrollment(enrollmentId: string) {
+	return request<void>(ApiPaths.enrollment(enrollmentId), {
+		method: "DELETE",
+	});
+}
+
 export function getSessions(params?: { limit?: number; offset?: number }) {
 	const q = new URLSearchParams();
 	if (params?.limit !== undefined) q.set("limit", String(params.limit));
 	if (params?.offset !== undefined) q.set("offset", String(params.offset));
 	const qs = q.toString();
-	return request<CheckInSessionDto[]>(`${ApiPaths.sessions}${qs ? `?${qs}` : ""}`);
+	return request<CheckInSessionDto[]>(
+		`${ApiPaths.sessions}${qs ? `?${qs}` : ""}`,
+	);
 }
 
 export function getAllSessions() {
@@ -277,7 +316,9 @@ export function getRecords(params?: { limit?: number; offset?: number }) {
 	if (params?.limit !== undefined) q.set("limit", String(params.limit));
 	if (params?.offset !== undefined) q.set("offset", String(params.offset));
 	const qs = q.toString();
-	return request<AttendanceRecordDto[]>(`${ApiPaths.records}${qs ? `?${qs}` : ""}`);
+	return request<AttendanceRecordDto[]>(
+		`${ApiPaths.records}${qs ? `?${qs}` : ""}`,
+	);
 }
 
 export function getAllRecords() {
@@ -328,7 +369,9 @@ export function getAuditEvents(params?: {
 	if (params?.start_at) q.set("start_at", params.start_at);
 	if (params?.end_at) q.set("end_at", params.end_at);
 	const qs = q.toString();
-	return request<AuditEventDto[]>(`${ApiPaths.auditEvents}${qs ? `?${qs}` : ""}`);
+	return request<AuditEventDto[]>(
+		`${ApiPaths.auditEvents}${qs ? `?${qs}` : ""}`,
+	);
 }
 
 export function closeSession(sessionId: string) {

@@ -26,8 +26,8 @@ export default function ErrorPage({
 				<Button variant="outline" size="sm" onClick={reset}>
 					Try again
 				</Button>
-				<Button variant="ghost" size="sm" asChild>
-					<Link href="/dashboard">Dashboard</Link>
+				<Button variant="ghost" size="sm" render={<Link href="/dashboard" />}>
+					Dashboard
 				</Button>
 			</div>
 		</div>

@@ -973,7 +973,10 @@ export function DataTableStudent({
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={columns(setRegistrationQrDialogState, handleUnregister).length}
+											colSpan={
+												columns(setRegistrationQrDialogState, handleUnregister)
+													.length
+											}
 											className="h-24 text-center"
 										>
 											No results.

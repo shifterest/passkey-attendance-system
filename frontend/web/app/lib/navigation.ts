@@ -6,6 +6,7 @@ export type IconItem =
 	| "teachers"
 	| "admins"
 	| "classes"
+	| "enrollments"
 	| "records";
 
 export type NavItem = {
@@ -46,6 +47,7 @@ export const navigation = {
 			],
 		},
 		{ name: "Classes", url: "/classes", icon: "classes" },
+		{ name: "Enrollments", url: "/enrollments", icon: "enrollments" },
 		{ name: "Records", url: "/records", icon: "records" },
 	] satisfies NavGroup[],
 };

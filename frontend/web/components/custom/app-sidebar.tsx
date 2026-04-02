@@ -40,6 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		teachers: IconChalkboardTeacher,
 		admins: IconTool,
 		classes: IconChalkboard,
+		enrollments: IconClipboard,
 		records: IconClipboard,
 	};
 

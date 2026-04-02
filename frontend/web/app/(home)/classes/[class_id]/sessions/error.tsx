@@ -14,11 +14,13 @@ export default function ErrorPage({
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 			<div className="px-4 lg:px-6">
-				<Button variant="ghost" className="gap-1 pl-0" asChild>
-					<Link href="/classes">
-						<IconChevronLeft className="size-4" />
-						Back to Classes
-					</Link>
+				<Button
+					variant="ghost"
+					className="gap-1 pl-0"
+					render={<Link href="/classes" />}
+				>
+					<IconChevronLeft className="size-4" />
+					Back to Classes
 				</Button>
 			</div>
 			<div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">

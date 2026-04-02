@@ -2,10 +2,11 @@ import { getAllRecords, getAllSessions } from "@/app/lib/api";
 import { ChartAreaInteractive } from "@/components/custom/chart-area-interactive";
 import { SectionCards } from "@/components/custom/section-cards";
 
-function buildChartData(
-	records: Awaited<ReturnType<typeof getAllRecords>>,
-) {
-	const byDate = new Map<string, { date: string; records: number; flagged: number }>();
+function buildChartData(records: Awaited<ReturnType<typeof getAllRecords>>) {
+	const byDate = new Map<
+		string,
+		{ date: string; records: number; flagged: number }
+	>();
 	for (const record of records) {
 		const date = record.timestamp.slice(0, 10);
 		const current = byDate.get(date) ?? { date, records: 0, flagged: 0 };
