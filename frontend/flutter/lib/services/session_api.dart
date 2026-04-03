@@ -17,11 +17,10 @@ class SessionApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
     final headers = await _sessionHeaders();
-    dynamic response = await client.post(
-      ApiPaths.sessionsOpenTeacher(),
-      {'teacher_id': teacherId, 'client_time': DateTime.now().toIso8601String()},
-      extraHeaders: headers,
-    );
+    dynamic response = await client.post(ApiPaths.sessionsOpenTeacher(), {
+      'teacher_id': teacherId,
+      'client_time': DateTime.now().toIso8601String(),
+    }, extraHeaders: headers);
     if (response is Map<String, dynamic>) return response;
     throw Exception('Invalid response from server');
   }

@@ -149,9 +149,9 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
             const SizedBox(height: 4),
             Text(
               _bleToken ?? TeacherStrings.loadingToken,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
             ),
             const SizedBox(height: 24),
             if (NfcHceService.isSupported) ...[
@@ -177,9 +177,9 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _nfcToken ?? TeacherStrings.loadingToken,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontFamily: 'monospace',
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
                 ),
               ],
               const SizedBox(height: 24),
