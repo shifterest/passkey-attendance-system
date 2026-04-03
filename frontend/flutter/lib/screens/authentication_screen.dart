@@ -10,6 +10,7 @@ import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
+import 'package:passkey_attendance_system/services/user_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -275,6 +276,11 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         throw Exception(AuthStrings.errorMissingSessionExpiry);
       }
       await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
+      try {
+        final userMap = await UserApi().getUser(widget.userId);
+        final role = userMap['role'];
+        if (role is String) await SessionStore.saveRole(role);
+      } catch (_) {}
       unawaited(submitPlayIntegrityVouch());
     } else {
       await AuthApi.checkInVerify(credentialJson);
