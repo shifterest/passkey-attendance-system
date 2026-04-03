@@ -154,6 +154,13 @@ def check_in_options(
             ble_token_raw,
             ex=settings.challenge_timeout,
         )
+    nfc_token_raw = redis_client.get(f"nfc_token:{session.id}")
+    if nfc_token_raw:
+        redis_client.set(
+            f"check_in_nfc_token:{user.id}:{session.id}",
+            nfc_token_raw,
+            ex=settings.challenge_timeout,
+        )
 
     options_json = json.loads(options_to_json(options))
     options_json["session_id"] = session.id
@@ -407,6 +414,26 @@ def check_in_verify(
             elif readings:
                 logger.warning(
                     Logs.BLE_TOKEN_MISMATCH.format(
+                        user_id=user.id, session_id=session.id
+                    )
+                )
+        if response_data.nfc_token is not None:
+            expected_nfc_raw = redis_client.getdel(
+                f"check_in_nfc_token:{user.id}:{session.id}"
+            )
+            expected_nfc_token = (
+                expected_nfc_raw.decode() if expected_nfc_raw else None
+            )
+            if (
+                expected_nfc_token is not None
+                and response_data.nfc_token == expected_nfc_token
+            ):
+                verification_methods.append(
+                    AttendanceRecordVerificationMethods.NFC.value
+                )
+            else:
+                logger.warning(
+                    Logs.NFC_TOKEN_MISMATCH.format(
                         user_id=user.id, session_id=session.id
                     )
                 )
