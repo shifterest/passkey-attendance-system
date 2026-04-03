@@ -14,6 +14,8 @@ class User(Base):
     full_name: Mapped[str]
     email: Mapped[str]
     school_id: Mapped[str | None] = mapped_column(None)
+    program: Mapped[str | None] = mapped_column(None)
+    year_level: Mapped[int | None] = mapped_column(None)
     credentials: Mapped[list["Credential"]] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
@@ -83,6 +85,7 @@ class ClassEnrollment(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
     student_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime | None] = mapped_column(None)
     enrolled_class: Mapped["Class"] = relationship(back_populates="enrollments")
     student: Mapped["User"] = relationship(back_populates="enrollments")
 
