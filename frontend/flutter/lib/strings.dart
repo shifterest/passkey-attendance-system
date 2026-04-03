@@ -10,6 +10,7 @@ final class ApiPaths {
   static String sessionsOpenTeacher() => '/sessions/open/teacher';
   static String sessionClose(String id) => '/sessions/$id/close';
   static String sessionBleToken(String id) => '/sessions/$id/ble-token';
+  static String sessionNfcToken(String id) => '/sessions/$id/nfc-token';
   static String sessionRecords(String id) => '/records/by-session/$id';
   static String getUser(String id) => '/users/$id';
 }
@@ -90,6 +91,10 @@ final class TeacherStrings {
   static const String sessionActive = 'Session active';
   static const String bleToken = 'BLE Token';
   static const String bleTokenUnavailable = 'Unavailable';
+  static const String nfcToken = 'NFC Token';
+  static const String nfcTokenUnavailable = 'Unavailable';
+  static const String nfcEnabled = 'NFC proximity';
+  static const String nfcNotSupported = 'NFC not supported on this device';
   static const String checkedIn = 'Checked in';
   static const String present = 'present';
   static const String late = 'late';

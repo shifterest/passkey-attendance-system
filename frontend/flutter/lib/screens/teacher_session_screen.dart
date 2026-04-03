@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:passkey_attendance_system/services/nfc_hce_service.dart';
 import 'package:passkey_attendance_system/services/session_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
@@ -17,6 +18,8 @@ class TeacherSessionScreen extends StatefulWidget {
 
 class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
   String? _bleToken;
+  String? _nfcToken;
+  bool _nfcEnabled = false;
   int _checkInCount = 0;
   bool _isClosed = false;
   bool _isClosing = false;
@@ -42,6 +45,7 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
   void dispose() {
     _bleRefreshTimer?.cancel();
     _recordRefreshTimer?.cancel();
+    NfcHceService.stop();
     super.dispose();
   }
 
@@ -62,6 +66,33 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
         setState(() => _checkInCount = records.length);
       }
     } catch (_) {}
+  }
+
+  Future<void> _fetchNfcToken() async {
+    try {
+      final data = await SessionApi.getNfcToken(widget.sessionId);
+      final token = data['nfc_token'];
+      if (token is String && mounted) {
+        setState(() => _nfcToken = token);
+        if (_nfcEnabled) {
+          await NfcHceService.start(token);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleNfc(bool enabled) async {
+    if (!NfcHceService.isSupported) return;
+    setState(() => _nfcEnabled = enabled);
+    if (enabled) {
+      if (_nfcToken == null) {
+        await _fetchNfcToken();
+      } else {
+        await NfcHceService.start(_nfcToken!);
+      }
+    } else {
+      await NfcHceService.stop();
+    }
   }
 
   Future<void> _closeSession() async {
@@ -122,6 +153,37 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
                     fontFamily: 'monospace',
                   ),
             ),
+            const SizedBox(height: 24),
+            if (NfcHceService.isSupported) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    TeacherStrings.nfcEnabled,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  Switch(
+                    value: _nfcEnabled,
+                    onChanged: _isClosed ? null : _toggleNfc,
+                  ),
+                ],
+              ),
+              if (_nfcEnabled) ...[
+                const SizedBox(height: 4),
+                Text(
+                  TeacherStrings.nfcToken,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _nfcToken ?? TeacherStrings.loadingToken,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                ),
+              ],
+              const SizedBox(height: 24),
+            ],
             const SizedBox(height: 24),
             Text(
               '${TeacherStrings.checkedIn}: $_checkInCount',

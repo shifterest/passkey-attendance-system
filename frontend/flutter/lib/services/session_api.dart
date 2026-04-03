@@ -50,6 +50,18 @@ class SessionApi {
     throw Exception('Invalid response from server');
   }
 
+  static Future<Map<String, dynamic>> getNfcToken(String sessionId) async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    dynamic response = await client.get(
+      ApiPaths.sessionNfcToken(sessionId),
+      {},
+      extraHeaders: headers,
+    );
+    if (response is Map<String, dynamic>) return response;
+    throw Exception('Invalid response from server');
+  }
+
   static Future<List<dynamic>> getSessionRecords(String sessionId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
     final headers = await _sessionHeaders();
