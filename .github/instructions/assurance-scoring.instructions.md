@@ -17,6 +17,7 @@ These weights are settled policy. Do not change them without explicit architectu
 | BLE weak (−80 to −90 dBm) | +2 | +1 | Physical proximity, edge of range |
 | BLE (< −90 dBm) | 0 | 0 | — |
 | GPS | +3 | +1 | Corroborating location; spoofable |
+| NFC proximity | +5 | +5 | Physical tap on teacher device (Android HCE); always full weight |
 | Network origin | +2 | +2 | Server-witnessed school subnet origin; absent when `SCHOOL_SUBNET_CIDR` not configured |
 | QR proximity (offline only) | +4 | +4 | Physical scan during offline session |
 

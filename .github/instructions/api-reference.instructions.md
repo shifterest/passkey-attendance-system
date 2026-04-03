@@ -123,6 +123,7 @@ Checks: open session exists for student's enrolled class, enrollment is valid, r
   "session_id": "...",
   "bluetooth_rssi_readings": [−72, −75, −68],
   "ble_token": "<nonce>",
+  "nfc_token": "<token>",
   "gps_latitude": 10.3157,
   "gps_longitude": 123.8854,
   "gps_is_mock": false,
@@ -143,7 +144,8 @@ Full check-in pipeline in order:
 6. Verify device public key matches enrolled credential; emit `DEVICE_KEY_MISMATCH` audit if not
 7. Verify device signature over PAS JSON v1 (`flow: "check_in"`); emit `DEVICE_SIGNATURE_FAILURE` audit if not
 8. Check BLE token against Redis `ble_token:{session_id}` only
-9. Average RSSI readings; bucket into BLE score
+9. Validate NFC token: GETDEL `check_in_nfc_token:{user_id}:{session_id}`; on match add `nfc` to verification methods; on mismatch log warning (NFC is optional per attempt)
+10. Average RSSI readings; bucket into BLE score
 10. Evaluate GPS geofence (if configured), store `gps_in_geofence`, store `gps_is_mock`
 11. Check PI vouch state (`OUTBOUND_INTEGRITY_CHECKS_ENABLED && PLAY_INTEGRITY_ENABLED` → Redis vouch key)
 12. Consume network proximity flag from `check_in_network_ok:{user_id}:{session_id}`
@@ -153,6 +155,11 @@ Full check-in pipeline in order:
 ---
 
 ## Play Integrity — `/auth`
+
+### `GET /auth/play-integrity/nonce`
+**Auth:** student  
+**Response:** `{ "nonce": "<uuid>" }`  
+Generates a one-time nonce UUID, stores it in Redis at `pi_nonce:{credential_id}` with 60-second TTL, and returns it. The student app passes this as `challengeString` when calling the Play Integrity API. The nonce is then validated in `POST /auth/play-integrity/vouch` against `requestDetails.requestHash` to bind the verdict token to the server challenge.
 
 ### `POST /auth/play-integrity/vouch`
 **Auth:** student  
@@ -320,12 +327,17 @@ Direct session creation is disabled. Use `POST /sessions/open/teacher` so the ba
 **Auth:** teacher (self), admin, operator  
 **Body:** `{ teacher_id, present_cutoff_minutes?, late_cutoff_minutes?, client_time? }`  
 **Response:** `CheckInSessionResponse`  
-Matches current server time (adjusted to `SERVER_TIMEZONE`) against all schedule blocks for all of teacher's classes. Rejects if 0 matching blocks (404) or >1 matching block (409 ambiguous). Creates a session and stores the BLE nonce in Redis (`ble_token:{session_id}`) with TTL from `BLE_TOKEN_TTL_SECONDS`.
+Matches current server time (adjusted to `SERVER_TIMEZONE`) against all schedule blocks for all of teacher's classes. Rejects if 0 matching blocks (404) or >1 matching block (409 ambiguous). Creates a session and stores the BLE nonce in Redis (`ble_token:{session_id}`) with TTL from `BLE_TOKEN_TTL_SECONDS`. Also stores an NFC token in Redis (`nfc_token:{session_id}`) with TTL equal to the session duration in seconds.
 
 ### `GET /sessions/{session_id}/ble-token`
 **Auth:** teacher (own only), admin, operator  
 **Response:** `{ ble_token: str, ttl: int }`  
 Returns current BLE token from Redis. If the key has expired, generates and stores a new nonce using `BLE_TOKEN_TTL_SECONDS`. Teacher device polls this to get the current broadcast value.
+
+### `GET /sessions/{session_id}/nfc-token`
+**Auth:** teacher (own only), admin, operator  
+**Response:** `{ nfc_token: str }`  
+Returns the current NFC token from Redis (`nfc_token:{session_id}`). Returns 404 if the token has expired or the session does not exist. Token does not rotate — it is session-stable and generated once at session open.
 
 ### `POST /sessions/{session_id}/close`
 **Auth:** teacher (own only), admin, operator  
