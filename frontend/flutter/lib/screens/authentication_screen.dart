@@ -66,6 +66,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   bool _isAuthenticating = false;
   String _status = '';
   String? _error;
+  Map<String, dynamic>? _checkInRecord;
 
   Future<({List<int> rssiReadings, String? bleToken})>
   _collectBleProximity() async {
@@ -186,15 +187,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       if (widget.login) {
         context.go('/');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AuthStrings.checkInSuccess)),
-        );
-
-        if (Navigator.of(context).canPop()) {
-          context.pop();
-        } else {
-          context.go('/');
-        }
+        context.pushReplacement('/check-in-result', extra: _checkInRecord);
       }
     } catch (e) {
       if (!mounted) return;
@@ -277,7 +270,9 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
       unawaited(submitPlayIntegrityVouch());
     } else {
-      await AuthApi.checkInVerify(credentialJson);
+      final result = await AuthApi.checkInVerify(credentialJson);
+      _checkInRecord = result;
+      unawaited(submitPlayIntegrityVouch());
     }
     return true;
   }
