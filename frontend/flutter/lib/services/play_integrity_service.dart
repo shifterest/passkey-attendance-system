@@ -1,14 +1,16 @@
 import 'dart:io' show Platform;
 
+import 'package:app_device_integrity/app_device_integrity.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_play_integrity_wrapper/flutter_play_integrity_wrapper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../config/config.dart';
 import '../services/api_client.dart';
 import '../services/session_store.dart';
 import '../strings.dart';
 
 const _vouchDateKey = 'pi_vouch_date';
+const _uuid = Uuid();
 
 Future<void> submitPlayIntegrityVouch() async {
   if (kIsWeb || !Platform.isAndroid) return;
@@ -20,8 +22,12 @@ Future<void> submitPlayIntegrityVouch() async {
   if (prefs.getString(_vouchDateKey) == today) return;
 
   try {
-    final token = await FlutterPlayIntegrityWrapper().requestIntegrityToken(
-      cloudProjectNumber: Config.cloudProjectNumber,
+    final cloudProjectNumber = int.tryParse(Config.cloudProjectNumber);
+    if (cloudProjectNumber == null) return;
+
+    final token = await AppDeviceIntegrity().getAttestationServiceSupport(
+      challengeString: _uuid.v4(),
+      gcp: cloudProjectNumber,
     );
     if (token == null) return;
 
