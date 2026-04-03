@@ -38,6 +38,7 @@ class Credential(Base):
     sign_count_anomaly: Mapped[bool] = mapped_column(default=False)
     key_security_level: Mapped[str | None] = mapped_column(None)
     attestation_crl_verified: Mapped[bool | None] = mapped_column(None)
+    attestation_cert_serial: Mapped[str | None] = mapped_column(None)
     registered_at: Mapped[datetime]
     user: Mapped["User"] = relationship(back_populates="credentials")
 

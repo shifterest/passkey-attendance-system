@@ -179,6 +179,7 @@ def register_verify(
                     key_security_level,
                     is_legacy_root,
                     root_serial_hex,
+                    leaf_serial_hex,
                     crl_verified,
                 ) = validate_android_key_attestation(
                     registration_verification.fmt,
@@ -217,6 +218,7 @@ def register_verify(
             credential_id=encode_base64url(registration_verification.credential_id),
             sign_count=0,
             key_security_level=key_security_level,
+            attestation_cert_serial=leaf_serial_hex if settings.android_key_attestation_required else None,
             attestation_crl_verified=crl_verified,
             registered_at=datetime.now(timezone.utc),
         )

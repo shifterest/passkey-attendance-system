@@ -27,6 +27,7 @@ from api.schemas import (
     SignCountAnomalyDetail,
 )
 from api.services.audit_service import log_audit_event
+from api.services.attestation_service import fetch_crl_status_by_serial
 from api.services.auth_service import (
     check_auth_rate_limit,
     get_user_credential_for_assertion,
@@ -302,6 +303,28 @@ def check_in_verify(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=Messages.ATTESTATION_CRL_REVOKED,
         )
+
+    if user_credential.attestation_crl_verified is None and user_credential.attestation_cert_serial:
+        crl_status = fetch_crl_status_by_serial(user_credential.attestation_cert_serial)
+        if crl_status is not None:
+            user_credential.attestation_crl_verified = crl_status
+            db.add(user_credential)
+            db.commit()
+            if crl_status is False:
+                logger.warning(
+                    Logs.CREDENTIAL_CRL_REVOKED.format(
+                        credential_id=user_credential.credential_id
+                    )
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=Messages.ATTESTATION_CRL_REVOKED,
+                )
+            logger.info(
+                Logs.CREDENTIAL_CRL_VERIFIED.format(
+                    credential_id=user_credential.credential_id
+                )
+            )
 
     user_public_key = user_credential.public_key
     user_sign_count = user_credential.sign_count

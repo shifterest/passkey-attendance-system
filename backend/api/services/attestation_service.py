@@ -76,14 +76,13 @@ def google_hardware_attestation_roots() -> list[bytes]:
     return _google_hardware_attestation_roots()
 
 
-def fetch_crl_status(leaf_cert: x509.Certificate) -> bool | None:
+def fetch_crl_status_by_serial(serial_hex: str) -> bool | None:
     if not (settings.crl_check_enabled and settings.outbound_integrity_checks_enabled):
         return None
     try:
         response = httpx.get(_ANDROID_KEY_CRL_URL, timeout=5.0)
         response.raise_for_status()
         entries: dict = response.json().get("entries", {})
-        serial_hex = format(leaf_cert.serial_number, "X")
         for key in entries:
             if key.upper() == serial_hex.upper():
                 return False
@@ -92,9 +91,14 @@ def fetch_crl_status(leaf_cert: x509.Certificate) -> bool | None:
         return None
 
 
+def fetch_crl_status(leaf_cert: x509.Certificate) -> bool | None:
+    serial_hex = format(leaf_cert.serial_number, "X")
+    return fetch_crl_status_by_serial(serial_hex)
+
+
 def validate_android_key_attestation(
     fmt: AttestationFormat, attestation_object: bytes
-) -> tuple[str, bool, str, bool | None]:
+) -> tuple[str, bool, str, str, bool | None]:
     if fmt != AttestationFormat.ANDROID_KEY:
         raise ValueError(Messages.ATTESTATION_ANDROID_KEY_REQUIRED)
 
@@ -109,5 +113,6 @@ def validate_android_key_attestation(
         raise ValueError(Messages.ATTESTATION_NOT_HARDWARE_BACKED)
 
     is_legacy_root = is_legacy_google_hardware_attestation_root(root_certificate)
+    leaf_serial_hex = format(certificates[0].serial_number, "X")
     crl_verified = fetch_crl_status(certificates[0])
-    return key_security_level, is_legacy_root, root_serial_hex, crl_verified
+    return key_security_level, is_legacy_root, root_serial_hex, leaf_serial_hex, crl_verified

@@ -4,6 +4,7 @@ import httpx
 import pytest
 from api.services.attestation_service import (
     fetch_crl_status,
+    fetch_crl_status_by_serial,
     is_hardware_backed_security_level,
     validate_android_key_attestation,
 )
@@ -96,3 +97,32 @@ def test_fetch_crl_status_network_error_returns_none(mock_get, mock_settings):
     mock_get.side_effect = httpx.ConnectError("unreachable")
     cert = _make_cert(serial=0xABCD)
     assert fetch_crl_status(cert) is None
+
+
+@patch("api.services.attestation_service.settings")
+@patch("api.services.attestation_service.httpx.get")
+def test_fetch_crl_status_by_serial_not_revoked_returns_true(mock_get, mock_settings):
+    mock_settings.crl_check_enabled = True
+    mock_settings.outbound_integrity_checks_enabled = True
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"entries": {"FFFF": {"status": "REVOKED"}}}
+    mock_get.return_value = mock_response
+    assert fetch_crl_status_by_serial("ABCD") is True
+
+
+@patch("api.services.attestation_service.settings")
+@patch("api.services.attestation_service.httpx.get")
+def test_fetch_crl_status_by_serial_revoked_returns_false(mock_get, mock_settings):
+    mock_settings.crl_check_enabled = True
+    mock_settings.outbound_integrity_checks_enabled = True
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"entries": {"ABCD": {"status": "REVOKED"}}}
+    mock_get.return_value = mock_response
+    assert fetch_crl_status_by_serial("ABCD") is False
+
+
+@patch("api.services.attestation_service.settings")
+def test_fetch_crl_status_by_serial_disabled_returns_none(mock_settings):
+    mock_settings.crl_check_enabled = False
+    mock_settings.outbound_integrity_checks_enabled = True
+    assert fetch_crl_status_by_serial("ABCD") is None
