@@ -40,6 +40,10 @@ class Messages:
     ORG_NOT_FOUND = "Organization not found"
     ORG_RULE_ORG_MEMBER_FORBIDDEN = "Rule type 'org_member' is not allowed in organization rules"
 
+    # Events
+    EVENT_NOT_FOUND = "Event not found"
+    NOT_EVENT_ATTENDEE = "User is not eligible to attend this event"
+
     # Attendance sessions
     SESSION_NOT_FOUND = "Session not found"
     SESSION_CLASS_NOT_FOUND = "Class not found"
