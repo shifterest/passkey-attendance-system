@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 class SessionStore {
   static late final SharedPreferencesWithCache prefs;
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   static Future<void> init() async {
