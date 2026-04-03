@@ -7,6 +7,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
+import 'package:passkey_attendance_system/services/nfc_service.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
@@ -241,6 +242,11 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       });
       final gpsPosition = await _collectGpsPosition();
 
+      setState(() {
+        _status = AuthStrings.collectingNfc;
+      });
+      final nfcToken = await NfcService.readToken();
+
       credentialJson = await passkey.checkIn(
         optionsJson,
         widget.userId,
@@ -250,6 +256,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         gpsLatitude: gpsPosition?.latitude,
         gpsLongitude: gpsPosition?.longitude,
         gpsIsMock: gpsPosition?.isMocked,
+        nfcToken: nfcToken,
       );
     }
 
