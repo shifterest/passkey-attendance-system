@@ -7,6 +7,7 @@ final class ApiPaths {
   static const String loginVerify = '/auth/login/verify';
   static const String logout = '/auth/logout';
   static const String playIntegrityVouch = '/auth/play-integrity/vouch';
+  static const String playIntegrityNonce = '/auth/play-integrity/nonce';
 }
 
 final class AuthStrings {
