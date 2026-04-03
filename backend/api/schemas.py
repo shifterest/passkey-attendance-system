@@ -557,3 +557,87 @@ class UserUpdatedDetail(BaseModel):
     updated_fields: list[str]
     old_value: UserRoleChange | None = None
     new_value: UserRoleChange | None = None
+
+
+# Organizations
+class OrgMembershipRuleType(str, Enum):
+    ALL = "all"
+    ROLE = "role"
+    PROGRAM = "program"
+    YEAR_LEVEL = "year_level"
+
+
+class OrgMembershipType(str, Enum):
+    EXPLICIT_GRANT = "explicit_grant"
+    EXPLICIT_REVOCATION = "explicit_revocation"
+    ROLE_ELEVATION = "role_elevation"
+
+
+class OrgRole(str, Enum):
+    MEMBER = "member"
+    MODERATOR = "moderator"
+    EVENT_CREATOR = "event_creator"
+    ADMIN = "admin"
+
+
+class OrganizationBase(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class OrganizationCreate(OrganizationBase):
+    model_config = ConfigDict(extra="forbid")
+
+
+class OrganizationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+
+
+class OrganizationResponse(OrganizationBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_by: str | None = None
+    created_at: datetime
+
+
+class OrgMembershipRuleBase(BaseModel):
+    rule_type: OrgMembershipRuleType
+    rule_value: str | None = None
+    rule_group: int | None = None
+
+
+class OrgMembershipRuleCreate(OrgMembershipRuleBase):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+
+class OrgMembershipRuleResponse(OrgMembershipRuleBase):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    org_id: str
+
+
+class OrgMembershipBase(BaseModel):
+    membership_type: OrgMembershipType
+    org_role: OrgRole | None = None
+    expires_at: datetime | None = None
+
+
+class OrgMembershipCreate(OrgMembershipBase):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    user_id: str
+
+
+class OrgMembershipResponse(OrgMembershipBase):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    org_id: str
+    user_id: str
+    granted_at: datetime
+    granted_by: str | None = None
