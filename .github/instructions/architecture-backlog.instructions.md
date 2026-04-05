@@ -74,6 +74,8 @@ name: "Architecture Backlog Guidance"
 - ✅ **Idempotency key** — `X-Idempotency-Key` header on check-in verify; Flutter generates a UUID per attempt; backend caches response in Redis scoped to `{user_id}:{key}` with challenge TTL.
 - ✅ **BLE session nonce rotation** — session nonce stored in Redis (`ble_token:{session_id}`) with TTL from `BLE_TOKEN_TTL_SECONDS` on session open. `GET /sessions/{id}/ble-token` endpoint auto-rotates on expiry (teacher/admin/operator only). Check-in verify reads Redis only. Teacher device polls this endpoint to get current broadcast nonce.
 - ✅ **BLE RSSI averaging window** — Flutter collects full array of RSSI readings during 30s scan; backend averages the array before RSSI bucketing.
+- ✅ **Play Integrity nonce** — `GET /auth/play-integrity/nonce` issues a UUID nonce per credential (60s TTL, Redis `pi_nonce:{credential_id}`). Flutter passes nonce as `challengeString` to the PI API; `POST /auth/play-integrity/vouch` verifies `requestDetails.requestHash` against stored nonce via GETDEL before accepting the verdict.
+- ✅ **NFC proximity** — Teacher device emulates an Android NFC HCE Type 4 tag (NDEF Text record, AID `D2760000850101`). Token generated at session open, stored in Redis `nfc_token:{session_id}` with session-duration TTL. `GET /sessions/{id}/nfc-token` for teacher fetch. Check-in snapshots to `check_in_nfc_token:{user_id}:{session_id}` at options time; GETDEL at verify. Score: +5 always-on (no integrity multiplier). Android-only on student side (`NfcService`).
 - ❌ **Offline QR nonce hardening** — teacher device nonce broadcast + server cross-check on sync (see `auth-flows.instructions.md` offline section for full design)
 
 ---
@@ -98,7 +100,7 @@ name: "Architecture Backlog Guidance"
 
 ## P1 — Flutter Client Gaps
 
-- ✅ **Daily PI vouch call** — `play_integrity_service.dart`; triggered after successful login once an authenticated session exists
+- ✅ **Daily PI vouch call** — `play_integrity_service.dart`; triggered after successful login once an authenticated session exists; fetches server nonce from `GET /auth/play-integrity/nonce` before calling the PI API
 - ❌ **Post-check-in outcome screen** — display assurance band and whether a retry would improve it
 - ✅ **`gps_is_mock` flag submission** — `Position.isMocked` read from `geolocator`, included in check-in verify payload, stored as `gps_is_mock` on `AttendanceRecord`
 - ❌ **Offline QR attendance UI** — device-signed QR generation screen for offline sessions

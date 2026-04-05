@@ -50,6 +50,16 @@ Values:
 
 Clock authority is server-side. Backend enforces freshness and rejects stale payloads (default staleness window: 30 seconds, configurable). Challenges are single-use via GETDEL atomic Redis consumption.
 
+## NFC Proximity Model
+
+- **Teacher device emulates** an NFC Type 4 tag using Android Host-Card Emulation (HCE). Student device taps and reads the NDEF text record.
+- The **NFC token** is a URL-safe base64 string stored in Redis at `nfc_token:{session_id}` with TTL equal to the session duration in seconds. It is generated at session open and does **not** rotate (unlike BLE).
+- `GET /sessions/{id}/nfc-token` is the teacher/admin endpoint for reading the current token. Teachers do not poll this for broadcast — the HCE service holds the token in memory after the teacher UI fetches it once.
+- At check-in options: the backend snapshots `nfc_token:{session_id}` into `check_in_nfc_token:{user_id}:{session_id}` with `CHALLENGE_TIMEOUT` TTL (single-use per attempt).
+- At check-in verify: GETDEL `check_in_nfc_token:{user_id}:{session_id}`, compare with submitted `nfc_token`. On match: `nfc` added to `verification_methods`, +5 to `assurance_score`. On mismatch: `NFC_TOKEN_MISMATCH` warning logged, no score applied. NFC submission is **optional per attempt** — absence does not fail the check-in.
+- NFC score is not multiplied by integrity state — it is always +5 when validated.
+- NFC proximity is Android-only. The student app (`NfcService`) only starts the scan path when `Platform.isAndroid`; iOS devices skip NFC silently.
+
 ## BLE Proximity Model
 
 - **Teacher device broadcasts**; student app scans passively and reports raw RSSI to the backend.
