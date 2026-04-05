@@ -29,6 +29,8 @@ class UserBase(BaseModel):
     full_name: str
     email: EmailStr
     school_id: str | None = None
+    program: str | None = None
+    year_level: int | None = None
 
 
 class UserCreate(UserBase):
@@ -44,6 +46,8 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
     school_id: str | None = None
+    program: str | None = None
+    year_level: int | None = None
 
 
 class UserResponse(UserBase):
@@ -205,6 +209,7 @@ class ClassResponse(ClassBase):
 class ClassEnrollmentBase(BaseModel):
     class_id: str
     student_id: str
+    expires_at: datetime | None = None
 
 
 class ClassEnrollmentCreate(ClassEnrollmentBase):
@@ -218,6 +223,7 @@ class ClassEnrollmentUpdate(BaseModel):
 
     class_id: str | None = None
     student_id: str | None = None
+    expires_at: datetime | None = None
 
 
 class ClassEnrollmentResponse(ClassEnrollmentBase):
@@ -551,3 +557,150 @@ class UserUpdatedDetail(BaseModel):
     updated_fields: list[str]
     old_value: UserRoleChange | None = None
     new_value: UserRoleChange | None = None
+
+
+# Organizations
+class OrgMembershipRuleType(str, Enum):
+    ALL = "all"
+    ROLE = "role"
+    PROGRAM = "program"
+    YEAR_LEVEL = "year_level"
+
+
+class OrgMembershipType(str, Enum):
+    EXPLICIT_GRANT = "explicit_grant"
+    EXPLICIT_REVOCATION = "explicit_revocation"
+    ROLE_ELEVATION = "role_elevation"
+
+
+class OrgRole(str, Enum):
+    MEMBER = "member"
+    MODERATOR = "moderator"
+    EVENT_CREATOR = "event_creator"
+    ADMIN = "admin"
+
+
+class OrganizationBase(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class OrganizationCreate(OrganizationBase):
+    model_config = ConfigDict(extra="forbid")
+
+
+class OrganizationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+
+
+class OrganizationResponse(OrganizationBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_by: str | None = None
+    created_at: datetime
+
+
+class OrgMembershipRuleBase(BaseModel):
+    rule_type: OrgMembershipRuleType
+    rule_value: str | None = None
+    rule_group: int | None = None
+
+
+class OrgMembershipRuleCreate(OrgMembershipRuleBase):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+
+class OrgMembershipRuleResponse(OrgMembershipRuleBase):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    org_id: str
+
+
+class OrgMembershipBase(BaseModel):
+    membership_type: OrgMembershipType
+    org_role: OrgRole | None = None
+    expires_at: datetime | None = None
+
+
+class OrgMembershipCreate(OrgMembershipBase):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+    user_id: str
+
+
+class OrgMembershipResponse(OrgMembershipBase):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    org_id: str
+    user_id: str
+    granted_at: datetime
+    granted_by: str | None = None
+
+
+# Events
+class EventAttendeeRuleType(str, Enum):
+    ALL = "all"
+    ROLE = "role"
+    PROGRAM = "program"
+    YEAR_LEVEL = "year_level"
+    ORG_MEMBER = "org_member"
+
+
+class EventBase(BaseModel):
+    name: str
+    description: str | None = None
+    schedule: list[dict] = Field(default_factory=list)
+    standard_assurance_threshold: int = 5
+    high_assurance_threshold: int = 9
+    play_integrity_enabled: bool = False
+    max_check_ins: int = 3
+
+
+class EventCreate(EventBase):
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: str
+
+
+class EventUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+    schedule: list[dict] | None = None
+    standard_assurance_threshold: int | None = None
+    high_assurance_threshold: int | None = None
+    play_integrity_enabled: bool | None = None
+    max_check_ins: int | None = None
+
+
+class EventResponse(EventBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    org_id: str
+    created_by: str | None = None
+    created_at: datetime
+
+
+class EventAttendeeRuleBase(BaseModel):
+    rule_type: EventAttendeeRuleType
+    rule_value: str | None = None
+    rule_group: int | None = None
+
+
+class EventAttendeeRuleCreate(EventAttendeeRuleBase):
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
+
+
+class EventAttendeeRuleResponse(EventAttendeeRuleBase):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+
+    id: str
+    event_id: str

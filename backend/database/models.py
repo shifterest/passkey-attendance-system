@@ -14,6 +14,8 @@ class User(Base):
     full_name: Mapped[str]
     email: Mapped[str]
     school_id: Mapped[str | None] = mapped_column(None)
+    program: Mapped[str | None] = mapped_column(None)
+    year_level: Mapped[int | None] = mapped_column(None)
     credentials: Mapped[list["Credential"]] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
@@ -83,8 +85,47 @@ class ClassEnrollment(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
     student_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    expires_at: Mapped[datetime | None] = mapped_column(None)
     enrolled_class: Mapped["Class"] = relationship(back_populates="enrollments")
     student: Mapped["User"] = relationship(back_populates="enrollments")
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    description: Mapped[str | None] = mapped_column(None)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    created_at: Mapped[datetime]
+    membership_rules: Mapped[list["OrganizationMembershipRule"]] = relationship(
+        back_populates="organization"
+    )
+    memberships: Mapped[list["OrganizationMembership"]] = relationship(
+        back_populates="organization"
+    )
+
+
+class OrganizationMembershipRule(Base):
+    __tablename__ = "organization_membership_rules"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    rule_type: Mapped[str]
+    rule_value: Mapped[str | None] = mapped_column(None)
+    rule_group: Mapped[int | None] = mapped_column(None)
+    organization: Mapped["Organization"] = relationship(back_populates="membership_rules")
+
+
+class OrganizationMembership(Base):
+    __tablename__ = "organization_memberships"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    membership_type: Mapped[str]
+    org_role: Mapped[str | None] = mapped_column(None)
+    granted_at: Mapped[datetime]
+    expires_at: Mapped[datetime | None] = mapped_column(None)
+    granted_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    organization: Mapped["Organization"] = relationship(back_populates="memberships")
 
 
 class AttendanceRecord(Base):
@@ -130,16 +171,51 @@ class LoginSession(Base):
     user: Mapped["User"] = relationship(back_populates="login_sessions")
 
 
+class Event(Base):
+    __tablename__ = "events"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    name: Mapped[str]
+    description: Mapped[str | None] = mapped_column(None)
+    schedule: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    standard_assurance_threshold: Mapped[int] = mapped_column(default=5)
+    high_assurance_threshold: Mapped[int] = mapped_column(default=9)
+    play_integrity_enabled: Mapped[bool] = mapped_column(default=False)
+    max_check_ins: Mapped[int] = mapped_column(default=3)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    created_at: Mapped[datetime]
+    attendee_rules: Mapped[list["EventAttendeeRule"]] = relationship(
+        back_populates="event"
+    )
+    check_in_sessions: Mapped[list["CheckInSession"]] = relationship(
+        back_populates="event", foreign_keys="[CheckInSession.event_id]"
+    )
+
+
+class EventAttendeeRule(Base):
+    __tablename__ = "event_attendee_rules"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("events.id"))
+    rule_type: Mapped[str]
+    rule_value: Mapped[str | None] = mapped_column(None)
+    rule_group: Mapped[int | None] = mapped_column(None)
+    event: Mapped["Event"] = relationship(back_populates="attendee_rules")
+
+
 class CheckInSession(Base):
     __tablename__ = "check_in_sessions"
     id: Mapped[str] = mapped_column(primary_key=True)
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
+    event_id: Mapped[str | None] = mapped_column(ForeignKey("events.id"), default=None)
     start_time: Mapped[datetime]
     end_time: Mapped[datetime]
     status: Mapped[str]
     present_cutoff_minutes: Mapped[int] = mapped_column(default=5)
     late_cutoff_minutes: Mapped[int] = mapped_column(default=15)
     attended_class: Mapped["Class"] = relationship(back_populates="check_in_sessions")
+    event: Mapped["Event | None"] = relationship(
+        back_populates="check_in_sessions", foreign_keys="[CheckInSession.event_id]"
+    )
     records: Mapped[list["AttendanceRecord"]] = relationship(back_populates="session")
 
 
