@@ -142,6 +142,7 @@ def create_enrollment(
         id=str(uuid.uuid4()),
         class_id=enrollment_data.class_id,
         student_id=enrollment_data.student_id,
+        expires_at=enrollment_data.expires_at,
     )
     db.add(new_enrollment)
     db.commit()

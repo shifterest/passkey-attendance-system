@@ -34,6 +34,7 @@ class Messages:
     ENROLLMENT_CLASS_NOT_FOUND = "Class not found"
     ENROLLMENT_STUDENT_NOT_FOUND = "Student not found"
     ENROLLMENT_DELETED = "Enrollment deleted"
+    MEMBERSHIP_EXPIRED = "Enrollment has expired"
 
     # Attendance sessions
     SESSION_NOT_FOUND = "Session not found"

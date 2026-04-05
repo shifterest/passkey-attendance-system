@@ -64,6 +64,8 @@ def create_user(
         full_name=user_data.full_name,
         email=user_data.email,
         school_id=user_data.school_id,
+        program=user_data.program,
+        year_level=user_data.year_level,
     )
     db.add(new_user)
     db.commit()
