@@ -283,6 +283,7 @@ class AttendanceRecordVerificationMethods(str, Enum):
     PLAY_INTEGRITY = "play_integrity"
     GPS = "gps"
     NETWORK = "network"
+    NFC = "nfc"
     MANUAL = "manual"
 
 
@@ -432,6 +433,7 @@ class CheckInResponseBase(BaseModel):
     session_id: str
     bluetooth_rssi_readings: list[int] | None = None
     ble_token: str | None = None
+    nfc_token: str | None = None
     gps_latitude: float | None = None
     gps_longitude: float | None = None
     gps_is_mock: bool | None = None
