@@ -433,3 +433,92 @@ export function getAuditExportUrl(params?: {
 	const origin = getApiOrigin();
 	return `${origin}${ApiPaths.auditExport}${qs ? `?${qs}` : ""}`;
 }
+
+export type ClassPolicyDto = {
+	id: string;
+	class_id: string | null;
+	created_by: string | null;
+	standard_assurance_threshold: number;
+	high_assurance_threshold: number;
+	present_cutoff_minutes: number;
+	late_cutoff_minutes: number;
+	max_check_ins: number;
+};
+
+export function openSession(
+	teacherId: string,
+	opts?: { presentCutoffMinutes?: number; lateCutoffMinutes?: number },
+) {
+	return request<CheckInSessionDto>(ApiPaths.openSession, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			teacher_id: teacherId,
+			...(opts?.presentCutoffMinutes !== undefined && {
+				present_cutoff_minutes: opts.presentCutoffMinutes,
+			}),
+			...(opts?.lateCutoffMinutes !== undefined && {
+				late_cutoff_minutes: opts.lateCutoffMinutes,
+			}),
+		}),
+	});
+}
+
+export function updateRecord(
+	recordId: string,
+	data: {
+		is_flagged?: boolean | null;
+		flag_reason?: string | null;
+		sync_pending?: boolean | null;
+	},
+) {
+	return request<AttendanceRecordDto>(ApiPaths.record(recordId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function getPolicies() {
+	return request<ClassPolicyDto[]>(ApiPaths.policies);
+}
+
+export function getPoliciesByUser(userId: string) {
+	return request<ClassPolicyDto[]>(ApiPaths.userPolicy(userId));
+}
+
+export function createPolicy(data: {
+	class_id?: string | null;
+	standard_assurance_threshold?: number;
+	high_assurance_threshold?: number;
+	present_cutoff_minutes?: number;
+	late_cutoff_minutes?: number;
+	max_check_ins?: number;
+}) {
+	return request<ClassPolicyDto>(ApiPaths.policies, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function updatePolicy(
+	policyId: string,
+	data: {
+		standard_assurance_threshold?: number | null;
+		high_assurance_threshold?: number | null;
+		present_cutoff_minutes?: number | null;
+		late_cutoff_minutes?: number | null;
+		max_check_ins?: number | null;
+	},
+) {
+	return request<ClassPolicyDto>(ApiPaths.policy(policyId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deletePolicy(policyId: string) {
+	return request<void>(ApiPaths.policy(policyId), { method: "DELETE" });
+}
