@@ -1,4 +1,6 @@
 import cbor2
+import httpx
+from api.config import settings
 from api.helpers.android.roots import (
     google_hardware_attestation_roots as _google_hardware_attestation_roots,
 )
@@ -14,6 +16,7 @@ from webauthn.helpers.asn1.android_key import KeyDescription
 from webauthn.helpers.structs import AttestationFormat
 
 _ANDROID_KEY_ATTESTATION_OID = "1.3.6.1.4.1.11129.2.1.17"
+_ANDROID_KEY_CRL_URL = "https://android.googleapis.com/attestation/status"
 _ATTESTATION_KEY_OID = ObjectIdentifier(_ANDROID_KEY_ATTESTATION_OID)
 _SECURITY_LEVEL_MAP: dict[int, str] = {0: "software", 1: "tee", 2: "strongbox"}
 _HARDWARE_BACKED_SECURITY_LEVELS = frozenset({"tee", "strongbox"})
@@ -73,9 +76,29 @@ def google_hardware_attestation_roots() -> list[bytes]:
     return _google_hardware_attestation_roots()
 
 
+def fetch_crl_status_by_serial(serial_hex: str) -> bool | None:
+    if not (settings.crl_check_enabled and settings.outbound_integrity_checks_enabled):
+        return None
+    try:
+        response = httpx.get(_ANDROID_KEY_CRL_URL, timeout=5.0)
+        response.raise_for_status()
+        entries: dict = response.json().get("entries", {})
+        for key in entries:
+            if key.upper() == serial_hex.upper():
+                return False
+        return True
+    except Exception:
+        return None
+
+
+def fetch_crl_status(leaf_cert: x509.Certificate) -> bool | None:
+    serial_hex = format(leaf_cert.serial_number, "X")
+    return fetch_crl_status_by_serial(serial_hex)
+
+
 def validate_android_key_attestation(
     fmt: AttestationFormat, attestation_object: bytes
-) -> tuple[str, bool, str]:
+) -> tuple[str, bool, str, str, bool | None]:
     if fmt != AttestationFormat.ANDROID_KEY:
         raise ValueError(Messages.ATTESTATION_ANDROID_KEY_REQUIRED)
 
@@ -90,4 +113,6 @@ def validate_android_key_attestation(
         raise ValueError(Messages.ATTESTATION_NOT_HARDWARE_BACKED)
 
     is_legacy_root = is_legacy_google_hardware_attestation_root(root_certificate)
-    return key_security_level, is_legacy_root, root_serial_hex
+    leaf_serial_hex = format(certificates[0].serial_number, "X")
+    crl_verified = fetch_crl_status(certificates[0])
+    return key_security_level, is_legacy_root, root_serial_hex, leaf_serial_hex, crl_verified
