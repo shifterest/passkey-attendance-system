@@ -28,8 +28,16 @@ from sqlalchemy.orm import Session
 AUTH_RATELIMIT_USER_PREFIX = "auth:ratelimit:user:"
 
 
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def create_login_session(session: LoginSession):
-    expires_delta = session.expires_at - datetime.now(timezone.utc)
+    expires_at = _as_utc(session.expires_at)
+    created_at = _as_utc(session.created_at)
+    expires_delta = expires_at - datetime.now(timezone.utc)
     expires_in = max(0, int(expires_delta.total_seconds()))
 
     token = secrets.token_urlsafe(32)
@@ -47,14 +55,16 @@ def create_login_session(session: LoginSession):
     return LoginSessionBase(
         user_id=session.user_id,
         session_token=token,
-        created_at=session.created_at,
-        expires_at=session.expires_at,
+        created_at=created_at,
+        expires_at=expires_at,
         expires_in=expires_in,
     )
 
 
 def create_registration_session(session: RegistrationSession):
-    expires_delta = session.expires_at - datetime.now(timezone.utc)
+    expires_at = _as_utc(session.expires_at)
+    created_at = _as_utc(session.created_at)
+    expires_delta = expires_at - datetime.now(timezone.utc)
     expires_in = max(0, int(expires_delta.total_seconds()))
 
     token = secrets.token_urlsafe(32)
@@ -73,8 +83,8 @@ def create_registration_session(session: RegistrationSession):
     return RegistrationSessionBase(
         user_id=session.user_id,
         registration_token=token,
-        created_at=session.created_at,
-        expires_at=session.expires_at,
+        created_at=created_at,
+        expires_at=expires_at,
         expires_in=expires_in,
         url=url,
     )

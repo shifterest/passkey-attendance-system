@@ -6,7 +6,6 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-RUN mkdir -p sqlite
 
 RUN useradd --system --no-create-home app \
     && chown -R app:app /app

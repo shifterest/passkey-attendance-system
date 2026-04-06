@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/", tags=["root"])
+router = APIRouter(prefix="", tags=["root"])
 
 
 @router.get("/")

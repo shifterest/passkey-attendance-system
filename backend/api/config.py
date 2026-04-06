@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Infrastructure
     redis_url: str = "redis://localhost:6379"
-    database_url: str = "sqlite+pysqlite:///sqlite/attendance.db"
+    database_url: str = "postgresql+psycopg://pas:changeme@localhost:5432/attendance"
 
     # WebAuthn
     web_origin: str = "http://localhost:3000"
