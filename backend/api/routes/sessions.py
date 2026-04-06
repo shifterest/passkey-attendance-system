@@ -33,7 +33,14 @@ from api.services.auth_service import verify_device_signature
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
-from database.models import AttendanceRecord, CheckInSession, Class, ClassPolicy, Credential, User
+from database.models import (
+    AttendanceRecord,
+    CheckInSession,
+    Class,
+    ClassPolicy,
+    Credential,
+    User,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -157,13 +164,21 @@ def open_teacher_session(
 
     target_class = matching_classes[0]
 
-    class_policy = db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    class_policy = (
+        db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    )
     if class_policy is None:
-        class_policy = db.query(ClassPolicy).filter(
-            ClassPolicy.class_id.is_(None),
-            ClassPolicy.created_by == teacher.id,
-        ).first()
-    present_cutoff = class_policy.present_cutoff_minutes if class_policy is not None else 5
+        class_policy = (
+            db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.class_id.is_(None),
+                ClassPolicy.created_by == teacher.id,
+            )
+            .first()
+        )
+    present_cutoff = (
+        class_policy.present_cutoff_minutes if class_policy is not None else 5
+    )
     late_cutoff = class_policy.late_cutoff_minutes if class_policy is not None else 15
 
     existing_session = (
@@ -206,9 +221,7 @@ def open_teacher_session(
         new_ble_token(),
         ex=settings.ble_token_ttl_seconds,
     )
-    session_duration_seconds = max(
-        int((session_end - now).total_seconds()), 1
-    )
+    session_duration_seconds = max(int((session_end - now).total_seconds()), 1)
     redis_client.set(
         f"nfc_token:{new_session.id}",
         new_nfc_token(),
@@ -235,12 +248,18 @@ def offline_sync(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
         )
 
-    class_policy = db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    class_policy = (
+        db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    )
     if class_policy is None:
-        class_policy = db.query(ClassPolicy).filter(
-            ClassPolicy.class_id.is_(None),
-            ClassPolicy.created_by == target_class.teacher_id,
-        ).first()
+        class_policy = (
+            db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.class_id.is_(None),
+                ClassPolicy.created_by == target_class.teacher_id,
+            )
+            .first()
+        )
     effective_standard = (
         class_policy.standard_assurance_threshold
         if class_policy
@@ -258,7 +277,9 @@ def offline_sync(
         start_time=sync_data.opened_at,
         end_time=sync_data.closed_at,
         status="closed",
-        present_cutoff_minutes=class_policy.present_cutoff_minutes if class_policy else 5,
+        present_cutoff_minutes=class_policy.present_cutoff_minutes
+        if class_policy
+        else 5,
         late_cutoff_minutes=class_policy.late_cutoff_minutes if class_policy else 15,
     )
     db.add(new_session)
@@ -267,11 +288,13 @@ def offline_sync(
     results: list[OfflineSyncRecordResult] = []
     for record in sync_data.records:
         if record.challenge not in sync_data.nonce_set:
-            results.append(OfflineSyncRecordResult(
-                user_id=record.user_id,
-                status="failed",
-                reason="Challenge not in teacher nonce set",
-            ))
+            results.append(
+                OfflineSyncRecordResult(
+                    user_id=record.user_id,
+                    status="failed",
+                    reason="Challenge not in teacher nonce set",
+                )
+            )
             continue
 
         credential = (
@@ -283,19 +306,23 @@ def offline_sync(
             .first()
         )
         if credential is None:
-            results.append(OfflineSyncRecordResult(
-                user_id=record.user_id,
-                status="failed",
-                reason=Messages.AUTH_NO_CREDENTIAL,
-            ))
+            results.append(
+                OfflineSyncRecordResult(
+                    user_id=record.user_id,
+                    status="failed",
+                    reason=Messages.AUTH_NO_CREDENTIAL,
+                )
+            )
             continue
 
         if record.device_public_key != credential.device_public_key:
-            results.append(OfflineSyncRecordResult(
-                user_id=record.user_id,
-                status="failed",
-                reason=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
-            ))
+            results.append(
+                OfflineSyncRecordResult(
+                    user_id=record.user_id,
+                    status="failed",
+                    reason=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
+                )
+            )
             continue
 
         device_payload = build_device_payload(
@@ -324,7 +351,9 @@ def offline_sync(
         assurance_band = compute_assurance_band(
             assurance_score, effective_standard, effective_high
         )
-        attempted_at = datetime.fromtimestamp(record.issued_at_ms / 1000, tz=timezone.utc)
+        attempted_at = datetime.fromtimestamp(
+            record.issued_at_ms / 1000, tz=timezone.utc
+        )
         attendance_status = resolve_attendance_status(
             attempted_at=attempted_at,
             session=new_session,
@@ -349,11 +378,13 @@ def offline_sync(
         db.flush()
 
         if sig_ok:
-            results.append(OfflineSyncRecordResult(
-                user_id=record.user_id,
-                status="synced",
-                record_id=new_record.id,
-            ))
+            results.append(
+                OfflineSyncRecordResult(
+                    user_id=record.user_id,
+                    status="synced",
+                    record_id=new_record.id,
+                )
+            )
         else:
             log_audit_event(
                 AuditEvents.OFFLINE_SIGNATURE_FAILURE,
@@ -362,12 +393,14 @@ def offline_sync(
                 {"credential_id": credential.id, "record_id": new_record.id},
                 db,
             )
-            results.append(OfflineSyncRecordResult(
-                user_id=record.user_id,
-                status="sig_failed",
-                record_id=new_record.id,
-                reason=Messages.OFFLINE_RECORD_SIGNATURE_FAILURE,
-            ))
+            results.append(
+                OfflineSyncRecordResult(
+                    user_id=record.user_id,
+                    status="sig_failed",
+                    record_id=new_record.id,
+                    reason=Messages.OFFLINE_RECORD_SIGNATURE_FAILURE,
+                )
+            )
 
     db.commit()
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))

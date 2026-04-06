@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from apscheduler.schedulers.background import BackgroundScheduler
-
 from api.redis import redis_client
 from api.redis_keys import PI_VOUCH_EXPIRY_SOON_PREFIX, PI_VOUCH_KEY_PREFIX
 from api.services.audit_service import log_audit_event
 from api.strings import AuditEvents
+from apscheduler.schedulers.background import BackgroundScheduler
 from database.connection import session as SessionLocal
 from database.models import AttendanceRecord
 

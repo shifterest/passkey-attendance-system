@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from api.helpers.membership import is_org_member, is_event_attendee
+from api.helpers.membership import is_event_attendee, is_org_member
 
 
 def _make_user(**kwargs):

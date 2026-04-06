@@ -27,8 +27,8 @@ from api.schemas import (
     DeviceSignatureFailureDetail,
     SignCountAnomalyDetail,
 )
-from api.services.audit_service import log_audit_event
 from api.services.attestation_service import fetch_crl_status_by_serial
+from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
     check_auth_rate_limit,
     get_user_credential_for_assertion,
@@ -87,8 +87,7 @@ def check_in_options(
         for row in db.query(ClassEnrollment.class_id)
         .filter(ClassEnrollment.student_id == user.id)
         .filter(
-            (ClassEnrollment.expires_at.is_(None))
-            | (ClassEnrollment.expires_at > now)
+            (ClassEnrollment.expires_at.is_(None)) | (ClassEnrollment.expires_at > now)
         )
         .all()
     ]
@@ -206,7 +205,8 @@ def check_in_options(
             .first()
             or db.query(ClassPolicy)
             .filter(
-                ClassPolicy.created_by == class_.teacher_id, ClassPolicy.class_id.is_(None)
+                ClassPolicy.created_by == class_.teacher_id,
+                ClassPolicy.class_id.is_(None),
             )
             .first()
         )
@@ -221,7 +221,9 @@ def check_in_options(
             else class_.high_assurance_threshold
         )
     elif event is not None:
-        options_json["standard_assurance_threshold"] = event.standard_assurance_threshold
+        options_json["standard_assurance_threshold"] = (
+            event.standard_assurance_threshold
+        )
         options_json["high_assurance_threshold"] = event.high_assurance_threshold
     return options_json
 
@@ -271,8 +273,16 @@ def check_in_verify(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
         )
-    class_ = db.query(Class).filter(Class.id == session.class_id).first() if session.class_id else None
-    event = db.query(Event).filter(Event.id == session.event_id).first() if session.event_id else None
+    class_ = (
+        db.query(Class).filter(Class.id == session.class_id).first()
+        if session.class_id
+        else None
+    )
+    event = (
+        db.query(Event).filter(Event.id == session.event_id).first()
+        if session.event_id
+        else None
+    )
     if class_ is None and event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -302,8 +312,10 @@ def check_in_verify(
             .first()
         )
     effective_max_check_ins = (
-        policy.max_check_ins if policy
-        else event.max_check_ins if event
+        policy.max_check_ins
+        if policy
+        else event.max_check_ins
+        if event
         else settings.max_check_ins_per_session
     )
     retry_key = f"check_in_retry:{session.id}:{user.id}"
@@ -357,7 +369,10 @@ def check_in_verify(
             detail=Messages.ATTESTATION_CRL_REVOKED,
         )
 
-    if user_credential.attestation_crl_verified is None and user_credential.attestation_cert_serial:
+    if (
+        user_credential.attestation_crl_verified is None
+        and user_credential.attestation_cert_serial
+    ):
         crl_status = fetch_crl_status_by_serial(user_credential.attestation_cert_serial)
         if crl_status is not None:
             user_credential.attestation_crl_verified = crl_status
@@ -495,9 +510,7 @@ def check_in_verify(
             expected_nfc_raw = redis_client.getdel(
                 f"check_in_nfc_token:{user.id}:{session.id}"
             )
-            expected_nfc_token = (
-                expected_nfc_raw.decode() if expected_nfc_raw else None
-            )
+            expected_nfc_token = expected_nfc_raw.decode() if expected_nfc_raw else None
             if (
                 expected_nfc_token is not None
                 and response_data.nfc_token == expected_nfc_token
@@ -559,13 +572,15 @@ def check_in_verify(
         effective_standard = (
             policy.standard_assurance_threshold
             if policy
-            else event.standard_assurance_threshold if event
+            else event.standard_assurance_threshold
+            if event
             else class_.standard_assurance_threshold
         )
         effective_high = (
             policy.high_assurance_threshold
             if policy
-            else event.high_assurance_threshold if event
+            else event.high_assurance_threshold
+            if event
             else class_.high_assurance_threshold
         )
         assurance_band = compute_assurance_band(

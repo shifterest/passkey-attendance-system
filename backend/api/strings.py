@@ -38,7 +38,9 @@ class Messages:
 
     # Organizations
     ORG_NOT_FOUND = "Organization not found"
-    ORG_RULE_ORG_MEMBER_FORBIDDEN = "Rule type 'org_member' is not allowed in organization rules"
+    ORG_RULE_ORG_MEMBER_FORBIDDEN = (
+        "Rule type 'org_member' is not allowed in organization rules"
+    )
 
     # Events
     EVENT_NOT_FOUND = "Event not found"
@@ -46,7 +48,9 @@ class Messages:
 
     # Offline sync
     OFFLINE_SYNC_SESSION_OPEN_FAILED = "Failed to open session for offline sync batch"
-    OFFLINE_RECORD_SIGNATURE_FAILURE = "Device signature verification failed for offline record"
+    OFFLINE_RECORD_SIGNATURE_FAILURE = (
+        "Device signature verification failed for offline record"
+    )
     OFFLINE_RECORD_SYNC_CLEARED = "Offline record synced and verified"
     OFFLINE_RECORD_ESCALATED = "Unsynced offline record escalated to teacher review"
     PI_VOUCH_EXPIRING_SOON = "Play Integrity vouch expires soon"

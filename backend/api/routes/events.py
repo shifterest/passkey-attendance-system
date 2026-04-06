@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["events"])
 
 
-def _require_event_creator(db: Session, current_user: User, org_id: str) -> Organization:
+def _require_event_creator(
+    db: Session, current_user: User, org_id: str
+) -> Organization:
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if org is None:
         raise HTTPException(
@@ -43,7 +45,9 @@ def create_event(
     org_id: str,
     event_data: EventCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_event_creator(db, current_user, org_id)
     event = Event(
@@ -71,7 +75,9 @@ def list_events(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if org is None:
@@ -84,11 +90,7 @@ def list_events(
                 status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
             )
     return (
-        db.query(Event)
-        .filter(Event.org_id == org_id)
-        .offset(offset)
-        .limit(limit)
-        .all()
+        db.query(Event).filter(Event.org_id == org_id).offset(offset).limit(limit).all()
     )
 
 
@@ -96,7 +98,9 @@ def list_events(
 def get_event(
     event_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
@@ -116,7 +120,9 @@ def update_event(
     event_id: str,
     event_data: EventUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
@@ -135,7 +141,9 @@ def update_event(
 def delete_event(
     event_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
@@ -152,7 +160,9 @@ def delete_event(
 def list_event_rules(
     event_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
@@ -161,9 +171,7 @@ def list_event_rules(
         )
     _require_event_creator(db, current_user, event.org_id)
     return (
-        db.query(EventAttendeeRule)
-        .filter(EventAttendeeRule.event_id == event_id)
-        .all()
+        db.query(EventAttendeeRule).filter(EventAttendeeRule.event_id == event_id).all()
     )
 
 
@@ -172,7 +180,9 @@ def create_event_rule(
     event_id: str,
     data: EventAttendeeRuleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
@@ -205,7 +215,9 @@ def delete_event_rule(
     event_id: str,
     rule_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:

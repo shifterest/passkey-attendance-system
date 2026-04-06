@@ -39,7 +39,8 @@ def is_org_member(db: Session, user: User, org_id: str) -> bool:
         .filter(
             OrganizationMembership.org_id == org_id,
             OrganizationMembership.user_id == user.id,
-            OrganizationMembership.membership_type == OrgMembershipType.EXPLICIT_REVOCATION.value,
+            OrganizationMembership.membership_type
+            == OrgMembershipType.EXPLICIT_REVOCATION.value,
         )
         .filter(
             (OrganizationMembership.expires_at.is_(None))
@@ -55,10 +56,12 @@ def is_org_member(db: Session, user: User, org_id: str) -> bool:
         .filter(
             OrganizationMembership.org_id == org_id,
             OrganizationMembership.user_id == user.id,
-            OrganizationMembership.membership_type.in_([
-                OrgMembershipType.EXPLICIT_GRANT.value,
-                OrgMembershipType.ROLE_ELEVATION.value,
-            ]),
+            OrganizationMembership.membership_type.in_(
+                [
+                    OrgMembershipType.EXPLICIT_GRANT.value,
+                    OrgMembershipType.ROLE_ELEVATION.value,
+                ]
+            ),
         )
         .filter(
             (OrganizationMembership.expires_at.is_(None))
@@ -84,10 +87,12 @@ def get_org_role(db: Session, user_id: str, org_id: str) -> str | None:
         .filter(
             OrganizationMembership.org_id == org_id,
             OrganizationMembership.user_id == user_id,
-            OrganizationMembership.membership_type.in_([
-                OrgMembershipType.EXPLICIT_GRANT.value,
-                OrgMembershipType.ROLE_ELEVATION.value,
-            ]),
+            OrganizationMembership.membership_type.in_(
+                [
+                    OrgMembershipType.EXPLICIT_GRANT.value,
+                    OrgMembershipType.ROLE_ELEVATION.value,
+                ]
+            ),
         )
         .filter(
             (OrganizationMembership.expires_at.is_(None))
@@ -124,9 +129,7 @@ def is_event_attendee(db: Session, user: User, event: Event) -> tuple[bool, str 
     from database.models import EventAttendeeRule
 
     rules = (
-        db.query(EventAttendeeRule)
-        .filter(EventAttendeeRule.event_id == event.id)
-        .all()
+        db.query(EventAttendeeRule).filter(EventAttendeeRule.event_id == event.id).all()
     )
     if not rules:
         return (True, None)

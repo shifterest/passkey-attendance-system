@@ -13,7 +13,13 @@ class SessionStore {
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
       cacheOptions: const SharedPreferencesWithCacheOptions(
-        allowList: <String>{'deviceId', 'userId', 'sessionExpiry', 'role', 'lastCheckIn'},
+        allowList: <String>{
+          'deviceId',
+          'userId',
+          'sessionExpiry',
+          'role',
+          'lastCheckIn',
+        },
       ),
     );
   }

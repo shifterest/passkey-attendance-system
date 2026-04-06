@@ -140,8 +140,8 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
         child: _scanning
             ? _buildScanning()
             : _sessionId != null
-                ? _buildSessionFound()
-                : _buildScanFailed(),
+            ? _buildSessionFound()
+            : _buildScanFailed(),
       ),
     );
   }

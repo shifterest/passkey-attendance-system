@@ -45,7 +45,9 @@ class OfflinePayloadService {
 
     return {
       'user_id': userId,
-      'credential_id': credentialId.isNotEmpty ? credentialId : credentialIdFromStore,
+      'credential_id': credentialId.isNotEmpty
+          ? credentialId
+          : credentialIdFromStore,
       'issued_at_ms': issuedAtMs,
       'device_signature': base64Encode(signatureBytes),
       'device_public_key': base64Encode(publicKeyBytes),

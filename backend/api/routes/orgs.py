@@ -4,14 +4,14 @@ from datetime import datetime, timezone
 
 from api.helpers.membership import get_org_role, is_org_member
 from api.schemas import (
+    OrganizationCreate,
+    OrganizationResponse,
+    OrganizationUpdate,
     OrgMembershipCreate,
     OrgMembershipResponse,
     OrgMembershipRuleCreate,
     OrgMembershipRuleResponse,
     OrgRole,
-    OrganizationCreate,
-    OrganizationResponse,
-    OrganizationUpdate,
 )
 from api.services.session_service import require_role
 from api.strings import Messages
@@ -83,7 +83,9 @@ def list_orgs(
 def get_org(
     org_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if org is None:
@@ -103,7 +105,9 @@ def update_org(
     org_id: str,
     org_data: OrganizationUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     org = _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     for key, value in org_data.model_dump(exclude_unset=True).items():
@@ -135,11 +139,20 @@ def list_members(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
-    _require_org_role(db, current_user, org_id, [
-        OrgRole.MODERATOR.value, OrgRole.EVENT_CREATOR.value, OrgRole.ADMIN.value,
-    ])
+    _require_org_role(
+        db,
+        current_user,
+        org_id,
+        [
+            OrgRole.MODERATOR.value,
+            OrgRole.EVENT_CREATOR.value,
+            OrgRole.ADMIN.value,
+        ],
+    )
     return (
         db.query(OrganizationMembership)
         .filter(OrganizationMembership.org_id == org_id)
@@ -154,7 +167,9 @@ def grant_membership(
     org_id: str,
     data: OrgMembershipCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     membership = OrganizationMembership(
@@ -178,7 +193,9 @@ def revoke_membership(
     org_id: str,
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     membership = OrganizationMembership(
@@ -198,7 +215,9 @@ def revoke_membership(
 def list_rules(
     org_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     return (
@@ -213,7 +232,9 @@ def create_rule(
     org_id: str,
     data: OrgMembershipRuleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     rule = OrganizationMembershipRule(
@@ -234,7 +255,9 @@ def delete_rule(
     org_id: str,
     rule_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("admin", "operator", "teacher", "student")),
+    current_user: User = Depends(
+        require_role("admin", "operator", "teacher", "student")
+    ),
 ):
     _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     rule = (

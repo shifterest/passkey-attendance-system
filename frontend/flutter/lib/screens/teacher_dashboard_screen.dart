@@ -78,7 +78,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
               signal.split('_').first.toUpperCase(),
               style: const TextStyle(fontSize: 10),
             ),
-            backgroundColor: present ? Colors.green.shade50 : Colors.grey.shade100,
+            backgroundColor: present
+                ? Colors.green.shade50
+                : Colors.grey.shade100,
             side: BorderSide(
               color: present ? Colors.green : Colors.grey.shade300,
             ),
@@ -99,25 +101,31 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     if (methods != null) {
       final gps = methods['gps'] as Map<String, dynamic>?;
       if (gps != null && gps['mock'] == true) {
-        icons.add(const Tooltip(
-          message: DashboardStrings.mockGps,
-          child: Icon(Icons.gps_off, size: 16, color: Colors.red),
-        ));
+        icons.add(
+          const Tooltip(
+            message: DashboardStrings.mockGps,
+            child: Icon(Icons.gps_off, size: 16, color: Colors.red),
+          ),
+        );
       }
     }
 
     if (record['sign_count_anomaly'] == true) {
-      icons.add(const Tooltip(
-        message: DashboardStrings.signCountAnomaly,
-        child: Icon(Icons.warning, size: 16, color: Colors.amber),
-      ));
+      icons.add(
+        const Tooltip(
+          message: DashboardStrings.signCountAnomaly,
+          child: Icon(Icons.warning, size: 16, color: Colors.amber),
+        ),
+      );
     }
 
     if (record['sync_pending'] == true) {
-      icons.add(const Tooltip(
-        message: DashboardStrings.syncPending,
-        child: Icon(Icons.cloud_off, size: 16, color: Colors.orange),
-      ));
+      icons.add(
+        const Tooltip(
+          message: DashboardStrings.syncPending,
+          child: Icon(Icons.cloud_off, size: 16, color: Colors.orange),
+        ),
+      );
     }
 
     return icons;
@@ -150,8 +158,12 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
               ),
               const SizedBox(height: 12),
               Text('${DashboardStrings.student}: ${record['user_id'] ?? ''}'),
-              Text('${DashboardStrings.score}: ${record['assurance_score'] ?? 0}'),
-              Text('${DashboardStrings.band}: ${record['assurance_band_recorded'] ?? ''}'),
+              Text(
+                '${DashboardStrings.score}: ${record['assurance_score'] ?? 0}',
+              ),
+              Text(
+                '${DashboardStrings.band}: ${record['assurance_band_recorded'] ?? ''}',
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: reasonController,
@@ -168,7 +180,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     child: OutlinedButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        await _approveOrReject(recordId, false, reasonController.text);
+                        await _approveOrReject(
+                          recordId,
+                          false,
+                          reasonController.text,
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
@@ -181,7 +197,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                     child: FilledButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        await _approveOrReject(recordId, true, reasonController.text);
+                        await _approveOrReject(
+                          recordId,
+                          true,
+                          reasonController.text,
+                        );
                       },
                       child: const Text(DashboardStrings.approve),
                     ),
@@ -235,18 +255,24 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                       itemBuilder: (context, index) {
                         final record = _records[index] as Map<String, dynamic>;
                         final status = record['status'] as String?;
-                        final band = record['assurance_band_recorded'] as String?;
+                        final band =
+                            record['assurance_band_recorded'] as String?;
                         final score = record['assurance_score'] as int? ?? 0;
                         final methods =
-                            record['verification_methods'] as Map<String, dynamic>?;
+                            record['verification_methods']
+                                as Map<String, dynamic>?;
                         final isLow = band == 'low';
 
                         return Card(
                           color: isLow ? Colors.orange.shade50 : null,
                           margin: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
                           child: InkWell(
-                            onTap: isLow ? () => _showApprovalSheet(record) : null,
+                            onTap: isLow
+                                ? () => _showApprovalSheet(record)
+                                : null,
                             borderRadius: BorderRadius.circular(12),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
@@ -262,17 +288,22 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                                               .textTheme
                                               .bodyMedium
                                               ?.copyWith(
-                                                  fontWeight: FontWeight.w600),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                         ),
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: _statusColor(status)
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          color: _statusColor(
+                                            status,
+                                          ).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Text(
                                           status ?? '',
@@ -286,12 +317,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
                                       const SizedBox(width: 6),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: _bandColor(band)
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          color: _bandColor(
+                                            band,
+                                          ).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Text(
                                           '$band ($score)',

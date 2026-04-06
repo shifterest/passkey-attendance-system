@@ -160,7 +160,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                        const Icon(
+                          Icons.warning_amber,
+                          color: Colors.orange,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

@@ -112,7 +112,9 @@ class OrganizationMembershipRule(Base):
     rule_type: Mapped[str]
     rule_value: Mapped[str | None] = mapped_column(None)
     rule_group: Mapped[int | None] = mapped_column(None)
-    organization: Mapped["Organization"] = relationship(back_populates="membership_rules")
+    organization: Mapped["Organization"] = relationship(
+        back_populates="membership_rules"
+    )
 
 
 class OrganizationMembership(Base):

@@ -8,7 +8,8 @@ final class ApiPaths {
   static const String logout = '/auth/logout';
   static const String playIntegrityVouch = '/auth/play-integrity/vouch';
   static const String playIntegrityNonce = '/auth/play-integrity/nonce';
-  static const String playIntegrityVouchStatus = '/auth/play-integrity/vouch-status';
+  static const String playIntegrityVouchStatus =
+      '/auth/play-integrity/vouch-status';
   static const String offlineSync = '/sessions/offline-sync';
   static String sessionsOpenTeacher() => '/sessions/open/teacher';
   static String sessionClose(String id) => '/sessions/$id/close';
@@ -25,7 +26,8 @@ final class AuthStrings {
   static const String initiatingCheckIn = 'Initiating check-in with server...';
   static const String collectingBle = 'Collecting BLE proximity signal...';
   static const String collectingGps = 'Collecting GPS position...';
-  static const String collectingNfc = 'Tap NFC reader to submit proximity token...';
+  static const String collectingNfc =
+      'Tap NFC reader to submit proximity token...';
   static const String verifyingPasskey = 'Verifying passkey with server...';
   static const String checkInSuccess = 'Check-in successful';
   static const String authErrorBody =
@@ -139,7 +141,8 @@ final class OfflineStrings {
   static const String expiresIn = 'Expires in';
   static const String cancel = 'Cancel';
   static const String errorMissingUserId = 'Missing user ID';
-  static const String errorGeneratingPayload = 'Failed to generate offline payload';
+  static const String errorGeneratingPayload =
+      'Failed to generate offline payload';
   static const String teacherSessionTitle = 'Offline Session';
   static const String selectClass = 'Select a class';
   static const String noClassesCached = 'No cached classes available';

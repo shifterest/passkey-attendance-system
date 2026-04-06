@@ -125,8 +125,11 @@ class _TeacherOfflineSessionScreenState
             if (_advertising) ...[
               Row(
                 children: [
-                  const Icon(Icons.bluetooth_connected,
-                      color: Colors.blue, size: 20),
+                  const Icon(
+                    Icons.bluetooth_connected,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     OfflineStrings.advertising,

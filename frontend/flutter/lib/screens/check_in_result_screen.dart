@@ -9,10 +9,12 @@ class CheckInResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = record['status'] as String? ?? CheckInResultStrings.unknownStatus;
+    final status =
+        record['status'] as String? ?? CheckInResultStrings.unknownStatus;
     final score = record['assurance_score'] as int? ?? 0;
     final band = record['assurance_band_recorded'] as String?;
-    final standardThreshold = record['standard_threshold_recorded'] as int? ?? 5;
+    final standardThreshold =
+        record['standard_threshold_recorded'] as int? ?? 5;
     final highThreshold = record['high_threshold_recorded'] as int? ?? 9;
 
     final statusLabel = switch (status) {
@@ -25,15 +27,15 @@ class CheckInResultScreen extends StatelessWidget {
     final bandLabel = switch (band) {
       'high' => CheckInResultStrings.bandHigh,
       'standard' => CheckInResultStrings.bandStandard,
-      _ => score < standardThreshold
-          ? CheckInResultStrings.bandLow
-          : score >= highThreshold
-              ? CheckInResultStrings.bandHigh
-              : CheckInResultStrings.bandStandard,
+      _ =>
+        score < standardThreshold
+            ? CheckInResultStrings.bandLow
+            : score >= highThreshold
+            ? CheckInResultStrings.bandHigh
+            : CheckInResultStrings.bandStandard,
     };
 
-    final isLow = band == 'low' ||
-        (band == null && score < standardThreshold);
+    final isLow = band == 'low' || (band == null && score < standardThreshold);
 
     final Color statusColor = switch (status) {
       'present' => Colors.green,
@@ -59,10 +61,7 @@ class CheckInResultScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              bandLabel,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
+            Text(bandLabel, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 8),
             Text(
               '${CheckInResultStrings.proximityScore}: $score',
@@ -113,7 +112,9 @@ class CheckInResultScreen extends StatelessWidget {
             color: present ? Colors.green : Colors.grey,
           ),
           label: Text(label, style: const TextStyle(fontSize: 11)),
-          backgroundColor: present ? Colors.green.shade50 : Colors.grey.shade100,
+          backgroundColor: present
+              ? Colors.green.shade50
+              : Colors.grey.shade100,
           side: BorderSide(
             color: present ? Colors.green.shade200 : Colors.grey.shade300,
           ),

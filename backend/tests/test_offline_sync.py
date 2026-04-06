@@ -1,6 +1,6 @@
 import json
 
-from api.contracts.device import DeviceBindingFlow, DEVICE_PAYLOAD_VERSION
+from api.contracts.device import DEVICE_PAYLOAD_VERSION, DeviceBindingFlow
 from api.helpers.device_payload import build_device_payload, canonical_payload_bytes
 
 
@@ -42,7 +42,15 @@ class TestOfflineCheckInPayload:
         raw = canonical_payload_bytes(payload)
         parsed = json.loads(raw)
         keys = list(parsed.keys())
-        assert keys == ["v", "flow", "user_id", "session_id", "credential_id", "challenge", "issued_at_ms"]
+        assert keys == [
+            "v",
+            "flow",
+            "user_id",
+            "session_id",
+            "credential_id",
+            "challenge",
+            "issued_at_ms",
+        ]
 
     def test_canonical_bytes_compact_separators(self):
         payload = build_device_payload(
@@ -61,9 +69,9 @@ class TestOfflineCheckInPayload:
 
 class TestOfflineSyncRecordSchema:
     def test_nonce_set_validation(self):
+        import pytest
         from api.schemas import OfflineSyncRequest
         from pydantic import ValidationError
-        import pytest
 
         with pytest.raises(ValidationError):
             OfflineSyncRequest(

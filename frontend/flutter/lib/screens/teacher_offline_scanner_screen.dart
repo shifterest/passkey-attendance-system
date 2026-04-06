@@ -130,7 +130,11 @@ class _TeacherOfflineScannerScreenState
             child: _scannerActive
                 ? MobileScanner(onDetect: _onDetect)
                 : const Center(
-                    child: Icon(Icons.pause_circle, size: 48, color: Colors.grey),
+                    child: Icon(
+                      Icons.pause_circle,
+                      size: 48,
+                      color: Colors.grey,
+                    ),
                   ),
           ),
           Expanded(
@@ -165,8 +169,9 @@ class _TeacherOfflineScannerScreenState
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed:
-                          _scannedRecords.isEmpty || _submitting ? null : _submit,
+                      onPressed: _scannedRecords.isEmpty || _submitting
+                          ? null
+                          : _submit,
                       icon: _submitting
                           ? const SizedBox(
                               width: 18,
