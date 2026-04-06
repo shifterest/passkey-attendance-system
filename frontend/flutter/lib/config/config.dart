@@ -15,6 +15,10 @@ class Config {
     'REGISTRATION_PROTOCOL',
     defaultValue: 'shifterest-pas',
   );
+  static const String cloudProjectNumber = String.fromEnvironment(
+    'CLOUD_PROJECT_NUMBER',
+    defaultValue: '',
+  );
   static const String secureStoreChannel = 'pas/secure_store';
 
   static Future<void> init() async {}

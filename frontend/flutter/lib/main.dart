@@ -5,10 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/authentication_screen.dart';
+import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
-import 'package:passkey_attendance_system/screens/teacher_home_screen.dart';
-import 'package:passkey_attendance_system/screens/teacher_session_screen.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -58,14 +57,13 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/teacher',
-      builder: (context, state) => const TeacherHomeScreen(),
-    ),
-    GoRoute(
-      path: '/teacher/session/:id',
+      path: '/check-in-result',
       builder: (context, state) {
-        final sessionId = state.pathParameters['id'] ?? '';
-        return TeacherSessionScreen(sessionId: sessionId);
+        final record = state.extra;
+        if (record is! Map<String, dynamic>) {
+          return const HomeScreen();
+        }
+        return CheckInResultScreen(record: record);
       },
     ),
   ],
@@ -122,10 +120,7 @@ class AuthWrapper extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if (snapshot.data != true) return const LoginScreen();
-        final role = SessionStore.getRole();
-        if (role == 'teacher') return const TeacherHomeScreen();
-        return const HomeScreen();
+        return snapshot.data == true ? const HomeScreen() : const LoginScreen();
       },
     );
   }
