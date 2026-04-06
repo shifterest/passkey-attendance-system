@@ -93,6 +93,8 @@ def assurance_score_from_verification_methods(
             score += 4
         elif method == AttendanceRecordVerificationMethods.NETWORK.value:
             score += 2
+        elif method == AttendanceRecordVerificationMethods.NFC.value:
+            score += 5
         elif method.startswith(
             f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:"
         ):

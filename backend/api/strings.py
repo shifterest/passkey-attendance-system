@@ -164,6 +164,7 @@ class Logs:
 
     # Attendance sessions
     BLE_TOKEN_MISMATCH = "BLE token mismatch or absent for user {user_id} on session {session_id} — BLE score not applied"
+    NFC_TOKEN_MISMATCH = "NFC token mismatch or absent for user {user_id} on session {session_id} — NFC score not applied"
     BLE_TOKEN_ROTATED = "BLE token rotated for session {session_id}"
     SESSION_ADDED = "Added session: {session_id}"
     SESSION_EDITED = "Updated session: {session_id}"

@@ -9,7 +9,7 @@ from api.helpers.schedule import (
     get_schedule_block_end,
     is_class_active,
 )
-from api.helpers.tokens import new_ble_token
+from api.helpers.tokens import new_ble_token, new_nfc_token
 from api.redis import redis_client
 from api.schemas import (
     CheckInSessionResponse,
@@ -193,6 +193,14 @@ def open_teacher_session(
         new_ble_token(),
         ex=settings.ble_token_ttl_seconds,
     )
+    session_duration_seconds = max(
+        int((session_end - now).total_seconds()), 1
+    )
+    redis_client.set(
+        f"nfc_token:{new_session.id}",
+        new_nfc_token(),
+        ex=session_duration_seconds,
+    )
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return new_session
 
@@ -239,6 +247,31 @@ def get_ble_token(
     )
     logger.info(Logs.BLE_TOKEN_ROTATED.format(session_id=session_id))
     return {"ble_token": new_token, "ttl": settings.ble_token_ttl_seconds}
+
+
+@router.get("/{session_id}/nfc-token")
+def get_nfc_token(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    session = db.query(CheckInSession).filter(CheckInSession.id == session_id).first()
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+        )
+    if current_user.role == "teacher":
+        class_ = db.query(Class).filter(Class.id == session.class_id).first()
+        if class_ is None or class_.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+            )
+    existing = redis_client.get(f"nfc_token:{session_id}")
+    if existing:
+        return {"nfc_token": existing.decode()}
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+    )
 
 
 @router.post("/{session_id}/close", response_model=CheckInSessionResponse)
