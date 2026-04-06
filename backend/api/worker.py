@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from api.redis import redis_client
+from api.redis_keys import PI_VOUCH_EXPIRY_SOON_PREFIX, PI_VOUCH_KEY_PREFIX
 from api.services.audit_service import log_audit_event
 from api.strings import AuditEvents
 from database.connection import session as SessionLocal
@@ -11,8 +12,6 @@ from database.models import AttendanceRecord
 
 logger = logging.getLogger(__name__)
 
-PI_VOUCH_KEY_PREFIX = "pi_vouch:"
-PI_VOUCH_EXPIRY_SOON_PREFIX = "pi_vouch_expires_soon:"
 OFFLINE_ESCALATION_HOURS = 24
 
 

@@ -16,6 +16,8 @@ export type UserDto = {
 	full_name: string;
 	email: string;
 	school_id: string | null;
+	program: string | null;
+	year_level: number | null;
 };
 
 export type UserExtendedDto = {
@@ -26,6 +28,8 @@ export type UserExtendedDto = {
 	in_class: boolean;
 	school_id: string | null;
 	email: string;
+	program: string | null;
+	year_level: number | null;
 	records: number;
 	flagged: number;
 	enrollments: number;
@@ -56,6 +60,7 @@ export type AttendanceRecordDto = {
 	manually_approved_by: string | null;
 	manually_approved_reason: string | null;
 	sync_pending: boolean;
+	sync_escalated: boolean;
 	network_anomaly: boolean;
 	gps_is_mock: boolean;
 	gps_in_geofence: boolean | null;
@@ -92,6 +97,7 @@ export type TeacherDto = {
 export type CheckInSessionDto = {
 	id: string;
 	class_id: string;
+	event_id: string | null;
 	start_time: string;
 	end_time: string;
 	status: string;
@@ -103,6 +109,7 @@ export type ClassEnrollmentDto = {
 	id: string;
 	class_id: string;
 	student_id: string;
+	expires_at: string | null;
 };
 
 export type AuditEventDto = {
@@ -528,11 +535,14 @@ export function deletePolicy(policyId: string) {
 export type CredentialDto = {
 	id: string;
 	user_id: string;
+	device_public_key: string;
+	public_key: string;
 	credential_id: string;
 	sign_count: number;
-	is_active: boolean;
+	key_security_level: string | null;
 	attestation_cert_serial: string | null;
-	created_at: string;
+	registered_at: string;
+	sign_count_anomaly: boolean;
 };
 
 export function getCredentials(userId: string) {
@@ -575,19 +585,21 @@ export type OrgDto = {
 
 export type OrgMemberDto = {
 	id: string;
-	organization_id: string;
+	org_id: string;
 	user_id: string;
 	membership_type: string;
-	org_role: string;
-	is_revoked: boolean;
+	org_role: string | null;
 	expires_at: string | null;
+	granted_at: string;
+	granted_by: string | null;
 };
 
 export type OrgRuleDto = {
 	id: string;
-	organization_id: string;
+	org_id: string;
 	rule_type: string;
-	rule_value: string;
+	rule_value: string | null;
+	rule_group: number | null;
 };
 
 export function getOrgs() {
@@ -666,7 +678,7 @@ export function deleteOrgRule(orgId: string, ruleId: string) {
 
 export type EventDto = {
 	id: string;
-	organization_id: string;
+	org_id: string;
 	name: string;
 	description: string | null;
 	schedule: Record<string, unknown>[];
@@ -674,6 +686,7 @@ export type EventDto = {
 	high_assurance_threshold: number;
 	play_integrity_enabled: boolean;
 	max_check_ins: number;
+	created_by: string | null;
 	created_at: string;
 };
 
@@ -681,7 +694,8 @@ export type EventRuleDto = {
 	id: string;
 	event_id: string;
 	rule_type: string;
-	rule_value: string;
+	rule_value: string | null;
+	rule_group: number | null;
 };
 
 export function getEvents(orgId: string) {

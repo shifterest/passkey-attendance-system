@@ -51,6 +51,8 @@ services:
       RP_ID: attendance.whatta.top
       RP_NAME: Passkey Attendance System
       REGISTRATION_PROTOCOL: shifterest-pas
+      SERVER_TIMEZONE: Asia/Manila
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
     ports:
       - "8000:8000"
     networks:

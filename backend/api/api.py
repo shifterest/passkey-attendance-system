@@ -11,6 +11,7 @@ from .routes import (
     admin,
     audit,
     bootstrap,
+    root,
     check_in,
     classes,
     credentials,
@@ -54,6 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(root.router)
 app.include_router(admin.router)
 app.include_router(audit.router)
 app.include_router(bootstrap.router)

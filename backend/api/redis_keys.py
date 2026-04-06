@@ -1,0 +1,6 @@
+PI_VOUCH_KEY_PREFIX = "pi_vouch:"
+PI_VOUCH_EXPIRY_SOON_PREFIX = "pi_vouch_expires_soon:"
+PI_VOUCH_DAILY_COUNT_PREFIX = "pi_vouch_daily_count:"
+PI_NONCE_KEY_PREFIX = "pi_nonce:"
+PI_NONCE_TTL_SECONDS = 60
+PI_MAX_DAILY_VOUCHES = 3

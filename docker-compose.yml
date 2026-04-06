@@ -30,6 +30,8 @@ services:
       RP_ID: attendance.whatta.top
       RP_NAME: Passkey Attendance System
       REGISTRATION_PROTOCOL: shifterest-pas
+      SERVER_TIMEZONE: Asia/Manila
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
     volumes:
       - sqlite_data:/app/sqlite
     ports:
@@ -60,4 +62,3 @@ volumes:
 
 networks:
   pas-network:
-    internal: true

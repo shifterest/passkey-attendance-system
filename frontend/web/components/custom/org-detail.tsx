@@ -149,11 +149,13 @@ function MembersSection({
 							<CardHeader className="flex-row items-center justify-between py-3">
 								<div className="flex items-center gap-2">
 									<span className="font-mono text-sm">{m.user_id}</span>
-									<Badge variant="outline">{m.org_role}</Badge>
+									<Badge variant="outline">{m.org_role ?? "member"}</Badge>
 									<Badge variant="secondary">{m.membership_type}</Badge>
-									{m.is_revoked && <Badge variant="destructive">revoked</Badge>}
+									{m.membership_type === "explicit_revocation" && (
+										<Badge variant="destructive">revoked</Badge>
+									)}
 								</div>
-								{!m.is_revoked && (
+								{m.membership_type !== "explicit_revocation" && (
 									<Button
 										variant="ghost"
 										size="icon"

@@ -3,7 +3,9 @@ import { EventDetail } from "@/components/custom/event-detail";
 
 export default async function Page({
 	params,
-}: { params: Promise<{ org_id: string; event_id: string }> }) {
+}: {
+	params: Promise<{ org_id: string; event_id: string }>;
+}) {
 	const { org_id, event_id } = await params;
 	const rules = await getEventRules(event_id);
 	return (

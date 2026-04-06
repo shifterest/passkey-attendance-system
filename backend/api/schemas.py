@@ -86,6 +86,7 @@ class CredentialBase(BaseModel):
     credential_id: str
     sign_count: int
     key_security_level: str | None = None
+    attestation_cert_serial: str | None = None
     registered_at: datetime
 
 
@@ -235,6 +236,7 @@ class ClassEnrollmentResponse(ClassEnrollmentBase):
 # Attendance sessions
 class CheckInSessionBase(BaseModel):
     class_id: str
+    event_id: str | None = None
     start_time: datetime
     end_time: datetime
     status: str
@@ -302,6 +304,7 @@ class AttendanceRecordBase(BaseModel):
     manually_approved_by: str | None = None
     manually_approved_reason: str | None = None
     sync_pending: bool = False
+    sync_escalated: bool = False
     network_anomaly: bool = False
     gps_is_mock: bool = False
     gps_in_geofence: bool | None = None

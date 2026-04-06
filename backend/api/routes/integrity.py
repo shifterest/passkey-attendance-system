@@ -6,6 +6,14 @@ from zoneinfo import ZoneInfo
 import httpx
 from api.config import settings
 from api.redis import redis_client
+from api.redis_keys import (
+    PI_MAX_DAILY_VOUCHES,
+    PI_NONCE_KEY_PREFIX,
+    PI_NONCE_TTL_SECONDS,
+    PI_VOUCH_DAILY_COUNT_PREFIX,
+    PI_VOUCH_EXPIRY_SOON_PREFIX,
+    PI_VOUCH_KEY_PREFIX,
+)
 from api.schemas import PlayIntegrityVouchRequest
 from api.services.integrity_service import (
     store_vouch,
@@ -21,11 +29,7 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-PI_VOUCH_DAILY_COUNT_PREFIX = "pi_vouch_daily_count:"
-PI_MAX_DAILY_VOUCHES = 3
 PI_REQUIRED_VERDICT = "MEETS_DEVICE_INTEGRITY"
-PI_NONCE_KEY_PREFIX = "pi_nonce:"
-PI_NONCE_TTL_SECONDS = 60
 
 
 def _seconds_until_midnight() -> int:
@@ -155,10 +159,6 @@ def play_integrity_nonce(
         ex=PI_NONCE_TTL_SECONDS,
     )
     return {"nonce": nonce}
-
-
-PI_VOUCH_EXPIRY_SOON_PREFIX = "pi_vouch_expires_soon:"
-PI_VOUCH_KEY_PREFIX = "pi_vouch:"
 
 
 @router.get("/play-integrity/vouch-status")
