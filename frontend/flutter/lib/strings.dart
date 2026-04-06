@@ -8,6 +8,8 @@ final class ApiPaths {
   static const String logout = '/auth/logout';
   static const String playIntegrityVouch = '/auth/play-integrity/vouch';
   static const String playIntegrityNonce = '/auth/play-integrity/nonce';
+  static const String playIntegrityVouchStatus = '/auth/play-integrity/vouch-status';
+  static const String offlineSync = '/sessions/offline-sync';
   static String sessionsOpenTeacher() => '/sessions/open/teacher';
   static String sessionClose(String id) => '/sessions/$id/close';
   static String sessionBleToken(String id) => '/sessions/$id/ble-token';
@@ -71,6 +73,10 @@ final class HomeStrings {
   static const String backToLogin = 'Back to Login';
   static const String signedIn = 'Signed in';
   static const String checkInNow = 'Check In Now';
+  static const String checkInOffline = 'Check In Offline';
+  static const String lastCheckIn = 'Last check-in';
+  static const String piVouchExpiring =
+      'Your Play Integrity vouch expires soon. Please re-verify your device integrity.';
   static String userId(String id) => 'User ID: $id';
 }
 
@@ -119,4 +125,54 @@ final class TeacherStrings {
   static const String loadingToken = 'Loading...';
   static const String errorClosingSession = 'Failed to close session';
   static const String errorOpeningSession = 'Failed to open session';
+}
+
+final class OfflineStrings {
+  static const String studentTitle = 'Offline Check-In';
+  static const String scanningForTeacher = 'Scanning for teacher device...';
+  static const String noTeacherFound = 'No teacher device found';
+  static const String retryScan = 'Retry Scan';
+  static const String sessionFound = 'Session found';
+  static const String sessionId = 'Session';
+  static const String generateQr = 'Generate QR Code';
+  static const String showQrToTeacher = 'Show this QR to your teacher';
+  static const String expiresIn = 'Expires in';
+  static const String cancel = 'Cancel';
+  static const String errorMissingUserId = 'Missing user ID';
+  static const String errorGeneratingPayload = 'Failed to generate offline payload';
+  static const String teacherSessionTitle = 'Offline Session';
+  static const String selectClass = 'Select a class';
+  static const String noClassesCached = 'No cached classes available';
+  static const String chooseClass = 'Choose a class';
+  static const String startOfflineSession = 'Start Offline Session';
+  static const String advertising = 'Broadcasting...';
+  static const String scanStudents = 'Scan Students';
+  static const String stopAdvertising = 'Stop Broadcasting';
+  static const String back = 'Back';
+  static const String errorStartingBle = 'Failed to start BLE advertising';
+  static const String scannerTitle = 'Scan Student QR';
+  static const String scanned = 'Scanned';
+  static const String scannedStudents = 'Scanned students';
+  static const String submitSync = 'Submit to Server';
+  static const String syncing = 'Syncing...';
+  static const String syncSuccess = 'Records synced';
+  static const String errorSyncing = 'Failed to sync offline records';
+}
+
+final class DashboardStrings {
+  static const String title = 'Session Roster';
+  static const String errorLoadingRecords = 'Failed to load records';
+  static const String noRecords = 'No attendance records yet';
+  static const String reviewRecord = 'Review Attendance';
+  static const String student = 'Student';
+  static const String score = 'Score';
+  static const String band = 'Band';
+  static const String reasonOptional = 'Reason (optional)';
+  static const String approve = 'Approve';
+  static const String reject = 'Reject';
+  static const String errorApproving = 'Failed to process approval';
+  static const String mockGps = 'Mock GPS detected';
+  static const String signCountAnomaly = 'Sign count anomaly';
+  static const String syncPending = 'Sync pending';
+  static const String manuallyApproved = 'Manually approved';
 }

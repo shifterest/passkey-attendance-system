@@ -72,4 +72,40 @@ class SessionApi {
     if (response is List) return response;
     throw Exception('Invalid response from server');
   }
+
+  static Future<Map<String, dynamic>> offlineSync({
+    required String classId,
+    required String sessionId,
+    required List<String> nonceSet,
+    required List<Map<String, dynamic>> records,
+  }) async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    dynamic response = await client.post(ApiPaths.offlineSync, {
+      'class_id': classId,
+      'session_id': sessionId,
+      'opened_at': DateTime.now().toIso8601String(),
+      'closed_at': DateTime.now().toIso8601String(),
+      'nonce_set': nonceSet,
+      'records': records,
+    }, extraHeaders: headers);
+    if (response is Map<String, dynamic>) return response;
+    throw Exception('Invalid response from server');
+  }
+
+  static Future<Map<String, dynamic>> approveRecord(
+    String recordId,
+    bool approve,
+    String reason,
+  ) async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    final path = '/records/$recordId/approve';
+    dynamic response = await client.post(path, {
+      'approved': approve,
+      if (reason.isNotEmpty) 'reason': reason,
+    }, extraHeaders: headers);
+    if (response is Map<String, dynamic>) return response;
+    throw Exception('Invalid response from server');
+  }
 }

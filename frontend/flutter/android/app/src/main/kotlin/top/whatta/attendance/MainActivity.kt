@@ -14,8 +14,10 @@ import java.security.spec.ECGenParameterSpec
 class MainActivity : FlutterActivity() {
     private val channel = "pas/secure_store"
     private val nfcHceChannel = "pas/nfc_hce"
+    private val bleAdvertiseChannel = "pas/ble_advertise"
     private val keyAlias = "pas_device_key"
     private val keyStoreProvider = "AndroidKeyStore"
+    private var bleAdvertiser: NativeBleAdvertiser? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -75,6 +77,27 @@ class MainActivity : FlutterActivity() {
                     "stop" -> {
                         NfcHceService.currentToken = null
                         stopService(Intent(this, NfcHceService::class.java))
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        bleAdvertiser = NativeBleAdvertiser(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, bleAdvertiseChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        val payload = call.argument<String>("payload")
+                        if (payload == null) {
+                            result.error("INVALID_ARGUMENT", "payload is required", null)
+                        } else {
+                            val success = bleAdvertiser?.start(payload) ?: false
+                            result.success(success)
+                        }
+                    }
+                    "stop" -> {
+                        bleAdvertiser?.stop()
                         result.success(null)
                     }
                     else -> result.notImplemented()

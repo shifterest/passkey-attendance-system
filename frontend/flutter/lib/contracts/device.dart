@@ -5,7 +5,8 @@ const devicePayloadVersion = 1;
 enum DeviceBindingFlow {
   register('register'),
   checkIn('check_in'),
-  login('login');
+  login('login'),
+  offlineCheckIn('offline_check_in');
 
   const DeviceBindingFlow(this.wireValue);
   final String wireValue;

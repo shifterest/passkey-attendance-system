@@ -68,6 +68,8 @@ class CheckInResultScreen extends StatelessWidget {
               '${CheckInResultStrings.proximityScore}: $score',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 16),
+            _buildSignalBreakdown(context),
             if (isLow) ...[
               const SizedBox(height: 24),
               const Icon(Icons.info_outline, size: 20),
@@ -89,6 +91,36 @@ class CheckInResultScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSignalBreakdown(BuildContext context) {
+    final methods = record['verification_methods'] as Map<String, dynamic>?;
+    if (methods == null || methods.isEmpty) return const SizedBox.shrink();
+
+    final signals = ['bluetooth', 'gps', 'nfc', 'network', 'qr_proximity'];
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 4,
+      children: signals.map((signal) {
+        final present = methods.containsKey(signal);
+        final label = signal.split('_').first.toUpperCase();
+        return Chip(
+          avatar: Icon(
+            present ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: present ? Colors.green : Colors.grey,
+          ),
+          label: Text(label, style: const TextStyle(fontSize: 11)),
+          backgroundColor: present ? Colors.green.shade50 : Colors.grey.shade100,
+          side: BorderSide(
+            color: present ? Colors.green.shade200 : Colors.grey.shade300,
+          ),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        );
+      }).toList(),
     );
   }
 }

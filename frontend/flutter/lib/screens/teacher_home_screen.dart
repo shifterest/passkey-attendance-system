@@ -125,6 +125,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                     label: const Text(TeacherStrings.openSession),
                   ),
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/teacher/offline'),
+                    icon: const Icon(Icons.wifi_off),
+                    label: const Text(OfflineStrings.startOfflineSession),
+                  ),
+                ),
               ],
             ),
           ),

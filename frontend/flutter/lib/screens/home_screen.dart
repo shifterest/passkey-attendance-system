@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/config/config.dart';
+import 'package:passkey_attendance_system/services/api_client.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,14 +13,61 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final Future<String?> _userIdFuture;
   bool _isLoggingOut = false;
+  Map<String, dynamic>? _lastCheckIn;
+  bool _piVouchExpiresSoon = false;
+  bool _hasPiVouch = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _userIdFuture = SessionStore.getUserId();
+    _loadLastCheckIn();
+    _checkPiVouchStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPiVouchStatus();
+    }
+  }
+
+  Future<void> _loadLastCheckIn() async {
+    final data = await SessionStore.getLastCheckIn();
+    if (mounted && data != null) {
+      setState(() => _lastCheckIn = data);
+    }
+  }
+
+  Future<void> _checkPiVouchStatus() async {
+    try {
+      final sessionToken = await SessionStore.getSessionToken();
+      if (sessionToken == null || sessionToken.isEmpty) return;
+
+      final client = ApiClient(Config.apiBaseUrl);
+      final response = await client.get(
+        ApiPaths.playIntegrityVouchStatus,
+        {},
+        extraHeaders: {'X-Session-Token': sessionToken},
+      );
+
+      if (response is Map<String, dynamic> && mounted) {
+        setState(() {
+          _hasPiVouch = response['has_vouch'] == true;
+          _piVouchExpiresSoon = response['expires_soon'] == true;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _logout(String userId) async {
@@ -100,6 +149,72 @@ class _HomeScreenState extends State<HomeScreen> {
                   HomeStrings.userId(userId),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                if (_piVouchExpiresSoon) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            HomeStrings.piVouchExpiring,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (_lastCheckIn != null) ...[
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            HomeStrings.lastCheckIn,
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.circle,
+                                size: 10,
+                                color: switch (_lastCheckIn!['status']) {
+                                  'present' => Colors.green,
+                                  'late' => Colors.orange,
+                                  _ => Colors.red,
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              Text(_lastCheckIn!['status'] as String? ?? ''),
+                              const SizedBox(width: 12),
+                              Text(
+                                _lastCheckIn!['band'] as String? ?? '',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const Spacer(),
+                              Text(
+                                _lastCheckIn!['date'] as String? ?? '',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: () {
@@ -109,6 +224,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   icon: const Icon(Icons.how_to_reg),
                   label: const Text(HomeStrings.checkInNow),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/offline-check-in'),
+                  icon: const Icon(Icons.wifi_off),
+                  label: const Text(HomeStrings.checkInOffline),
                 ),
               ],
             ),

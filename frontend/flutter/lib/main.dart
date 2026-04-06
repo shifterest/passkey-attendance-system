@@ -6,8 +6,14 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
+import 'package:passkey_attendance_system/screens/offline_check_in_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_dashboard_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_home_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_offline_scanner_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_offline_session_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_session_screen.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -66,6 +72,43 @@ final _router = GoRouter(
         return CheckInResultScreen(record: record);
       },
     ),
+    GoRoute(
+      path: '/offline-check-in',
+      builder: (context, state) => const OfflineCheckInScreen(),
+    ),
+    GoRoute(
+      path: '/teacher',
+      builder: (context, state) => const TeacherHomeScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/session/:id',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['id'] ?? '';
+        return TeacherSessionScreen(sessionId: sessionId);
+      },
+    ),
+    GoRoute(
+      path: '/teacher/session/:id/roster',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['id'] ?? '';
+        return TeacherDashboardScreen(sessionId: sessionId);
+      },
+    ),
+    GoRoute(
+      path: '/teacher/offline',
+      builder: (context, state) => const TeacherOfflineSessionScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/offline/scan',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return TeacherOfflineScannerScreen(
+          sessionId: extra['session_id'] as String? ?? '',
+          nonce: extra['nonce'] as String? ?? '',
+          classId: extra['class_id'] as String? ?? '',
+        );
+      },
+    ),
   ],
 );
 
@@ -120,7 +163,14 @@ class AuthWrapper extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return snapshot.data == true ? const HomeScreen() : const LoginScreen();
+        if (snapshot.data != true) {
+          return const LoginScreen();
+        }
+        final role = SessionStore.getRole();
+        if (role == 'teacher') {
+          return const TeacherHomeScreen();
+        }
+        return const HomeScreen();
       },
     );
   }

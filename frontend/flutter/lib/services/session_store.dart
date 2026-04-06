@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -11,7 +13,7 @@ class SessionStore {
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
       cacheOptions: const SharedPreferencesWithCacheOptions(
-        allowList: <String>{'deviceId', 'userId', 'sessionExpiry', 'role'},
+        allowList: <String>{'deviceId', 'userId', 'sessionExpiry', 'role', 'lastCheckIn'},
       ),
     );
   }
@@ -73,5 +75,29 @@ class SessionStore {
 
   static String? getRole() {
     return prefs.getString('role');
+  }
+
+  static Future<void> saveLastCheckIn({
+    required String status,
+    required String band,
+    required int score,
+  }) async {
+    final data = jsonEncode({
+      'status': status,
+      'band': band,
+      'score': score,
+      'date': DateTime.now().toIso8601String().split('T').first,
+    });
+    await prefs.setString('lastCheckIn', data);
+  }
+
+  static Future<Map<String, dynamic>?> getLastCheckIn() async {
+    final raw = prefs.getString('lastCheckIn');
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 }

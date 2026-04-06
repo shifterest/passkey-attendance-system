@@ -189,6 +189,17 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
               '${TeacherStrings.checkedIn}: $_checkInCount',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  context.push('/teacher/session/${widget.sessionId}/roster');
+                },
+                icon: const Icon(Icons.list_alt),
+                label: const Text('View Roster'),
+              ),
+            ),
             const Spacer(),
             if (!_isClosed)
               SizedBox(
