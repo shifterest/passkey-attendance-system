@@ -90,6 +90,44 @@ class ClassEnrollment(Base):
     student: Mapped["User"] = relationship(back_populates="enrollments")
 
 
+class Organization(Base):
+    __tablename__ = "organizations"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    description: Mapped[str | None] = mapped_column(None)
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    created_at: Mapped[datetime]
+    membership_rules: Mapped[list["OrganizationMembershipRule"]] = relationship(
+        back_populates="organization"
+    )
+    memberships: Mapped[list["OrganizationMembership"]] = relationship(
+        back_populates="organization"
+    )
+
+
+class OrganizationMembershipRule(Base):
+    __tablename__ = "organization_membership_rules"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    rule_type: Mapped[str]
+    rule_value: Mapped[str | None] = mapped_column(None)
+    rule_group: Mapped[int | None] = mapped_column(None)
+    organization: Mapped["Organization"] = relationship(back_populates="membership_rules")
+
+
+class OrganizationMembership(Base):
+    __tablename__ = "organization_memberships"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    membership_type: Mapped[str]
+    org_role: Mapped[str | None] = mapped_column(None)
+    granted_at: Mapped[datetime]
+    expires_at: Mapped[datetime | None] = mapped_column(None)
+    granted_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), default=None)
+    organization: Mapped["Organization"] = relationship(back_populates="memberships")
+
+
 class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     id: Mapped[str] = mapped_column(primary_key=True)
