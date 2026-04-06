@@ -264,8 +264,6 @@ class OpenTeacherSessionRequest(BaseModel):
 
     teacher_id: str
     client_time: datetime | None = None
-    present_cutoff_minutes: int = Field(default=5, ge=0)
-    late_cutoff_minutes: int = Field(default=15, ge=0)
 
 
 # Attendance records

@@ -20,7 +20,7 @@ from api.schemas import (
 from api.services.session_service import require_role
 from api.strings import Logs, Messages
 from database.connection import get_db
-from database.models import CheckInSession, Class, User
+from database.models import CheckInSession, Class, ClassPolicy, User
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -144,6 +144,15 @@ def open_teacher_session(
 
     target_class = matching_classes[0]
 
+    class_policy = db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    if class_policy is None:
+        class_policy = db.query(ClassPolicy).filter(
+            ClassPolicy.class_id.is_(None),
+            ClassPolicy.created_by == teacher.id,
+        ).first()
+    present_cutoff = class_policy.present_cutoff_minutes if class_policy is not None else 5
+    late_cutoff = class_policy.late_cutoff_minutes if class_policy is not None else 15
+
     existing_session = (
         db.query(CheckInSession)
         .filter(CheckInSession.class_id == target_class.id)
@@ -158,8 +167,8 @@ def open_teacher_session(
             detail=Messages.SESSION_ALREADY_OPEN,
         )
 
-    present_window_minutes = max(0, open_data.present_cutoff_minutes)
-    late_window_minutes = max(present_window_minutes, open_data.late_cutoff_minutes)
+    present_window_minutes = max(0, present_cutoff)
+    late_window_minutes = max(present_window_minutes, late_cutoff)
 
     session_end = now + timedelta(minutes=late_window_minutes)
     schedule_block_end = get_schedule_block_end(target_class, now)
