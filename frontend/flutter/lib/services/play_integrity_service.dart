@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/session_store.dart';
 
 const _vouchDateKey = 'pi_vouch_date';
 

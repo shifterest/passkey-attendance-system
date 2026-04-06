@@ -11,7 +11,7 @@ class SessionStore {
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
       cacheOptions: const SharedPreferencesWithCacheOptions(
-        allowList: <String>{'deviceId', 'userId', 'sessionExpiry'},
+        allowList: <String>{'deviceId', 'userId', 'sessionExpiry', 'role'},
       ),
     );
   }
@@ -64,5 +64,14 @@ class SessionStore {
   static Future<void> clearSession() async {
     await _secureStorage.delete(key: 'sessionToken');
     await prefs.remove("sessionExpiry");
+    await prefs.remove("role");
+  }
+
+  static Future<void> saveRole(String role) async {
+    await prefs.setString('role', role);
+  }
+
+  static String? getRole() {
+    return prefs.getString('role');
   }
 }

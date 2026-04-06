@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_home_screen.dart';
+import 'package:passkey_attendance_system/screens/teacher_session_screen.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
@@ -54,6 +56,17 @@ final _router = GoRouter(
         registrationToken: state.uri.queryParameters['token'] ?? '',
         userId: state.uri.queryParameters['user_id'] ?? '',
       ),
+    ),
+    GoRoute(
+      path: '/teacher',
+      builder: (context, state) => const TeacherHomeScreen(),
+    ),
+    GoRoute(
+      path: '/teacher/session/:id',
+      builder: (context, state) {
+        final sessionId = state.pathParameters['id'] ?? '';
+        return TeacherSessionScreen(sessionId: sessionId);
+      },
     ),
   ],
 );
@@ -109,7 +122,10 @@ class AuthWrapper extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return snapshot.data == true ? const HomeScreen() : const LoginScreen();
+        if (snapshot.data != true) return const LoginScreen();
+        final role = SessionStore.getRole();
+        if (role == 'teacher') return const TeacherHomeScreen();
+        return const HomeScreen();
       },
     );
   }

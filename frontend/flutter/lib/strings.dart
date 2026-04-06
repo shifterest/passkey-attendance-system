@@ -7,6 +7,11 @@ final class ApiPaths {
   static const String loginVerify = '/auth/login/verify';
   static const String logout = '/auth/logout';
   static const String playIntegrityVouch = '/auth/play-integrity/vouch';
+  static String sessionsOpenTeacher() => '/sessions/open/teacher';
+  static String sessionClose(String id) => '/sessions/$id/close';
+  static String sessionBleToken(String id) => '/sessions/$id/ble-token';
+  static String sessionRecords(String id) => '/records/by-session/$id';
+  static String getUser(String id) => '/users/$id';
 }
 
 final class AuthStrings {
@@ -72,4 +77,25 @@ final class LoginStrings {
   static const String buttonLoginPasskey = 'Login with passkey';
   static const String buttonLoginPassword = 'Login with password and 2FA';
   static const String buttonRegisterPasskey = 'Register a new passkey';
+}
+
+final class TeacherStrings {
+  static const String appBarTitle = 'Teacher';
+  static const String openSession = 'Open Session';
+  static const String noActiveClass = 'No active class right now';
+  static const String sessionAlreadyOpen = 'A session is already open';
+  static const String sessionOpened = 'Session opened';
+  static const String sessionClosed = 'Session closed';
+  static const String closeSession = 'Close Session';
+  static const String sessionActive = 'Session active';
+  static const String bleToken = 'BLE Token';
+  static const String bleTokenUnavailable = 'Unavailable';
+  static const String checkedIn = 'Checked in';
+  static const String present = 'present';
+  static const String late = 'late';
+  static const String absent = 'absent';
+  static const String sessionScreen = 'Live Session';
+  static const String loadingToken = 'Loading...';
+  static const String errorClosingSession = 'Failed to close session';
+  static const String errorOpeningSession = 'Failed to open session';
 }
