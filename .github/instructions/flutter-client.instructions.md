@@ -15,8 +15,11 @@ The Flutter app (`frontend/flutter/`) is the **student-facing** interface. It ha
 - **Storage:** `SharedPreferences` (via `shared_preferences_with_cache`) for session persistence
 - **Deep links:** `app_links` package for registration QR deep link handling
 - **BLE scanning:** `flutter_blue_plus`
+- **BLE advertising:** Native Android `NativeBleAdvertiser.kt` via MethodChannel
 - **GPS:** `geolocator`
 - **QR scanning:** `mobile_scanner`
+- **QR generation:** `qr_flutter`
+- **Notifications:** `flutter_local_notifications`
 - **Passkey:** Platform WebAuthn via `passkey.dart` service (method channel to native)
 - **Config:** Compile-time `String.fromEnvironment`
 
@@ -40,15 +43,27 @@ frontend/flutter/lib/
     registration_screen.dart   — Passkey registration flow (auto-starts)
     qr_scanner_screen.dart     — Camera QR scanner for registration deep link
     authentication_screen.dart — Login + check-in combined flow (auto-starts)
-    home_screen.dart           — Post-login home (stub; needs full implementation)
+    home_screen.dart           — Post-login home with PI vouch banner + check-in cards
+    check_in_result_screen.dart — Assurance band badge + signal breakdown chips
+    offline_check_in_screen.dart — Student offline QR code generation
+    teacher_home_screen.dart   — Teacher landing page
+    teacher_session_screen.dart — Teacher session management
+    teacher_offline_session_screen.dart — Teacher offline session management
+    teacher_offline_scanner_screen.dart — Teacher QR scanner for offline check-ins
+    teacher_dashboard_screen.dart — Roster, status/band badges, approve/reject
   services/
     api_client.dart            — HTTP client (fetch helper)
     auth_api.dart              — Auth endpoint wrappers (static methods)
+    session_api.dart           — Session endpoint wrappers (BLE token, session data)
     passkey.dart               — Native passkey method channel wrapper
     play_integrity_service.dart — Play Integrity daily vouch
     secure_store.dart          — Keystore/Keychain secure storage (method channel)
     session_store.dart         — SharedPreferences session persistence
     user_api.dart              — User endpoint wrappers (instance methods; currently unused)
+    offline_payload_service.dart — Offline check-in PAS JSON v1 payload generation
+    class_cache_service.dart   — SharedPreferences-backed class data cache for offline use
+    ble_advertiser_service.dart — BLE advertising via NativeBleAdvertiser Android native
+    notification_service.dart  — MethodChannel for PI vouch expiry local notifications
   widgets/
     error_dialog.dart          — Reusable error dialog
 ```
@@ -65,6 +80,13 @@ Defined in `main.dart` via GoRouter:
 | `/scan` | `QrScannerScreen` | Registration QR scanner |
 | `/authenticate` | `AuthenticationScreen` | Receives `?user_id=&login=true` for login or check-in |
 | `/register` | `RegistrationScreen` | Receives `?token=&user_id=` from deep link |
+| `/check-in-result` | `CheckInResultScreen` | Assurance band badge + signal breakdown |
+| `/offline-check-in` | `OfflineCheckInScreen` | Student offline QR code generation |
+| `/teacher` | `TeacherHomeScreen` | Teacher landing page |
+| `/teacher/session` | `TeacherSessionScreen` | Teacher session management |
+| `/teacher/offline-session` | `TeacherOfflineSessionScreen` | Teacher offline session management |
+| `/teacher/offline-scanner` | `TeacherOfflineScannerScreen` | Teacher QR scanner for offline check-ins |
+| `/teacher/dashboard` | `TeacherDashboardScreen` | Roster view with approval actions |
 
 `AuthWrapper` calls `SessionStore.isSessionValid()`. If the session is valid it renders `HomeScreen`; otherwise `LoginScreen`.
 
@@ -145,20 +167,19 @@ The most complete screen. Auto-starts `_authenticate()` on mount. Handles both l
 
 ### `HomeScreen`
 
-Minimal stub. Loads `SessionStore.getUserId()` in `initState`. Renders a `FutureBuilder` showing the userId string and two buttons: logout + "Check In Now".
+Post-login home screen. Loads session data in `initState` and implements `WidgetsBindingObserver` to re-check PI vouch status on app resume.
 
-"Check In Now" → routes to `/authenticate?user_id=...`.
+**Content:**
+- PI vouch expiry banner (warning when vouch is about to expire or expired)
+- Last check-in card showing the most recent result
+- "Check In Now" button → routes to `/authenticate?user_id=...`
+- "Check In Offline" button → routes to `/offline-check-in`
 
 **Logout flow:** calls `AuthApi.logout(userId, sessionToken)` (silently ignores errors), then `SessionStore.clearSession()`, then pops to `/` via GoRouter.
 
-**What's missing from Home (all unbuilt):**
-- Upcoming or active class card showing current session status
-- Check-in outcome display (assurance band + whether retry would help — required by architecture)
+**What's still unbuilt:**
 - Attendance history screen / per-session result list
-- BLE background scan initiation toggle
-- Offline QR check-in mode entry point
 - Profile / settings screen entry
-- PI vouch status indicator
 
 ---
 
@@ -210,6 +231,26 @@ Method channel wrapper for native WebAuthn operations. Exposes:
 
 The native side handles: ECDSA P-256 Android Keystore key generation (`StrongBox` preferred, `TEE` fallback), device signature construction (PAS JSON v1 canonical serialization), and WebAuthn credential assertion.
 
+### `session_api.dart`
+
+Session-related endpoint wrappers: BLE token retrieval, session data lookup.
+
+### `offline_payload_service.dart`
+
+Generates signed offline check-in payloads using PAS JSON v1 canonical serialization with `OFFLINE_CHECK_IN` flow. Used by `OfflineCheckInScreen` to produce QR codes the teacher scans.
+
+### `class_cache_service.dart`
+
+SharedPreferences-backed cache for class roster and schedule data. Used by teacher screens during offline sessions to avoid network dependency.
+
+### `ble_advertiser_service.dart`
+
+BLE advertising service backed by `NativeBleAdvertiser.kt` (Android native MethodChannel). Used by teacher device to broadcast the BLE proximity token so student devices can scan and report RSSI.
+
+### `notification_service.dart`
+
+MethodChannel-based local notification service. Used to alert students when their PI daily vouch is about to expire.
+
 ### `user_api.dart`
 
 Instance methods `getUser(userId)` and `updateUser(userId, data)`. Not used anywhere — `User.fromJson` is also unused.
@@ -220,7 +261,7 @@ Instance methods `getUser(userId)` and `updateUser(userId, data)`. Not used anyw
 
 | Class | Contents |
 |---|---|
-| `ApiPaths` | 7 path constants + `playIntegrityVouch` (no corresponding wrapper) |
+| `ApiPaths` | Path constants for auth, check-in, PI vouch, session, and offline sync endpoints |
 | `AuthStrings` | Progress labels, BLE dialog strings, BLE/GPS error messages |
 | `RegistrationStrings` | Progress labels and error body |
 | `QrStrings` | Registration QR parsing and unexpected-failure error messages |
@@ -253,12 +294,22 @@ No known blocking auth/session persistence bugs remain in the Flutter client aft
 
 | Feature | Notes |
 |---|---|
-| Post-check-in outcome screen | Required by architecture: show assurance band + "retry would help" |
-| Attendance history screen | Students can't see their own records |
-| Offline QR check-in flow | `qr_scanner_screen` is registration-only; offline attendance QR unbuilt |
-| Home screen content | Class context, session status, PI vouch indicator |
+| Attendance history screen | Students can't view their own past records |
 | Profile / settings screen | Doesn't exist |
 | `User` model + `UserApi` wired up | Data class exists, unused |
+
+## Implemented Features (vibed branch)
+
+| Feature | Implementation |
+|---|---|
+| Post-check-in outcome screen | `check_in_result_screen.dart` — assurance band badge + signal breakdown chips |
+| Offline QR check-in flow | `offline_check_in_screen.dart` (student QR gen), `teacher_offline_session_screen.dart`, `teacher_offline_scanner_screen.dart` |
+| Home screen content | PI vouch expiry banner, last check-in card, "Check In Offline" button, WidgetsBindingObserver for resume vouch check |
+| Teacher dashboard | `teacher_dashboard_screen.dart` — roster, status/band badges, anomaly icons, approve/reject bottom sheet |
+| BLE advertising (teacher) | `ble_advertiser_service.dart` + `NativeBleAdvertiser.kt` (Android native) |
+| Class data caching | `class_cache_service.dart` — SharedPreferences-backed cache for offline teacher use |
+| Notification service | `notification_service.dart` — MethodChannel for PI vouch expiry local notifications |
+| Offline payload signing | `offline_payload_service.dart` — generates PAS JSON v1 payload with `offline_check_in` flow |
 
 ---
 

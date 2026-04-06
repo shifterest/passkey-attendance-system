@@ -10,6 +10,7 @@ import {
 	IconTool,
 	IconUser,
 	IconUserEdit,
+	IconUsersGroup,
 } from "@tabler/icons-react";
 import type * as React from "react";
 import { type IconItem, navigation } from "@/app/lib/navigation";
@@ -42,6 +43,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		classes: IconChalkboard,
 		enrollments: IconClipboard,
 		records: IconClipboard,
+		orgs: IconUsersGroup,
 	};
 
 	const { user, loading } = useUser();

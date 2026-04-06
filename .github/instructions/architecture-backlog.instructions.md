@@ -99,9 +99,9 @@ name: "Architecture Backlog Guidance"
 ## P1 — Flutter Client Gaps
 
 - ❌ **Daily PI vouch call** — `play_integrity_service.dart` exists but is a no-op stub: `play_integrity_flutter` v0.0.1 exposes a Classic API requiring server-side decryption/verification keys; the app-side raw token submission pattern needs a different package or a newer package version
-- ❌ **Post-check-in outcome screen** — display assurance band and whether a retry would improve it
+- ✅ **Post-check-in outcome screen** — `check_in_result_screen.dart` displays assurance band badge + signal breakdown chips (BLE/GPS/NFC/Network/QR ✓/✗) with retry guidance
 - ✅ **`gps_is_mock` flag submission** — `Position.isMocked` read from `geolocator`, included in check-in verify payload, stored as `gps_is_mock` on `AttendanceRecord`
-- ❌ **Offline QR attendance UI** — device-signed QR generation screen for offline sessions
+- ✅ **Offline QR attendance UI** — student generates device-signed QR via `offline_payload_service.dart`; teacher scans via `teacher_offline_scanner_screen.dart`; submit via `POST /sessions/offline-sync`
 
 ---
 
@@ -119,10 +119,10 @@ name: "Architecture Backlog Guidance"
 
 ## P2 — User-Facing Interface
 
-- ❌ Teacher dashboard: session roster, assurance band indicators, anomaly flags (network, mock GPS, sign-count), manual approval/rejection for low-assurance records
-- ❌ Admin dashboard: credential management, user lifecycle, audit log view
-- ❌ Student app: check-in outcome screen, credential health indicator, vouch status
-- ❌ Navigation flow and route hierarchy across web and Flutter
+- ✅ Teacher dashboard (Flutter): `teacher_dashboard_screen.dart` — session roster with pull-to-refresh, status/band badges, signal breakdown chips, anomaly icons (mockGPS, signCount, syncPending), tap-to-approve bottom sheet with optional reason
+- ✅ Admin dashboard (Web): credential management, user lifecycle, audit log, org/event CRUD — all implemented in web frontend
+- ✅ Student app: `check_in_result_screen.dart` (outcome screen + signal breakdown), `home_screen.dart` (PI vouch banner + last check-in card), offline QR flow
+- ✅ Navigation: GoRouter with 7 new routes (Flutter), orgs/events admin pages (Web)
 
 ---
 
@@ -144,9 +144,9 @@ name: "Architecture Backlog Guidance"
 
 ---
 
-## Organizations and Events (Deferred — Class-Based System to Ship First)
+## Organizations and Events (Implemented on `vibed`)
 
-Full design is locked in session memory and the conversation summary. Implementation deferred until the class-based attendance system is working end-to-end in production.
+Full design is locked in `organizations-events.instructions.md`. Backend routes, membership helpers, event check-in divergence, and web admin UI are implemented on the `vibed` branch.
 
 ### Locked Design Decisions
 
@@ -184,22 +184,20 @@ Full design is locked in session memory and the conversation summary. Implementa
 
 **Auth is ReBAC, not role-based** — `User.role` is not extended; teacher+student+organizer are simultaneous relationships, not a role value
 
-### Implementation Checklist (all ❌ pending)
+### Implementation Checklist
 
-- ❌ `User.program` + `User.year_level` fields
-- ❌ `Organization`, `OrganizationMembershipRule`, `OrganizationMembership` models
-- ❌ `Event`, `EventAttendeeRule` models
-- ❌ `CheckInSession.event_id` nullable FK, `ClassEnrollment.expires_at` nullable
-- ❌ Strings: `ORG_NOT_FOUND`, `EVENT_NOT_FOUND`, `NOT_EVENT_ATTENDEE`, `ORG_RULE_ORG_MEMBER_FORBIDDEN`, `MEMBERSHIP_EXPIRED`
-- ❌ Schemas: user update fields, all org/event/rule shapes
-- ❌ `membership_service.py` — `is_org_member`, `get_org_role`, `is_event_attendee`, rule evaluators
-- ❌ `organizations.py` routes — CRUD + membership grant/revoke + rule management (validate: no `org_member` rule_type in org rules)
-- ❌ `events.py` routes — CRUD + attendee rule management + `GET /{event_id}/qualifies/{user_id}`
-- ❌ `check_in.py` event session branch — attendee gate (replaces enrollment check), event thresholds, event.max_check_ins, event.play_integrity_enabled
-- ❌ `users.py` — expose `program`/`year_level` in create/update
-- ❌ `api.py` — register `organizations.router` and `events.router`
-- ❌ Instruction file updates: `auth-flows.instructions.md` (event options/verify flow), `copilot-instructions.md` (settled decisions)
-- ❌ `ARCHITECTURE_DECISIONS.md` new section — org/event model, membership resolution, 2-hop bound, safety constraint
+- ✅ `User.program` + `User.year_level` fields
+- ✅ `Organization`, `OrganizationMembershipRule`, `OrganizationMembership` models
+- ✅ `Event`, `EventAttendeeRule` models
+- ✅ `CheckInSession.event_id` nullable FK, `ClassEnrollment.expires_at` nullable
+- ✅ Strings: `ORG_NOT_FOUND`, `EVENT_NOT_FOUND`, `NOT_EVENT_ATTENDEE`, `ORG_RULE_ORG_MEMBER_FORBIDDEN`, `MEMBERSHIP_EXPIRED`
+- ✅ Schemas: user update fields, all org/event/rule shapes
+- ✅ `membership.py` helpers — `is_org_member`, `get_org_role`, `is_event_attendee` (in `api/helpers/membership.py`)
+- ✅ `orgs.py` routes — CRUD + membership grant/revoke + rule management (validate: no `org_member` rule_type in org rules)
+- ✅ `events.py` routes — CRUD + attendee rule management
+- ✅ `check_in.py` event session branch — attendee gate (replaces enrollment check), event thresholds, event.max_check_ins, event.play_integrity_enabled
+- ✅ `api.py` — registered `orgs.router` and `events.router`
+- ✅ Web admin UI — org list, org detail (members/rules/events), event detail (attendee rules)
 
 ---
 

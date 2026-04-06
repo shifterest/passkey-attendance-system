@@ -7,7 +7,8 @@ export type IconItem =
 	| "admins"
 	| "classes"
 	| "enrollments"
-	| "records";
+	| "records"
+	| "orgs";
 
 export type NavItem = {
 	title: string;
@@ -49,6 +50,7 @@ export const navigation = {
 		{ name: "Classes", url: "/classes", icon: "classes" },
 		{ name: "Enrollments", url: "/enrollments", icon: "enrollments" },
 		{ name: "Records", url: "/records", icon: "records" },
+		{ name: "Organizations", url: "/orgs", icon: "orgs" },
 	] satisfies NavGroup[],
 };
 

@@ -522,3 +522,231 @@ export function updatePolicy(
 export function deletePolicy(policyId: string) {
 	return request<void>(ApiPaths.policy(policyId), { method: "DELETE" });
 }
+
+// Credentials
+
+export type CredentialDto = {
+	id: string;
+	user_id: string;
+	credential_id: string;
+	sign_count: number;
+	is_active: boolean;
+	attestation_cert_serial: string | null;
+	created_at: string;
+};
+
+export function getCredentials(userId: string) {
+	return request<CredentialDto[]>(
+		`${ApiPaths.credentials}?user_id=${encodeURIComponent(userId)}`,
+	);
+}
+
+export function revokeCredential(credentialId: string) {
+	return request<void>(ApiPaths.credential(credentialId), {
+		method: "DELETE",
+	});
+}
+
+// Offline sync
+
+export function offlineSync(body: {
+	class_id: string;
+	session_id?: string;
+	opened_at: string;
+	closed_at: string;
+	nonce_set: string[];
+	records: Record<string, unknown>[];
+}) {
+	return request<unknown>(ApiPaths.offlineSync, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+}
+
+// Organizations
+
+export type OrgDto = {
+	id: string;
+	name: string;
+	description: string | null;
+	created_at: string;
+};
+
+export type OrgMemberDto = {
+	id: string;
+	organization_id: string;
+	user_id: string;
+	membership_type: string;
+	org_role: string;
+	is_revoked: boolean;
+	expires_at: string | null;
+};
+
+export type OrgRuleDto = {
+	id: string;
+	organization_id: string;
+	rule_type: string;
+	rule_value: string;
+};
+
+export function getOrgs() {
+	return request<OrgDto[]>(ApiPaths.orgs);
+}
+
+export function createOrg(data: { name: string; description?: string }) {
+	return request<OrgDto>(ApiPaths.orgs, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function updateOrg(
+	orgId: string,
+	data: { name?: string; description?: string },
+) {
+	return request<OrgDto>(ApiPaths.org(orgId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deleteOrg(orgId: string) {
+	return request<void>(ApiPaths.org(orgId), { method: "DELETE" });
+}
+
+export function getOrgMembers(orgId: string) {
+	return request<OrgMemberDto[]>(ApiPaths.orgMembers(orgId));
+}
+
+export function grantMembership(
+	orgId: string,
+	data: {
+		user_id: string;
+		membership_type: string;
+		org_role?: string;
+		expires_at?: string;
+	},
+) {
+	return request<OrgMemberDto>(ApiPaths.orgMembers(orgId), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function revokeMembership(orgId: string, userId: string) {
+	return request<void>(ApiPaths.orgMember(orgId, userId), {
+		method: "DELETE",
+	});
+}
+
+export function getOrgRules(orgId: string) {
+	return request<OrgRuleDto[]>(ApiPaths.orgRules(orgId));
+}
+
+export function createOrgRule(
+	orgId: string,
+	data: { rule_type: string; rule_value: string },
+) {
+	return request<OrgRuleDto>(ApiPaths.orgRules(orgId), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deleteOrgRule(orgId: string, ruleId: string) {
+	return request<void>(ApiPaths.orgRule(orgId, ruleId), { method: "DELETE" });
+}
+
+// Events
+
+export type EventDto = {
+	id: string;
+	organization_id: string;
+	name: string;
+	description: string | null;
+	schedule: Record<string, unknown>[];
+	standard_assurance_threshold: number;
+	high_assurance_threshold: number;
+	play_integrity_enabled: boolean;
+	max_check_ins: number;
+	created_at: string;
+};
+
+export type EventRuleDto = {
+	id: string;
+	event_id: string;
+	rule_type: string;
+	rule_value: string;
+};
+
+export function getEvents(orgId: string) {
+	return request<EventDto[]>(ApiPaths.orgEvents(orgId));
+}
+
+export function createEvent(
+	orgId: string,
+	data: {
+		name: string;
+		description?: string;
+		schedule?: Record<string, unknown>[];
+		standard_assurance_threshold?: number;
+		high_assurance_threshold?: number;
+		play_integrity_enabled?: boolean;
+		max_check_ins?: number;
+	},
+) {
+	return request<EventDto>(ApiPaths.orgEvents(orgId), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function updateEvent(
+	eventId: string,
+	data: {
+		name?: string;
+		description?: string;
+		schedule?: Record<string, unknown>[];
+		standard_assurance_threshold?: number;
+		high_assurance_threshold?: number;
+		play_integrity_enabled?: boolean;
+		max_check_ins?: number;
+	},
+) {
+	return request<EventDto>(ApiPaths.event(eventId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deleteEvent(eventId: string) {
+	return request<void>(ApiPaths.event(eventId), { method: "DELETE" });
+}
+
+export function getEventRules(eventId: string) {
+	return request<EventRuleDto[]>(ApiPaths.eventRules(eventId));
+}
+
+export function createEventRule(
+	eventId: string,
+	data: { rule_type: string; rule_value: string },
+) {
+	return request<EventRuleDto>(ApiPaths.eventRules(eventId), {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deleteEventRule(eventId: string, ruleId: string) {
+	return request<void>(ApiPaths.eventRule(eventId, ruleId), {
+		method: "DELETE",
+	});
+}

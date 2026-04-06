@@ -42,6 +42,7 @@ export default async function Page() {
 				recordsToday={recordsToday}
 				flaggedToday={flaggedToday}
 				openSessions={openSessions}
+				totalSessions={sessions.length}
 			/>
 			<div className="px-4 lg:px-6">
 				<ChartAreaInteractive data={chartData} />

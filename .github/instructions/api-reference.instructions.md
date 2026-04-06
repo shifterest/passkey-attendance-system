@@ -167,6 +167,11 @@ Generates a one-time nonce UUID, stores it in Redis at `pi_nonce:{credential_id}
 **Response:** `{ "vouched": true, "slots_remaining": <int> }`  
 503 when `PLAY_INTEGRITY_PACKAGE_NAME` or `PLAY_INTEGRITY_API_KEY` is empty (PI not configured server-side). Requires `MEETS_DEVICE_INTEGRITY` in the verdict. Rate-limited to 3 successful vouches per `credential_id` per calendar day (Redis key: `pi_vouch_daily_count:{credential_id}:{YYYY-MM-DD}`). Stores 24h vouch in Redis (`pi_vouch:{credential_id}`). A failed attempt does not consume a slot or invalidate an existing vouch.
 
+### `GET /auth/play-integrity/vouch-status`
+**Auth:** student  
+**Response:** `{ "vouched": bool, "ttl": int | null }`  
+Returns current vouch state from Redis for the authenticated student's credential. `ttl` is the remaining seconds on the vouch key (null when not vouched).
+
 ---
 
 ## Users — `/users`
@@ -353,6 +358,36 @@ Sets `status = "closed"`. 409 if already closed.
 **Auth:** admin, operator  
 **Response:** 204
 
+### `POST /sessions/offline-sync`
+**Auth:** teacher  
+**Body:**
+```json
+{
+  "session_id": "...",
+  "records": [
+    {
+      "student_id": "...",
+      "credential_id": "...",
+      "qr_payload": "<base64 signed QR data>",
+      "device_signature": "<base64>",
+      "device_public_key": "<base64>",
+      "scanned_at": "2026-03-18T08:05:00Z"
+    }
+  ]
+}
+```
+**Response:**
+```json
+{
+  "synced": <int>,
+  "failed": <int>,
+  "results": [
+    { "student_id": "...", "status": "synced" | "failed", "reason": "..." }
+  ]
+}
+```
+Processes a batch of offline QR check-in records captured by a teacher's device. For each record: verifies `scanned_at` within 60s TTL, verifies device signature over the QR payload using the student's enrolled `device_public_key`, creates an `AttendanceRecord` with `verification_methods = ["qr_proximity"]`, `assurance_score = 4` (QR proximity only), and `sync_pending = False`. Failed device signature verification sets `sync_pending = True` and `sync_escalated = True`, requiring teacher review. Records unsynced after 24 hours are escalated by the background worker.
+
 ---
 
 ## Attendance Records — `/records`
@@ -520,6 +555,98 @@ Returns `true` only if: `BOOTSTRAP_ENABLED=true` AND Redis key `bootstrap:comple
 **Body:** none  
 **Response:** `LoginSessionBase`  
 First-run only. Validates OTP token from Redis. Creates operator user. Creates 30-minute login session. Consumes token (deletes from Redis). Sets `bootstrap:completed` in Redis. Emits `BOOTSTRAP_ATTEMPT` + `BOOTSTRAP_COMPLETED` audit events. Rate-limited: 5 attempts per IP per 60 seconds. Auto-login of existing privileged accounts via this endpoint is prohibited.
+
+---
+
+## Organizations — `/orgs`
+
+### `GET /orgs/`
+**Auth:** admin, operator  
+**Response:** `list[OrganizationResponse]`
+
+### `GET /orgs/{org_id}`
+**Auth:** admin, operator  
+**Response:** `OrganizationResponse`
+
+### `POST /orgs/`
+**Auth:** admin, operator  
+**Body:** `OrganizationCreate` → `{ name, description? }`  
+**Response:** `OrganizationResponse`
+
+### `PUT /orgs/{org_id}`
+**Auth:** admin, operator  
+**Body:** `OrganizationUpdate` → all optional  
+**Response:** `OrganizationResponse`
+
+### `DELETE /orgs/{org_id}`
+**Auth:** admin, operator  
+**Response:** 204
+
+### `GET /orgs/{org_id}/members`
+**Auth:** admin, operator  
+**Response:** `list[OrgMembershipResponse]`
+
+### `POST /orgs/{org_id}/members`
+**Auth:** admin, operator  
+**Body:** `OrgMembershipCreate` → `{ user_id, role }`  
+**Response:** `OrgMembershipResponse`  
+409 if user is already a member.
+
+### `DELETE /orgs/{org_id}/members/{membership_id}`
+**Auth:** admin, operator  
+**Response:** 204
+
+### `GET /orgs/{org_id}/rules`
+**Auth:** admin, operator  
+**Response:** `list[OrgMembershipRuleResponse]`
+
+### `POST /orgs/{org_id}/rules`
+**Auth:** admin, operator  
+**Body:** `OrgMembershipRuleCreate` → `{ rule_type, rule_value }`  
+**Response:** `OrgMembershipRuleResponse`
+
+### `DELETE /orgs/{org_id}/rules/{rule_id}`
+**Auth:** admin, operator  
+**Response:** 204
+
+---
+
+## Events — `/orgs/{org_id}/events`
+
+### `GET /orgs/{org_id}/events`
+**Auth:** admin, operator  
+**Response:** `list[EventResponse]`
+
+### `GET /orgs/{org_id}/events/{event_id}`
+**Auth:** admin, operator  
+**Response:** `EventResponse`
+
+### `POST /orgs/{org_id}/events`
+**Auth:** admin, operator  
+**Body:** `EventCreate` → `{ title, description?, start_time?, end_time? }`  
+**Response:** `EventResponse`
+
+### `PUT /orgs/{org_id}/events/{event_id}`
+**Auth:** admin, operator  
+**Body:** `EventUpdate` → all optional  
+**Response:** `EventResponse`
+
+### `DELETE /orgs/{org_id}/events/{event_id}`
+**Auth:** admin, operator  
+**Response:** 204
+
+### `GET /orgs/{org_id}/events/{event_id}/rules`
+**Auth:** admin, operator  
+**Response:** `list[EventAttendeeRuleResponse]`
+
+### `POST /orgs/{org_id}/events/{event_id}/rules`
+**Auth:** admin, operator  
+**Body:** `EventAttendeeRuleCreate` → `{ rule_type, rule_value }`  
+**Response:** `EventAttendeeRuleResponse`
+
+### `DELETE /orgs/{org_id}/events/{event_id}/rules/{rule_id}`
+**Auth:** admin, operator  
+**Response:** 204
 
 ---
 

@@ -1,10 +1,10 @@
 ---
-description: "Use when discussing, designing, or implementing Organizations, Events, or membership-based attendance for the passkey attendance system. All implementation is deferred until the class-based system ships."
+description: "Use when discussing, designing, or implementing Organizations, Events, or membership-based attendance for the passkey attendance system. Implementation is complete on the vibed branch."
 name: "Organizations and Events Architecture"
 ---
 # Organizations and Events Architecture
 
-**Status: deferred.** The class-based attendance system ships first. This document captures the full locked design so that implementation can proceed without re-discussion when the time comes.
+**Status: implemented** on the `vibed` branch. The class-based system still ships first; org/event is present in code but deferred for production activation.
 
 ---
 

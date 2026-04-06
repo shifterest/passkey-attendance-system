@@ -89,6 +89,7 @@ A user can hold only **one role**. The deferred Organizations model allows a sin
 | `sign_count_anomaly` | `bool` | `True` if backend detected a sign count regression (possible cloned authenticator) |
 | `key_security_level` | `str \| None` | `strongbox`, `tee`, or `None` if not yet determined |
 | `attestation_crl_verified` | `bool \| None` | `None` = not yet checked; `True` = clean; `False` = revoked |
+| `attestation_cert_serial` | `str \| None` | Serial number of the attestation leaf certificate; used for CRL cross-reference |
 | `registered_at` | `datetime` | UTC |
 
 **Invariant:** only one active credential per user by default (`MAX_ACTIVE_CREDENTIALS_PER_USER` config). Admin can revoke + re-register to replace a lost device.
@@ -191,6 +192,7 @@ Uniqueness: one enrollment per (class_id, student_id) pair enforced in the route
 | `manually_approved_by` | `str \| None` | User ID of approving teacher/admin |
 | `manually_approved_reason` | `str \| None` | Optional reason |
 | `sync_pending` | `bool` | `True` for offline QR records until device signature verified on sync |
+| `sync_escalated` | `bool` | `True` when offline record unsynced >24h; escalated to teacher review by background worker |
 | `network_anomaly` | `bool` | Source IP did not match `SCHOOL_SUBNET_CIDR` at options time |
 | `gps_is_mock` | `bool` | `Position.isMocked` as reported by device |
 | `gps_in_geofence` | `bool \| None` | `None` if geofence not configured; `True/False` when evaluated |
@@ -290,6 +292,87 @@ All Pydantic schemas in `backend/api/schemas.py` follow the pattern:
 ```
 
 `extra="forbid"` on Create and Update schemas prevents undeclared fields from being accepted. `from_attributes=True` on Response enables ORM → Pydantic conversion.
+
+---
+
+## Organization, Membership, Event Models
+
+See `organizations-events.instructions.md` for the complete design. These models are implemented in `database/models.py` on the `vibed` branch.
+
+### Organization (`organizations`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` PK | UUID |
+| `name` | `str` | |
+| `description` | `str \| None` | |
+| `created_by` | `str \| None` FK → `users.id` | |
+| `created_at` | `datetime` | UTC |
+
+### OrganizationMembership (`organization_memberships`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` PK | UUID |
+| `organization_id` | `str` FK → `organizations.id` | |
+| `user_id` | `str` FK → `users.id` | |
+| `membership_type` | `str` | `explicit_grant`, `explicit_revocation`, or `role_elevation` |
+| `org_role` | `str \| None` | `member`, `moderator`, `event_creator`, or `admin` |
+| `is_revoked` | `bool` | |
+| `expires_at` | `datetime \| None` | |
+
+### OrganizationMembershipRule (`organization_membership_rules`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` PK | UUID |
+| `organization_id` | `str` FK → `organizations.id` | |
+| `rule_type` | `str` | `all`, `role`, `program`, or `year_level` — `org_member` FORBIDDEN |
+| `rule_value` | `str \| None` | |
+
+### Event (`events`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` PK | UUID |
+| `organization_id` | `str` FK → `organizations.id` | |
+| `name` | `str` | |
+| `description` | `str \| None` | |
+| `schedule` | `list[dict]` (JSON) | Same block shape as `Class.schedule` |
+| `standard_assurance_threshold` | `int` | Default 5 |
+| `high_assurance_threshold` | `int` | Default 9 |
+| `play_integrity_enabled` | `bool` | Default `False` |
+| `max_check_ins` | `int` | Default 3 |
+| `created_by` | `str \| None` FK → `users.id` | |
+| `created_at` | `datetime` | |
+
+### EventAttendeeRule (`event_attendee_rules`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` PK | UUID |
+| `event_id` | `str` FK → `events.id` | |
+| `rule_type` | `str` | `all`, `role`, `program`, `year_level`, or `org_member` |
+| `rule_value` | `str \| None` | `org_id` when type is `org_member` |
+
+### CheckInSession additions
+
+| Field | Type | Notes |
+|---|---|---|
+| `event_id` | `str \| None` FK → `events.id` | Mutually exclusive with `class_id`; enforced at application layer |
+
+### ClassEnrollment additions
+
+| Field | Type | Notes |
+|---|---|---|
+| `expires_at` | `datetime \| None` | Null = no expiry |
+
+### User additions
+
+| Field | Type | Notes |
+|---|---|---|
+| `program` | `str \| None` | Degree program code (e.g. `BSCS`) |
+| `year_level` | `int \| None` | Year in program |
 
 ---
 

@@ -99,7 +99,7 @@ When the server is unreachable, WebAuthn cannot complete. The offline flow:
 6. Records unsynced after **24 hours** escalate to teacher review.
 7. Failed device signature verification on sync sets a hard flag requiring explicit teacher action.
 
-**Offline nonce hardening (planned, not yet implemented):** teacher device generates short-lived nonces broadcast via BLE during the offline session; student app embeds the captured nonce into the signed payload. On sync, the server cross-checks against the teacher-submitted nonce set to reject pre-staged payloads. This closes the pre-staging gap without requiring server connectivity at check-in time.
+**Offline nonce hardening (implemented on vibed branch):** teacher device generates short-lived nonces broadcast via BLE (`ble_advertiser_service.dart` + `NativeBleAdvertiser.kt`) during the offline session; student app embeds the captured nonce into the signed QR payload (`offline_payload_service.dart`). On sync via `POST /sessions/offline-sync`, the server cross-checks each record's nonce against the teacher-submitted nonce set to reject pre-staged payloads. This closes the pre-staging gap without requiring server connectivity at check-in time.
 
 ## Session Windows and Attendance Status
 

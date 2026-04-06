@@ -30,6 +30,19 @@ export const ApiPaths = {
 	credential: (credentialId: string) => `/credentials/${credentialId}`,
 	enrollments: "/enrollments/",
 	enrollment: (enrollmentId: string) => `/enrollments/${enrollmentId}`,
+	offlineSync: "/sessions/offline-sync",
+	orgs: "/orgs/",
+	org: (orgId: string) => `/orgs/${orgId}`,
+	orgMembers: (orgId: string) => `/orgs/${orgId}/members`,
+	orgMember: (orgId: string, userId: string) =>
+		`/orgs/${orgId}/members/${userId}`,
+	orgRules: (orgId: string) => `/orgs/${orgId}/rules`,
+	orgRule: (orgId: string, ruleId: string) => `/orgs/${orgId}/rules/${ruleId}`,
+	orgEvents: (orgId: string) => `/orgs/${orgId}/events/`,
+	event: (eventId: string) => `/events/${eventId}`,
+	eventRules: (eventId: string) => `/events/${eventId}/rules`,
+	eventRule: (eventId: string, ruleId: string) =>
+		`/events/${eventId}/rules/${ruleId}`,
 } as const;
 
 export const ErrorMessages = {
