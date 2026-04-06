@@ -10,7 +10,7 @@ PI_VOUCH_KEY_PREFIX = "pi_vouch:"
 PI_VOUCH_TTL_SECONDS = 86400
 
 
-def verify_integrity_token(token: str) -> list[str]:
+def verify_integrity_token(token: str) -> tuple[list[str], str | None]:
     response = httpx.post(
         f"https://playintegrity.googleapis.com/v1/{settings.play_integrity_package_name}:decodeIntegrityToken",
         params={"key": settings.play_integrity_api_key},
@@ -19,11 +19,10 @@ def verify_integrity_token(token: str) -> list[str]:
     )
     response.raise_for_status()
     data = response.json()
-    return (
-        data.get("tokenPayloadExternal", {})
-        .get("deviceIntegrity", {})
-        .get("deviceRecognitionVerdict", [])
-    )
+    payload = data.get("tokenPayloadExternal", {})
+    verdict = payload.get("deviceIntegrity", {}).get("deviceRecognitionVerdict", [])
+    request_hash = payload.get("requestDetails", {}).get("requestHash")
+    return verdict, request_hash
 
 
 def has_valid_vouch(credential_id: str) -> bool:

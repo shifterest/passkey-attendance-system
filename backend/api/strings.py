@@ -95,6 +95,7 @@ class Messages:
     PLAY_INTEGRITY_VERDICT_FAILED = (
         "Device integrity verdict does not meet requirements"
     )
+    PLAY_INTEGRITY_NONCE_INVALID = "Play Integrity nonce mismatch"
 
     # Session auth
     AUTH_SESSION_INVALID = "Session is invalid or expired"
