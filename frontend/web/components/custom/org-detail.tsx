@@ -30,6 +30,29 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 
+const ORG_MEMBERSHIP_TYPE_OPTIONS = [
+	{ value: "explicit_grant", label: "Explicit Grant" },
+	{ value: "role_elevation", label: "Role Elevation" },
+] as const;
+
+const ORG_ROLE_OPTIONS = [
+	{ value: "member", label: "Member" },
+	{ value: "moderator", label: "Moderator" },
+	{ value: "event_creator", label: "Event Creator" },
+	{ value: "admin", label: "Admin" },
+] as const;
+
+const ORG_RULE_OPTIONS = [
+	{ value: "all", label: "All Users" },
+	{ value: "role", label: "User Role" },
+	{ value: "program", label: "Program" },
+	{ value: "year_level", label: "Year Level" },
+] as const;
+
+type OrgMembershipType = (typeof ORG_MEMBERSHIP_TYPE_OPTIONS)[number]["value"];
+type OrgRole = (typeof ORG_ROLE_OPTIONS)[number]["value"];
+type OrgRuleType = (typeof ORG_RULE_OPTIONS)[number]["value"];
+
 export function OrgDetail({
 	orgId,
 	members,
@@ -60,8 +83,9 @@ function MembersSection({
 	const router = useRouter();
 	const [showAdd, setShowAdd] = useState(false);
 	const [userId, setUserId] = useState("");
-	const [membershipType, setMembershipType] = useState("explicit");
-	const [orgRole, setOrgRole] = useState("member");
+	const [membershipType, setMembershipType] =
+		useState<OrgMembershipType>("explicit_grant");
+	const [orgRole, setOrgRole] = useState<OrgRole>("member");
 	const [busy, setBusy] = useState(false);
 
 	async function handleAdd() {
@@ -112,23 +136,40 @@ function MembersSection({
 							<div className="flex gap-2">
 								<Select
 									value={membershipType}
-									onValueChange={setMembershipType}
+									onValueChange={(value) => {
+										if (value) {
+											setMembershipType(value as OrgMembershipType);
+										}
+									}}
 								>
 									<SelectTrigger className="w-40">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="explicit">Explicit</SelectItem>
-										<SelectItem value="rule">Rule</SelectItem>
+										{ORG_MEMBERSHIP_TYPE_OPTIONS.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
-								<Select value={orgRole} onValueChange={setOrgRole}>
+								<Select
+									value={orgRole}
+									onValueChange={(value) => {
+										if (value) {
+											setOrgRole(value as OrgRole);
+										}
+									}}
+								>
 									<SelectTrigger className="w-40">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="member">Member</SelectItem>
-										<SelectItem value="admin">Admin</SelectItem>
+										{ORG_ROLE_OPTIONS.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
 							</div>
@@ -182,18 +223,22 @@ function RulesSection({
 }) {
 	const router = useRouter();
 	const [showAdd, setShowAdd] = useState(false);
-	const [ruleType, setRuleType] = useState("email_domain");
+	const [ruleType, setRuleType] = useState<OrgRuleType>("all");
 	const [ruleValue, setRuleValue] = useState("");
 	const [busy, setBusy] = useState(false);
+	const requiresRuleValue = ruleType !== "all";
 
 	async function handleAdd() {
-		if (!ruleValue.trim() || busy) return;
+		if (busy) return;
+		const nextRuleValue = requiresRuleValue ? ruleValue.trim() : "";
+		if (requiresRuleValue && !nextRuleValue) return;
 		setBusy(true);
 		try {
 			await createOrgRule(orgId, {
 				rule_type: ruleType,
-				rule_value: ruleValue.trim(),
+				rule_value: nextRuleValue,
 			});
+			setRuleType("all");
 			setRuleValue("");
 			setShowAdd(false);
 			router.refresh();
@@ -225,23 +270,39 @@ function RulesSection({
 				<Card className="mb-3">
 					<CardHeader>
 						<div className="flex flex-col gap-2">
-							<Select value={ruleType} onValueChange={setRuleType}>
+							<Select
+								value={ruleType}
+								onValueChange={(value) => {
+									if (value) {
+										setRuleType(value as OrgRuleType);
+										if (value === "all") {
+											setRuleValue("");
+										}
+									}
+								}}
+							>
 								<SelectTrigger>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="email_domain">Email Domain</SelectItem>
-									<SelectItem value="school_id_prefix">
-										School ID Prefix
-									</SelectItem>
+									{ORG_RULE_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
-							<Input
-								placeholder="Rule value"
-								value={ruleValue}
-								onChange={(e) => setRuleValue(e.target.value)}
-							/>
-							<Button onClick={handleAdd} disabled={busy || !ruleValue.trim()}>
+							{requiresRuleValue && (
+								<Input
+									placeholder="Rule value"
+									value={ruleValue}
+									onChange={(e) => setRuleValue(e.target.value)}
+								/>
+							)}
+							<Button
+								onClick={handleAdd}
+								disabled={busy || (requiresRuleValue && !ruleValue.trim())}
+							>
 								{busy ? "Adding..." : "Add Rule"}
 							</Button>
 						</div>

@@ -18,6 +18,16 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 
+const EVENT_RULE_OPTIONS = [
+	{ value: "all", label: "All Users" },
+	{ value: "role", label: "User Role" },
+	{ value: "program", label: "Program" },
+	{ value: "year_level", label: "Year Level" },
+	{ value: "org_member", label: "Organization Member" },
+] as const;
+
+type EventRuleType = (typeof EVENT_RULE_OPTIONS)[number]["value"];
+
 export function EventDetail({
 	orgId,
 	eventId,
@@ -29,18 +39,22 @@ export function EventDetail({
 }) {
 	const router = useRouter();
 	const [showAdd, setShowAdd] = useState(false);
-	const [ruleType, setRuleType] = useState("email_domain");
+	const [ruleType, setRuleType] = useState<EventRuleType>("all");
 	const [ruleValue, setRuleValue] = useState("");
 	const [busy, setBusy] = useState(false);
+	const requiresRuleValue = ruleType !== "all";
 
 	async function handleAdd() {
-		if (!ruleValue.trim() || busy) return;
+		if (busy) return;
+		const nextRuleValue = requiresRuleValue ? ruleValue.trim() : "";
+		if (requiresRuleValue && !nextRuleValue) return;
 		setBusy(true);
 		try {
 			await createEventRule(eventId, {
 				rule_type: ruleType,
-				rule_value: ruleValue.trim(),
+				rule_value: nextRuleValue,
 			});
+			setRuleType("all");
 			setRuleValue("");
 			setShowAdd(false);
 			router.refresh();
@@ -80,23 +94,41 @@ export function EventDetail({
 				<Card className="mb-2">
 					<CardHeader>
 						<div className="flex flex-col gap-2">
-							<Select value={ruleType} onValueChange={setRuleType}>
+							<Select
+								value={ruleType}
+								onValueChange={(value) => {
+									if (value) {
+										setRuleType(value as EventRuleType);
+										if (value === "all") {
+											setRuleValue("");
+										}
+									}
+								}}
+							>
 								<SelectTrigger>
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="email_domain">Email Domain</SelectItem>
-									<SelectItem value="school_id_prefix">
-										School ID Prefix
-									</SelectItem>
+									{EVENT_RULE_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
-							<Input
-								placeholder="Rule value"
-								value={ruleValue}
-								onChange={(e) => setRuleValue(e.target.value)}
-							/>
-							<Button onClick={handleAdd} disabled={busy || !ruleValue.trim()}>
+							{requiresRuleValue && (
+								<Input
+									placeholder={
+										ruleType === "org_member" ? "Organization ID" : "Rule value"
+									}
+									value={ruleValue}
+									onChange={(e) => setRuleValue(e.target.value)}
+								/>
+							)}
+							<Button
+								onClick={handleAdd}
+								disabled={busy || (requiresRuleValue && !ruleValue.trim())}
+							>
 								{busy ? "Adding..." : "Add Rule"}
 							</Button>
 						</div>
