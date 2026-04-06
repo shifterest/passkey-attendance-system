@@ -19,6 +19,7 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 import type { AttendanceRecordDto } from "@/app/lib/api";
+import { approveRecord } from "@/app/lib/api";
 import { DataTable } from "@/components/custom/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -186,10 +187,49 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "timestamp", desc: true },
 	]);
+	const [approvedIds, setApprovedIds] = React.useState<Set<string>>(new Set());
+
+	const approveColumn = React.useMemo<ColumnDef<AttendanceRecordDto>>(
+		() => ({
+			id: "approve",
+			header: "",
+			cell: ({ row }) => {
+				const r = row.original;
+				if (r.manually_approved || approvedIds.has(r.id)) return null;
+				const std = r.standard_threshold_recorded ?? 5;
+				if (r.assurance_score >= std) return null;
+				return (
+					<Button
+						size="sm"
+						variant="outline"
+						className="h-7 text-xs"
+						onClick={() => {
+							setApprovedIds((prev) => new Set(prev).add(r.id));
+							approveRecord(r.id).catch(() =>
+								setApprovedIds((prev) => {
+									const next = new Set(prev);
+									next.delete(r.id);
+									return next;
+								}),
+							);
+						}}
+					>
+						Approve
+					</Button>
+				);
+			},
+		}),
+		[approvedIds],
+	);
+
+	const allColumns = React.useMemo(
+		() => [...columns, approveColumn],
+		[approveColumn],
+	);
 
 	const table = useReactTable({
 		data,
-		columns,
+		columns: allColumns,
 		state: { sorting },
 		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),

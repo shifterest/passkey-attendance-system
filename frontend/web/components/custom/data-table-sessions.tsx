@@ -5,6 +5,7 @@ import {
 	getCoreRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import type { CheckInSessionDto } from "@/app/lib/api";
 import { DataTable } from "@/components/custom/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,18 @@ const columns: ColumnDef<CheckInSessionDto>[] = [
 				Present ≤{row.original.present_cutoff_minutes}m · Late ≤
 				{row.original.late_cutoff_minutes}m
 			</span>
+		),
+	},
+	{
+		id: "actions",
+		header: "",
+		cell: ({ row }) => (
+			<Link
+				href={`/classes/${row.original.class_id}/sessions/${row.original.id}/records`}
+				className="text-sm font-medium text-primary hover:underline"
+			>
+				View records
+			</Link>
 		),
 	},
 ];
