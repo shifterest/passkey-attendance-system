@@ -155,3 +155,36 @@ def play_integrity_nonce(
         ex=PI_NONCE_TTL_SECONDS,
     )
     return {"nonce": nonce}
+
+
+PI_VOUCH_EXPIRY_SOON_PREFIX = "pi_vouch_expires_soon:"
+PI_VOUCH_KEY_PREFIX = "pi_vouch:"
+
+
+@router.get("/play-integrity/vouch-status")
+def play_integrity_vouch_status(
+    current_user: User = Depends(require_role("student")),
+    db: Session = Depends(get_db),
+):
+    credential = (
+        db.query(Credential)
+        .filter(Credential.user_id == current_user.id)
+        .order_by(Credential.registered_at.desc())
+        .first()
+    )
+    if credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.AUTH_NO_CREDENTIAL,
+        )
+
+    credential_id = credential.credential_id
+    has_vouch = redis_client.exists(f"{PI_VOUCH_KEY_PREFIX}{credential_id}") == 1
+    ttl = redis_client.ttl(f"{PI_VOUCH_KEY_PREFIX}{credential_id}") if has_vouch else None
+    expires_soon = redis_client.exists(f"{PI_VOUCH_EXPIRY_SOON_PREFIX}{credential_id}") == 1
+
+    return {
+        "has_vouch": has_vouch,
+        "ttl_seconds": ttl if ttl and ttl > 0 else None,
+        "expires_soon": expires_soon,
+    }

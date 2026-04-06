@@ -34,7 +34,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def _lifespan(app: fastapi.FastAPI):
     ensure_database_schema()
+    from api.worker import scheduler
+
+    scheduler.start()
     yield
+    scheduler.shutdown()
 
 
 app = fastapi.FastAPI(lifespan=_lifespan)
