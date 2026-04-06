@@ -16,6 +16,7 @@ from api.helpers.assurance import (
 from api.helpers.base64url import encode_base64url
 from api.helpers.credential import normalize_credential_id_base64url
 from api.helpers.device_payload import build_device_payload
+from api.helpers.membership import is_event_attendee
 from api.redis import redis_client
 from api.schemas import (
     AttendanceRecordResponse,
@@ -45,6 +46,7 @@ from database.models import (
     Class,
     ClassEnrollment,
     ClassPolicy,
+    Event,
     User,
 )
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -91,21 +93,39 @@ def check_in_options(
         .all()
     ]
 
-    if len(enrolled_class_ids) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
+    session = None
+    if enrolled_class_ids:
+        session = (
+            db.query(CheckInSession)
+            .filter(CheckInSession.class_id.in_(enrolled_class_ids))
+            .filter(CheckInSession.start_time <= now)
+            .filter(CheckInSession.end_time >= now)
+            .filter(CheckInSession.status != "closed")
+            .order_by(CheckInSession.start_time.desc())
+            .first()
         )
 
-    session = (
-        db.query(CheckInSession)
-        .filter(CheckInSession.class_id.in_(enrolled_class_ids))
-        .filter(CheckInSession.start_time <= now)
-        .filter(CheckInSession.end_time >= now)
-        .filter(CheckInSession.status != "closed")
-        .order_by(CheckInSession.start_time.desc())
-        .first()
-    )
+    if session is None:
+        event_session = (
+            db.query(CheckInSession)
+            .filter(CheckInSession.event_id.isnot(None))
+            .filter(CheckInSession.start_time <= now)
+            .filter(CheckInSession.end_time >= now)
+            .filter(CheckInSession.status != "closed")
+            .order_by(CheckInSession.start_time.desc())
+            .first()
+        )
+        if event_session is not None:
+            event = db.query(Event).filter(Event.id == event_session.event_id).first()
+            if event is not None:
+                eligible, reason = is_event_attendee(db, user, event)
+                if eligible:
+                    session = event_session
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=reason or Messages.NOT_EVENT_ATTENDEE,
+                    )
 
     if session is None:
         raise HTTPException(
@@ -113,12 +133,18 @@ def check_in_options(
             detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
         )
 
-    class_ = db.query(Class).filter(Class.id == session.class_id).first()
-    if class_ is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
-        )
+    class_ = None
+    if session.class_id:
+        class_ = db.query(Class).filter(Class.id == session.class_id).first()
+        if class_ is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
+            )
+
+    event = None
+    if session.event_id:
+        event = db.query(Event).filter(Event.id == session.event_id).first()
 
     options = generate_authentication_options(
         rp_id=settings.rp_id,
@@ -170,29 +196,33 @@ def check_in_options(
     options_json = json.loads(options_to_json(options))
     options_json["session_id"] = session.id
     options_json["issued_at_ms"] = issued_at_ms
-    effective_policy = (
-        db.query(ClassPolicy)
-        .filter(
-            ClassPolicy.created_by == class_.teacher_id,
-            ClassPolicy.class_id == class_.id,
+    if class_ is not None:
+        effective_policy = (
+            db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.created_by == class_.teacher_id,
+                ClassPolicy.class_id == class_.id,
+            )
+            .first()
+            or db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.created_by == class_.teacher_id, ClassPolicy.class_id.is_(None)
+            )
+            .first()
         )
-        .first()
-        or db.query(ClassPolicy)
-        .filter(
-            ClassPolicy.created_by == class_.teacher_id, ClassPolicy.class_id.is_(None)
+        options_json["standard_assurance_threshold"] = (
+            effective_policy.standard_assurance_threshold
+            if effective_policy
+            else class_.standard_assurance_threshold
         )
-        .first()
-    )
-    options_json["standard_assurance_threshold"] = (
-        effective_policy.standard_assurance_threshold
-        if effective_policy
-        else class_.standard_assurance_threshold
-    )
-    options_json["high_assurance_threshold"] = (
-        effective_policy.high_assurance_threshold
-        if effective_policy
-        else class_.high_assurance_threshold
-    )
+        options_json["high_assurance_threshold"] = (
+            effective_policy.high_assurance_threshold
+            if effective_policy
+            else class_.high_assurance_threshold
+        )
+    elif event is not None:
+        options_json["standard_assurance_threshold"] = event.standard_assurance_threshold
+        options_json["high_assurance_threshold"] = event.high_assurance_threshold
     return options_json
 
 
@@ -241,28 +271,40 @@ def check_in_verify(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
         )
-    class_ = db.query(Class).filter(Class.id == session.class_id).first()
-    if class_ is None:
+    class_ = db.query(Class).filter(Class.id == session.class_id).first() if session.class_id else None
+    event = db.query(Event).filter(Event.id == session.event_id).first() if session.event_id else None
+    if class_ is None and event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
         )
-    policy = (
-        db.query(ClassPolicy)
-        .filter(
-            ClassPolicy.created_by == class_.teacher_id,
-            ClassPolicy.class_id == class_.id,
+    if event is not None:
+        eligible, reason = is_event_attendee(db, user, event)
+        if not eligible:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=reason or Messages.NOT_EVENT_ATTENDEE,
+            )
+    policy = None
+    if class_ is not None:
+        policy = (
+            db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.created_by == class_.teacher_id,
+                ClassPolicy.class_id == class_.id,
+            )
+            .first()
+            or db.query(ClassPolicy)
+            .filter(
+                ClassPolicy.created_by == class_.teacher_id,
+                ClassPolicy.class_id.is_(None),
+            )
+            .first()
         )
-        .first()
-        or db.query(ClassPolicy)
-        .filter(
-            ClassPolicy.created_by == class_.teacher_id,
-            ClassPolicy.class_id.is_(None),
-        )
-        .first()
-    )
     effective_max_check_ins = (
-        policy.max_check_ins if policy else settings.max_check_ins_per_session
+        policy.max_check_ins if policy
+        else event.max_check_ins if event
+        else settings.max_check_ins_per_session
     )
     retry_key = f"check_in_retry:{session.id}:{user.id}"
     retry_ttl_seconds = max(
@@ -356,21 +398,22 @@ def check_in_verify(
                 detail=Messages.INVALID_CHALLENGE_DATA,
             )
 
-        enrollment = (
-            db.query(ClassEnrollment.id)
-            .filter(ClassEnrollment.class_id == session.class_id)
-            .filter(ClassEnrollment.student_id == user.id)
-            .filter(
-                (ClassEnrollment.expires_at.is_(None))
-                | (ClassEnrollment.expires_at > datetime.now(timezone.utc))
+        if session.class_id:
+            enrollment = (
+                db.query(ClassEnrollment.id)
+                .filter(ClassEnrollment.class_id == session.class_id)
+                .filter(ClassEnrollment.student_id == user.id)
+                .filter(
+                    (ClassEnrollment.expires_at.is_(None))
+                    | (ClassEnrollment.expires_at > datetime.now(timezone.utc))
+                )
+                .first()
             )
-            .first()
-        )
-        if enrollment is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
-            )
+            if enrollment is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
+                )
 
         if response_data.device_public_key != user_credential.device_public_key:
             log_audit_event(
@@ -516,11 +559,13 @@ def check_in_verify(
         effective_standard = (
             policy.standard_assurance_threshold
             if policy
+            else event.standard_assurance_threshold if event
             else class_.standard_assurance_threshold
         )
         effective_high = (
             policy.high_assurance_threshold
             if policy
+            else event.high_assurance_threshold if event
             else class_.high_assurance_threshold
         )
         assurance_band = compute_assurance_band(

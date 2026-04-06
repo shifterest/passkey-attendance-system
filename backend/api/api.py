@@ -15,8 +15,10 @@ from .routes import (
     classes,
     credentials,
     enrollments,
+    events,
     integrity,
     login,
+    orgs,
     policies,
     records,
     register,
@@ -55,8 +57,10 @@ app.include_router(check_in.router)
 app.include_router(classes.router)
 app.include_router(credentials.router)
 app.include_router(enrollments.router)
+app.include_router(events.router)
 app.include_router(integrity.router)
 app.include_router(login.router)
+app.include_router(orgs.router)
 app.include_router(policies.router)
 app.include_router(records.router)
 app.include_router(register.router)
