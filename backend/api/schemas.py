@@ -704,3 +704,37 @@ class EventAttendeeRuleResponse(EventAttendeeRuleBase):
 
     id: str
     event_id: str
+
+
+# Offline sync
+class OfflineSyncRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    credential_id: str
+    issued_at_ms: int
+    device_signature: str
+    device_public_key: str
+    challenge: str
+
+
+class OfflineSyncRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    class_id: str
+    opened_at: datetime
+    closed_at: datetime
+    nonce_set: list[str]
+    records: list[OfflineSyncRecord]
+
+
+class OfflineSyncRecordResult(BaseModel):
+    user_id: str
+    status: str
+    record_id: str | None = None
+    reason: str | None = None
+
+
+class OfflineSyncResponse(BaseModel):
+    session_id: str
+    results: list[OfflineSyncRecordResult]

@@ -20,3 +20,4 @@ class DeviceBindingFlow(str, Enum):
     REGISTER = "register"
     CHECK_IN = "check_in"
     LOGIN = "login"
+    OFFLINE_CHECK_IN = "offline_check_in"

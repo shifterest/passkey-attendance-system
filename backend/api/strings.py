@@ -44,6 +44,13 @@ class Messages:
     EVENT_NOT_FOUND = "Event not found"
     NOT_EVENT_ATTENDEE = "User is not eligible to attend this event"
 
+    # Offline sync
+    OFFLINE_SYNC_SESSION_OPEN_FAILED = "Failed to open session for offline sync batch"
+    OFFLINE_RECORD_SIGNATURE_FAILURE = "Device signature verification failed for offline record"
+    OFFLINE_RECORD_SYNC_CLEARED = "Offline record synced and verified"
+    OFFLINE_RECORD_ESCALATED = "Unsynced offline record escalated to teacher review"
+    PI_VOUCH_EXPIRING_SOON = "Play Integrity vouch expires soon"
+
     # Attendance sessions
     SESSION_NOT_FOUND = "Session not found"
     SESSION_CLASS_NOT_FOUND = "Class not found"
@@ -253,5 +260,7 @@ class AuditEvents:
     ENROLLMENT_DELETED = "enrollment_deleted"
     MANUAL_APPROVAL = "manual_approval"
     MANUAL_ATTENDANCE = "manual_attendance"
+    OFFLINE_SIGNATURE_FAILURE = "offline_signature_failure"
+    OFFLINE_RECORD_ESCALATED = "offline_record_escalated"
     SIGN_COUNT_ANOMALY = "sign_count_anomaly"
     USER_UPDATED = "user_updated"

@@ -26,8 +26,10 @@ def _serialize_schedule(schedule: list[Schedule]):
 @router.get("/", response_model=list[ClassResponse])
 def get_all_classes(
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
 ):
+    if current_user.role == "teacher":
+        return db.query(Class).filter(Class.teacher_id == current_user.id).all()
     classes = db.query(Class).all()
     return classes
 

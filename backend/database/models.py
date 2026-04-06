@@ -139,6 +139,7 @@ class AttendanceRecord(Base):
     manually_approved_by: Mapped[str | None] = mapped_column(None)
     manually_approved_reason: Mapped[str | None] = mapped_column(None)
     sync_pending: Mapped[bool] = mapped_column(default=False)
+    sync_escalated: Mapped[bool] = mapped_column(default=False)
     network_anomaly: Mapped[bool] = mapped_column(default=False)
     gps_is_mock: Mapped[bool] = mapped_column(default=False)
     gps_in_geofence: Mapped[bool | None] = mapped_column(None)

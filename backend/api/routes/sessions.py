@@ -5,6 +5,13 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from api.config import settings
+from api.contracts.device import DeviceBindingFlow
+from api.helpers.assurance import (
+    assurance_score_from_verification_methods,
+    compute_assurance_band,
+    resolve_attendance_status,
+)
+from api.helpers.device_payload import build_device_payload
 from api.helpers.schedule import (
     get_schedule_block_end,
     is_class_active,
@@ -12,15 +19,21 @@ from api.helpers.schedule import (
 from api.helpers.tokens import new_ble_token, new_nfc_token
 from api.redis import redis_client
 from api.schemas import (
+    AttendanceRecordVerificationMethods,
     CheckInSessionResponse,
     CheckInSessionUpdate,
+    OfflineSyncRecordResult,
+    OfflineSyncRequest,
+    OfflineSyncResponse,
     OpenTeacherSessionRequest,
     UserRole,
 )
+from api.services.audit_service import log_audit_event
+from api.services.auth_service import verify_device_signature
 from api.services.session_service import require_role
-from api.strings import Logs, Messages
+from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
-from database.models import CheckInSession, Class, ClassPolicy, User
+from database.models import AttendanceRecord, CheckInSession, Class, ClassPolicy, Credential, User
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -203,6 +216,162 @@ def open_teacher_session(
     )
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return new_session
+
+
+@router.post("/offline-sync", response_model=OfflineSyncResponse)
+def offline_sync(
+    sync_data: OfflineSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher", "admin", "operator")),
+):
+    target_class = db.query(Class).filter(Class.id == sync_data.class_id).first()
+    if target_class is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=Messages.SESSION_CLASS_NOT_FOUND,
+        )
+    if current_user.role == "teacher" and target_class.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.AUTH_FORBIDDEN
+        )
+
+    class_policy = db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
+    if class_policy is None:
+        class_policy = db.query(ClassPolicy).filter(
+            ClassPolicy.class_id.is_(None),
+            ClassPolicy.created_by == target_class.teacher_id,
+        ).first()
+    effective_standard = (
+        class_policy.standard_assurance_threshold
+        if class_policy
+        else target_class.standard_assurance_threshold
+    )
+    effective_high = (
+        class_policy.high_assurance_threshold
+        if class_policy
+        else target_class.high_assurance_threshold
+    )
+
+    new_session = CheckInSession(
+        id=str(uuid.uuid4()),
+        class_id=target_class.id,
+        start_time=sync_data.opened_at,
+        end_time=sync_data.closed_at,
+        status="closed",
+        present_cutoff_minutes=class_policy.present_cutoff_minutes if class_policy else 5,
+        late_cutoff_minutes=class_policy.late_cutoff_minutes if class_policy else 15,
+    )
+    db.add(new_session)
+    db.flush()
+
+    results: list[OfflineSyncRecordResult] = []
+    for record in sync_data.records:
+        if record.challenge not in sync_data.nonce_set:
+            results.append(OfflineSyncRecordResult(
+                user_id=record.user_id,
+                status="failed",
+                reason="Challenge not in teacher nonce set",
+            ))
+            continue
+
+        credential = (
+            db.query(Credential)
+            .filter(
+                Credential.user_id == record.user_id,
+                Credential.credential_id == record.credential_id,
+            )
+            .first()
+        )
+        if credential is None:
+            results.append(OfflineSyncRecordResult(
+                user_id=record.user_id,
+                status="failed",
+                reason=Messages.AUTH_NO_CREDENTIAL,
+            ))
+            continue
+
+        if record.device_public_key != credential.device_public_key:
+            results.append(OfflineSyncRecordResult(
+                user_id=record.user_id,
+                status="failed",
+                reason=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
+            ))
+            continue
+
+        device_payload = build_device_payload(
+            flow=DeviceBindingFlow.OFFLINE_CHECK_IN,
+            user_id=record.user_id,
+            session_id=new_session.id,
+            credential_id=record.credential_id,
+            challenge=record.challenge,
+            issued_at_ms=record.issued_at_ms,
+        )
+
+        sig_ok = True
+        try:
+            verify_device_signature(
+                device_public_key=credential.device_public_key,
+                device_signature=record.device_signature,
+                payload=device_payload,
+            )
+        except HTTPException:
+            sig_ok = False
+
+        verification_methods = [AttendanceRecordVerificationMethods.QR_PROXIMITY.value]
+        assurance_score = assurance_score_from_verification_methods(
+            verification_methods, integrity_vouched=False
+        )
+        assurance_band = compute_assurance_band(
+            assurance_score, effective_standard, effective_high
+        )
+        attempted_at = datetime.fromtimestamp(record.issued_at_ms / 1000, tz=timezone.utc)
+        attendance_status = resolve_attendance_status(
+            attempted_at=attempted_at,
+            session=new_session,
+        )
+
+        sync_pending = not sig_ok
+        new_record = AttendanceRecord(
+            id=str(uuid.uuid4()),
+            session_id=new_session.id,
+            user_id=record.user_id,
+            timestamp=attempted_at,
+            is_flagged=False,
+            verification_methods=verification_methods,
+            assurance_score=assurance_score,
+            assurance_band_recorded=assurance_band,
+            standard_threshold_recorded=effective_standard,
+            high_threshold_recorded=effective_high,
+            status=attendance_status.value,
+            sync_pending=sync_pending,
+        )
+        db.add(new_record)
+        db.flush()
+
+        if sig_ok:
+            results.append(OfflineSyncRecordResult(
+                user_id=record.user_id,
+                status="synced",
+                record_id=new_record.id,
+            ))
+        else:
+            log_audit_event(
+                AuditEvents.OFFLINE_SIGNATURE_FAILURE,
+                current_user.id,
+                record.user_id,
+                {"credential_id": credential.id, "record_id": new_record.id},
+                db,
+            )
+            results.append(OfflineSyncRecordResult(
+                user_id=record.user_id,
+                status="sig_failed",
+                record_id=new_record.id,
+                reason=Messages.OFFLINE_RECORD_SIGNATURE_FAILURE,
+            ))
+
+    db.commit()
+    logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
+    return OfflineSyncResponse(session_id=new_session.id, results=results)
 
 
 @router.get("/{session_id}/ble-token")
