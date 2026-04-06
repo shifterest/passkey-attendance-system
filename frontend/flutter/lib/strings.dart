@@ -17,6 +17,7 @@ final class AuthStrings {
   static const String initiatingCheckIn = 'Initiating check-in with server...';
   static const String collectingBle = 'Collecting BLE proximity signal...';
   static const String collectingGps = 'Collecting GPS position...';
+  static const String collectingNfc = 'Tap NFC reader to submit proximity token...';
   static const String verifyingPasskey = 'Verifying passkey with server...';
   static const String checkInSuccess = 'Check-in successful';
   static const String authErrorBody =

@@ -135,6 +135,7 @@ Future<Map<String, dynamic>> checkIn(
   double? gpsLatitude,
   double? gpsLongitude,
   bool? gpsIsMock,
+  String? nfcToken,
 }) async {
   try {
     final authenticator = PasskeyAuthenticator();
@@ -160,6 +161,7 @@ Future<Map<String, dynamic>> checkIn(
       if (gpsLatitude != null) 'gps_latitude': gpsLatitude,
       if (gpsLongitude != null) 'gps_longitude': gpsLongitude,
       if (gpsIsMock != null) 'gps_is_mock': gpsIsMock,
+      if (nfcToken != null) 'nfc_token': nfcToken,
       'credential': credential,
       'device_signature': deviceBinding['device_signature'],
       'device_public_key': deviceBinding['device_public_key'],
