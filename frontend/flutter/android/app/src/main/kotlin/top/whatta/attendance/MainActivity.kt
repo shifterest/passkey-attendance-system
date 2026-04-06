@@ -1,5 +1,6 @@
 package top.whatta.attendance
 
+import android.content.Intent
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -12,6 +13,7 @@ import java.security.spec.ECGenParameterSpec
 
 class MainActivity : FlutterActivity() {
     private val channel = "pas/secure_store"
+    private val nfcHceChannel = "pas/nfc_hce"
     private val keyAlias = "pas_device_key"
     private val keyStoreProvider = "AndroidKeyStore"
 
@@ -53,6 +55,28 @@ class MainActivity : FlutterActivity() {
                         }
                     }
 
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, nfcHceChannel)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        val token = call.argument<String>("token")
+                        if (token == null) {
+                            result.error("INVALID_ARGUMENT", "token is required", null)
+                        } else {
+                            NfcHceService.currentToken = token
+                            startService(Intent(this, NfcHceService::class.java))
+                            result.success(null)
+                        }
+                    }
+                    "stop" -> {
+                        NfcHceService.currentToken = null
+                        stopService(Intent(this, NfcHceService::class.java))
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }
