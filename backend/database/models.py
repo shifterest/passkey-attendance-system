@@ -1,10 +1,9 @@
 from datetime import datetime
 from typing import Any
 
+from database.connection import Base
 from sqlalchemy import JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from database.connection import Base
 
 
 class User(Base):
