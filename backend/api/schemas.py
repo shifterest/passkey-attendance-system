@@ -29,6 +29,8 @@ class UserBase(BaseModel):
     full_name: str
     email: EmailStr
     school_id: str | None = None
+    program: str | None = None
+    year_level: int | None = None
 
 
 class UserCreate(UserBase):
@@ -44,6 +46,8 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
     school_id: str | None = None
+    program: str | None = None
+    year_level: int | None = None
 
 
 class UserResponse(UserBase):
@@ -205,6 +209,7 @@ class ClassResponse(ClassBase):
 class ClassEnrollmentBase(BaseModel):
     class_id: str
     student_id: str
+    expires_at: datetime | None = None
 
 
 class ClassEnrollmentCreate(ClassEnrollmentBase):
@@ -218,6 +223,7 @@ class ClassEnrollmentUpdate(BaseModel):
 
     class_id: str | None = None
     student_id: str | None = None
+    expires_at: datetime | None = None
 
 
 class ClassEnrollmentResponse(ClassEnrollmentBase):

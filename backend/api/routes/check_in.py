@@ -84,6 +84,10 @@ def check_in_options(
         row[0]
         for row in db.query(ClassEnrollment.class_id)
         .filter(ClassEnrollment.student_id == user.id)
+        .filter(
+            (ClassEnrollment.expires_at.is_(None))
+            | (ClassEnrollment.expires_at > now)
+        )
         .all()
     ]
 
@@ -356,6 +360,10 @@ def check_in_verify(
             db.query(ClassEnrollment.id)
             .filter(ClassEnrollment.class_id == session.class_id)
             .filter(ClassEnrollment.student_id == user.id)
+            .filter(
+                (ClassEnrollment.expires_at.is_(None))
+                | (ClassEnrollment.expires_at > datetime.now(timezone.utc))
+            )
             .first()
         )
         if enrollment is None:
