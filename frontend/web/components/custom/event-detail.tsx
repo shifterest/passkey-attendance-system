@@ -70,13 +70,14 @@ export function EventDetail({
 
 	return (
 		<div className="px-4 lg:px-6 flex flex-col gap-4">
-			<Link
-				href={`/orgs/${orgId}`}
-				className="flex items-center gap-1 text-sm text-muted-foreground hover:underline w-fit"
+			<Button
+				variant="ghost"
+				className="gap-1 pl-0 w-fit"
+				render={<Link href={`/orgs/${orgId}`} />}
 			>
-				<IconArrowLeft className="size-4" />
+				<IconArrowLeft data-icon="inline-start" />
 				Back to organization
-			</Link>
+			</Button>
 
 			<div className="flex items-center justify-between">
 				<h3 className="text-lg font-semibold">Attendee Rules</h3>
@@ -85,7 +86,7 @@ export function EventDetail({
 					size="sm"
 					onClick={() => setShowAdd(!showAdd)}
 				>
-					<IconPlus className="mr-1 size-4" />
+					<IconPlus data-icon="inline-start" />
 					Add
 				</Button>
 			</div>
@@ -152,7 +153,7 @@ export function EventDetail({
 									size="icon"
 									onClick={() => handleDelete(r.id)}
 								>
-									<IconTrash className="size-4" />
+									<IconTrash />
 								</Button>
 							</CardHeader>
 						</Card>

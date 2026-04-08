@@ -54,12 +54,12 @@ const columns: ColumnDef<TeacherDto>[] = [
 		cell: ({ row }) =>
 			row.original.has_open_session ? (
 				<Badge variant="default" className="gap-1 text-xs">
-					<IconCircleCheckFilled className="size-3 text-green-400" />
+					<IconCircleCheckFilled />
 					Active
 				</Badge>
 			) : (
 				<Badge variant="secondary" className="gap-1 text-xs">
-					<IconCircle className="size-3" />
+					<IconCircle />
 					Inactive
 				</Badge>
 			),

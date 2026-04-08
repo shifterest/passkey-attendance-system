@@ -17,6 +17,7 @@ import { type IconItem, navigation } from "@/app/lib/navigation";
 import { NavInformation } from "@/components/custom/nav-information";
 import { NavManagement } from "@/components/custom/nav-management";
 import { NavUser } from "@/components/custom/nav-user";
+import { SearchForm } from "@/components/custom/search-form";
 import { useUser } from "@/components/custom/user-context";
 import {
 	Sidebar,
@@ -76,6 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
+				<SearchForm />
 			</SidebarHeader>
 			<SidebarContent>
 				<NavInformation items={navigation.information} iconMap={iconMap} />

@@ -202,7 +202,7 @@ function MembersSection({
 										size="icon"
 										onClick={() => handleRevoke(m.user_id)}
 									>
-										<IconTrash className="size-4" />
+										<IconTrash />
 									</Button>
 								)}
 							</CardHeader>
@@ -261,7 +261,7 @@ function RulesSection({
 					size="sm"
 					onClick={() => setShowAdd(!showAdd)}
 				>
-					<IconPlus className="mr-1 size-4" />
+					<IconPlus data-icon="inline-start" />
 					Add
 				</Button>
 			</div>
@@ -326,7 +326,7 @@ function RulesSection({
 									size="icon"
 									onClick={() => handleDelete(r.id)}
 								>
-									<IconTrash className="size-4" />
+									<IconTrash />
 								</Button>
 							</CardHeader>
 						</Card>
@@ -381,7 +381,7 @@ function EventsSection({
 					size="sm"
 					onClick={() => setShowCreate(!showCreate)}
 				>
-					<IconPlus className="mr-1 size-4" />
+					<IconPlus data-icon="inline-start" />
 					New
 				</Button>
 			</div>
@@ -434,11 +434,15 @@ function EventsSection({
 										size="icon"
 										onClick={() => handleDelete(ev.id)}
 									>
-										<IconTrash className="size-4" />
+										<IconTrash />
 									</Button>
-									<Link href={`/orgs/${orgId}/events/${ev.id}`}>
-										<IconChevronRight className="size-4 text-muted-foreground" />
-									</Link>
+									<Button
+										variant="ghost"
+										size="icon"
+										render={<Link href={`/orgs/${orgId}/events/${ev.id}`} />}
+									>
+										<IconChevronRight />
+									</Button>
 								</div>
 							</CardHeader>
 						</Card>

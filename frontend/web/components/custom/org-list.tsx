@@ -53,7 +53,7 @@ export function OrgList({ data }: { data: OrgDto[] }) {
 					size="sm"
 					onClick={() => setShowCreate(!showCreate)}
 				>
-					<IconPlus className="mr-1 size-4" />
+					<IconPlus data-icon="inline-start" />
 					New
 				</Button>
 			</div>
@@ -106,11 +106,15 @@ export function OrgList({ data }: { data: OrgDto[] }) {
 										size="icon"
 										onClick={() => handleDelete(org.id)}
 									>
-										<IconTrash className="size-4" />
+										<IconTrash />
 									</Button>
-									<Link href={`/orgs/${org.id}`}>
-										<IconChevronRight className="size-4 text-muted-foreground" />
-									</Link>
+									<Button
+										variant="ghost"
+										size="icon"
+										render={<Link href={`/orgs/${org.id}`} />}
+									>
+										<IconChevronRight />
+									</Button>
 								</div>
 							</CardHeader>
 						</Card>

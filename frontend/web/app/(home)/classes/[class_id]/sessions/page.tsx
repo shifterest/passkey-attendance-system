@@ -19,7 +19,7 @@ export default async function Page({
 					className="gap-1 pl-0"
 					render={<Link href="/classes" />}
 				>
-					<IconChevronLeft className="size-4" />
+					<IconChevronLeft data-icon="inline-start" />
 					Back to Classes
 				</Button>
 			</div>

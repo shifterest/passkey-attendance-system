@@ -55,7 +55,7 @@ function assuranceBand(
 		return { label: "High", cls: "text-green-600 dark:text-green-400" };
 	if (score >= effectiveStandardThreshold)
 		return { label: "Standard", cls: "text-muted-foreground" };
-	return { label: "Low", cls: "text-red-600 dark:text-red-400" };
+	return { label: "Low", cls: "text-destructive" };
 }
 
 const MAX_METHODS = 3;
@@ -159,7 +159,7 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 					)}
 					{r.is_flagged && (
 						<span title="Flagged by teacher">
-							<IconFlag className="size-4 text-red-500" />
+							<IconFlag className="size-4 text-destructive" />
 						</span>
 					)}
 					{r.sync_pending && (
@@ -200,9 +200,8 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 				if (r.assurance_score >= std) return null;
 				return (
 					<Button
-						size="sm"
+						size="xs"
 						variant="outline"
-						className="h-7 text-xs"
 						onClick={() => {
 							setApprovedIds((prev) => new Set(prev).add(r.id));
 							approveRecord(r.id).catch(() =>
@@ -266,11 +265,10 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.previousPage()}
 						disabled={!table.getCanPreviousPage()}
 					>
-						<IconChevronLeft className="size-4" />
+						<IconChevronLeft />
 					</Button>
 					<span className="text-sm text-muted-foreground">
 						{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
@@ -278,11 +276,10 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.nextPage()}
 						disabled={!table.getCanNextPage()}
 					>
-						<IconChevronRight className="size-4" />
+						<IconChevronRight />
 					</Button>
 				</div>
 			</div>

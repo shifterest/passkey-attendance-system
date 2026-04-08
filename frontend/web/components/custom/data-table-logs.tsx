@@ -22,11 +22,11 @@ import {
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
 	manual_approval: "text-yellow-600 dark:text-yellow-400",
-	credential_revoked: "text-red-600 dark:text-red-400",
-	device_attestation_failure: "text-red-600 dark:text-red-400",
+	credential_revoked: "text-destructive",
+	device_attestation_failure: "text-destructive",
 	device_attestation_verified: "text-blue-600 dark:text-blue-400",
-	device_key_mismatch: "text-red-600 dark:text-red-400",
-	device_signature_failure: "text-red-600 dark:text-red-400",
+	device_key_mismatch: "text-destructive",
+	device_signature_failure: "text-destructive",
 	sign_count_anomaly: "text-orange-500 dark:text-orange-400",
 	bootstrap_attempt: "text-purple-600 dark:text-purple-400",
 	bootstrap_completed: "text-purple-600 dark:text-purple-400",
@@ -151,11 +151,10 @@ export function DataTableLogs({ data }: { data: AuditEventDto[] }) {
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.previousPage()}
 						disabled={!table.getCanPreviousPage()}
 					>
-						<IconChevronLeft className="size-4" />
+						<IconChevronLeft />
 					</Button>
 					<span className="text-sm text-muted-foreground">
 						{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
@@ -163,11 +162,10 @@ export function DataTableLogs({ data }: { data: AuditEventDto[] }) {
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.nextPage()}
 						disabled={!table.getCanNextPage()}
 					>
-						<IconChevronRight className="size-4" />
+						<IconChevronRight />
 					</Button>
 				</div>
 			</div>

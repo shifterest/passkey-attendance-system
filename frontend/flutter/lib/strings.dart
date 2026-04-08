@@ -17,6 +17,7 @@ final class ApiPaths {
   static String sessionNfcToken(String id) => '/sessions/$id/nfc-token';
   static String sessionRecords(String id) => '/records/by-session/$id';
   static String getUser(String id) => '/users/$id';
+  static String recordsByUser(String userId) => '/records/by-user/$userId';
 }
 
 final class AuthStrings {
@@ -76,6 +77,7 @@ final class HomeStrings {
   static const String signedIn = 'Signed in';
   static const String checkInNow = 'Check In Now';
   static const String checkInOffline = 'Check In Offline';
+  static const String viewHistory = 'Attendance History';
   static const String lastCheckIn = 'Last check-in';
   static const String piVouchExpiring =
       'Your Play Integrity vouch expires soon. Please re-verify your device integrity.';
@@ -160,6 +162,16 @@ final class OfflineStrings {
   static const String syncing = 'Syncing...';
   static const String syncSuccess = 'Records synced';
   static const String errorSyncing = 'Failed to sync offline records';
+}
+
+final class HistoryStrings {
+  static const String title = 'Attendance History';
+  static const String noRecords = 'No attendance records yet';
+  static const String notLoggedIn = 'Not logged in';
+  static const String score = 'Score';
+  static const String bandHigh = 'High';
+  static const String bandStandard = 'Standard';
+  static const String bandLow = 'Low';
 }
 
 final class DashboardStrings {

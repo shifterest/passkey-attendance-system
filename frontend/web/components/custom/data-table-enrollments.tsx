@@ -244,7 +244,7 @@ export function DataTableEnrollments({
 				cell: ({ row }) => (
 					<DropdownMenu>
 						<DropdownMenuTrigger
-							render={<Button variant="ghost" size="icon" className="size-8" />}
+							render={<Button variant="ghost" size="icon" />}
 						>
 							<IconDotsVertical />
 							<span className="sr-only">Open menu</span>
@@ -389,7 +389,6 @@ export function DataTableEnrollments({
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.previousPage()}
 						disabled={!table.getCanPreviousPage()}
 					>
@@ -401,7 +400,6 @@ export function DataTableEnrollments({
 					<Button
 						variant="outline"
 						size="icon"
-						className="size-8"
 						onClick={() => table.nextPage()}
 						disabled={!table.getCanNextPage()}
 					>

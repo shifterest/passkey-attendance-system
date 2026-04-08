@@ -73,7 +73,7 @@ export function DataTableClasses({ data }: { data: ClassDto[] }) {
 				cell: ({ row }) => (
 					<DropdownMenu>
 						<DropdownMenuTrigger
-							render={<Button variant="ghost" size="icon" className="size-8" />}
+							render={<Button variant="ghost" size="icon" />}
 						>
 							<IconDotsVertical />
 							<span className="sr-only">Open menu</span>

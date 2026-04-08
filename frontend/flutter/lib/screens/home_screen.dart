@@ -235,6 +235,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   icon: const Icon(Icons.wifi_off),
                   label: const Text(HomeStrings.checkInOffline),
                 ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/history'),
+                  icon: const Icon(Icons.history),
+                  label: const Text(HomeStrings.viewHistory),
+                ),
               ],
             ),
           ),
