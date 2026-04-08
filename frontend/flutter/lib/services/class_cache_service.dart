@@ -1,5 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'session_store.dart';
 
 class ClassCacheService {

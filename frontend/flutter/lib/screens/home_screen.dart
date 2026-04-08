@@ -18,7 +18,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _isLoggingOut = false;
   Map<String, dynamic>? _lastCheckIn;
   bool _piVouchExpiresSoon = false;
-  bool _hasPiVouch = false;
 
   @override
   void initState() {
@@ -63,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (response is Map<String, dynamic> && mounted) {
         setState(() {
-          _hasPiVouch = response['has_vouch'] == true;
           _piVouchExpiresSoon = response['expires_soon'] == true;
         });
       }

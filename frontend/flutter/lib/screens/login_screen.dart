@@ -55,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             FilledButton.icon(
                               onPressed: () {
                                 context.push(
-                                  '/authenticate?user_id=${Uri.encodeComponent(userId!)}&login=true',
+                                  '/authenticate?user_id=${Uri.encodeComponent(userId)}&login=true',
                                 );
                               },
                               icon: const Icon(Icons.key),

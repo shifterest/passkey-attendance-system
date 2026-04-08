@@ -16,8 +16,8 @@ class TeacherOfflineSessionScreen extends StatefulWidget {
 
 class _TeacherOfflineSessionScreenState
     extends State<TeacherOfflineSessionScreen> {
-  List<Map<String, dynamic>> _cachedClasses = [];
-  Map<String, dynamic>? _selectedClass;
+  List<String> _cachedClasses = [];
+  String? _selectedClass;
   String? _sessionId;
   String? _nonce;
   bool _advertising = false;
@@ -36,8 +36,8 @@ class _TeacherOfflineSessionScreenState
     super.dispose();
   }
 
-  Future<void> _loadCachedClasses() async {
-    final classes = await ClassCacheService.getCachedClasses();
+  void _loadCachedClasses() {
+    final classes = ClassCacheService.getCachedClasses();
     if (mounted) {
       setState(() => _cachedClasses = classes);
     }
@@ -94,21 +94,16 @@ class _TeacherOfflineSessionScreenState
             else
               DropdownButton<String>(
                 isExpanded: true,
-                value: _selectedClass?['id'] as String?,
+                value: _selectedClass,
                 hint: const Text(OfflineStrings.chooseClass),
                 items: _cachedClasses.map((c) {
-                  return DropdownMenuItem<String>(
-                    value: c['id'] as String,
-                    child: Text(c['name'] as String? ?? c['id'] as String),
-                  );
+                  return DropdownMenuItem<String>(value: c, child: Text(c));
                 }).toList(),
                 onChanged: _advertising
                     ? null
                     : (value) {
                         setState(() {
-                          _selectedClass = _cachedClasses.firstWhere(
-                            (c) => c['id'] == value,
-                          );
+                          _selectedClass = value;
                         });
                       },
               ),
@@ -152,7 +147,7 @@ class _TeacherOfflineSessionScreenState
                       extra: {
                         'session_id': _sessionId,
                         'nonce': _nonce,
-                        'class_id': _selectedClass!['id'],
+                        'class_id': _selectedClass!,
                       },
                     );
                   },
