@@ -95,24 +95,57 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return (_isRegistering
-        ? Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                spacing: 8,
-                children: [
-                  CircularProgressIndicator(),
-                  Text(
-                    _status,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+    if (_isRegistering) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 8,
+            children: [
+              CircularProgressIndicator(),
+              Text(
+                _status,
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
               ),
-            ),
-          )
-        : const Scaffold(body: SizedBox.shrink()));
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 12,
+            children: [
+              Text(
+                RegistrationStrings.errorBody,
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              FilledButton(
+                onPressed: _startRegistration,
+                child: const Text('Retry Registration'),
+              ),
+              TextButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Return to Login'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -50,6 +50,38 @@ String? _extractCredentialId(Map<String, dynamic> credentialJson) {
   return null;
 }
 
+Map<String, dynamic> _sanitizeRegisterOptions(
+  Map<String, dynamic> optionsJson,
+) {
+  final sanitized = Map<String, dynamic>.from(optionsJson);
+
+  final authenticatorSelection = sanitized['authenticatorSelection'];
+  if (authenticatorSelection is Map) {
+    final selection = Map<String, dynamic>.from(
+      authenticatorSelection as Map<dynamic, dynamic>,
+    );
+
+    final requireResidentKey = selection['requireResidentKey'];
+    if (requireResidentKey is! bool) {
+      selection['requireResidentKey'] = false;
+    }
+
+    final residentKey = selection['residentKey'];
+    if (residentKey is! String || residentKey.isEmpty) {
+      selection['residentKey'] = 'preferred';
+    }
+
+    final userVerification = selection['userVerification'];
+    if (userVerification is! String || userVerification.isEmpty) {
+      selection['userVerification'] = 'required';
+    }
+
+    sanitized['authenticatorSelection'] = selection;
+  }
+
+  return sanitized;
+}
+
 Future<Map<String, String>> _createDeviceBinding({
   required DeviceBindingFlow flow,
   required String? userId,
@@ -100,7 +132,9 @@ Future<Map<String, dynamic>> register(
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();
-    final request = RegisterRequestType.fromJson(optionsJson);
+    final request = RegisterRequestType.fromJson(
+      _sanitizeRegisterOptions(optionsJson),
+    );
 
     final response = await authenticator.register(request);
     final credential = response.toJson();

@@ -105,7 +105,7 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun generateKey() {
+    private fun generateKey(strongBoxBacked: Boolean) {
         val keyGenerator = KeyPairGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_EC,
             keyStoreProvider
@@ -118,11 +118,8 @@ class MainActivity : FlutterActivity() {
             .setDigests(KeyProperties.DIGEST_SHA256)
             .setUserAuthenticationRequired(false)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                builder.setIsStrongBoxBacked(true)
-            } catch (_: Exception) {
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongBoxBacked) {
+            builder.setIsStrongBoxBacked(true)
         }
 
         keyGenerator.initialize(builder.build())
@@ -130,17 +127,31 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun ensureKeyExists(): Boolean {
-        val keyStore = KeyStore.getInstance(keyStoreProvider).apply { load(null) }
-        if (keyStore.containsAlias(keyAlias)) {
-            return true
-        }
+        return try {
+            val keyStore = KeyStore.getInstance(keyStoreProvider).apply { load(null) }
+            if (keyStore.containsAlias(keyAlias)) {
+                return true
+            }
 
-        generateKey()
-        return true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    generateKey(strongBoxBacked = true)
+                    return true
+                } catch (_: Exception) {
+                }
+            }
+
+            generateKey(strongBoxBacked = false)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun getPublicKey(): ByteArray? {
-        ensureKeyExists()
+        if (!ensureKeyExists()) {
+            return null
+        }
 
         val keyStore = KeyStore.getInstance(keyStoreProvider).apply { load(null) }
         val entry = keyStore.getEntry(keyAlias, null) as? KeyStore.PrivateKeyEntry
@@ -148,7 +159,9 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun signPayload(payload: ByteArray): ByteArray? {
-        ensureKeyExists()
+        if (!ensureKeyExists()) {
+            return null
+        }
 
         val keyStore = KeyStore.getInstance(keyStoreProvider).apply { load(null) }
         val entry = keyStore.getEntry(keyAlias, null) as? KeyStore.PrivateKeyEntry

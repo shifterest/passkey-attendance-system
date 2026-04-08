@@ -213,9 +213,8 @@ export default function LoginPage() {
 					<CardHeader>
 						<CardTitle className="text-xl">Passkey Attendance System</CardTitle>
 						<CardDescription>
-							{phase === "ready" && "First-time setup required"}
-							{phase === "pending_registration" &&
-								"Scan with your phone to finish setup"}
+							{phase === "ready" && "Bootstrap required"}
+							{phase === "pending_registration" && "Scan QR to finish setup"}
 							{(phase === "completed" || phase === "disabled") &&
 								"Scan with your phone to sign in"}
 						</CardDescription>
@@ -284,8 +283,8 @@ export default function LoginPage() {
 									Set up operator account
 								</Button>
 								<FieldDescription className="text-center">
-									Enter the bootstrap token from server logs to create the first
-									operator account.
+									Enter the bootstrap token to begin setting up the operator
+									account.
 								</FieldDescription>
 							</Field>
 						)}
@@ -302,6 +301,7 @@ export default function LoginPage() {
 									Scan this QR code with the PAS app to register the operator
 									device and passkey. Once registered, refresh this page to sign
 									in.
+									{/* TODO: Polling for bootstrap registration */}
 								</FieldDescription>
 								<Button
 									variant="outline"
