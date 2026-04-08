@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     play_integrity_enabled: bool = False
     play_integrity_package_name: str = ""
     play_integrity_api_key: str = ""
-    android_key_attestation_required: bool = True
+    android_key_attestation_required: bool = False
 
     # Outbound integrity checks
     outbound_integrity_checks_enabled: bool = False
