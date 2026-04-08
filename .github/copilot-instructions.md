@@ -4,10 +4,10 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 
 ## Architecture
 
-- Backend: FastAPI + SQLAlchemy (SQLite) + Redis in backend.
+- Backend: FastAPI + SQLAlchemy (PostgreSQL) + Redis in backend.
 - Web: Next.js App Router + React + shadcn/ui in frontend/web.
 - Mobile: Flutter + Dart in frontend/flutter.
-- Deployment shape: Redis -> Backend (8000) -> Web (3000), SQLite in persistent volume.
+- Deployment shape: Redis -> Backend (8000) -> Web (3000), PostgreSQL in persistent volume.
 - WebAuthn relying party accepts dual origins (web origin + Android APK hash origin).
 
 ## Build And Run
@@ -63,11 +63,22 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
    - Offline nonce hardening (planned): teacher device generates a short-lived nonce broadcast via BLE during offline sessions; student app embeds it in the signed payload. On sync, server cross-checks against teacher-submitted nonce set to reject pre-staged payloads.
 6. Bootstrap is first-run provisioning only and disabled by default in production:
    - `BOOTSTRAP_ENABLED` defaults to false.
-   - Authorization uses backend-console-issued one-time token (short TTL, single use).
+   - When enabled with no existing admin/operator users, the backend lifespan hook auto-generates a one-time token (24h TTL) and prints it to container logs.
    - Bootstrap APIs must never mint bootstrap tokens.
+   - Web login page shows a token input form when bootstrap status is `ready`.
+   - Submitting a valid token creates an operator user and returns a registration deep-link URL (no login session).
+   - Web transitions to `pending_registration` phase showing a QR code for the operator to scan with the Flutter app and register their passkey + device key.
+   - After registration, the operator signs in via the normal QR web login flow.
    - Successful bootstrap consumes token and disables bootstrap mode.
    - Log bootstrap attempts/outcomes as security events.
    - Do not auto-login an existing privileged account via bootstrap endpoints.
+7. QR web login (all roles):
+   - Web login page displays a QR code containing a deep link (`shifterest-pas://web-login?token=...`).
+   - Flutter app scans QR, performs full passkey assertion + device signature verification against the backend.
+   - Backend stores authenticated session in Redis; web polls `GET /auth/web-login/poll` until session appears.
+   - On completion, web persists the session and redirects to dashboard.
+   - QR auto-refreshes on TTL expiry (default 120s). Privileged roles (admin/operator) get 30-day sessions; others get standard timeout.
+   - This replaces browser-native passkey login — device signature requires Android Keystore, so all web logins go through the Flutter app.
 
 ## Assurance Model
 
@@ -107,14 +118,15 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 1. Registration (admin initiated): `/admin/register/{user_id}` -> `/auth/register/options` -> `/auth/register/verify`
 2. Attendance check-in: `/auth/check-in/options` -> `/auth/check-in/verify`
 3. Login session management: `/auth/login/options` -> `/auth/login/verify` -> `/auth/logout`
+4. QR web login: `/auth/web-login/initiate` -> Flutter scans QR -> `/auth/web-login/verify` -> web polls `/auth/web-login/poll`
 
 ## Project Conventions
 
 ### Backend
 
-- Keep HTTP handlers in routes, reusable logic in services, models in backend/db/database.py.
+- Keep HTTP handlers in routes, reusable logic in services, models in backend/database/models.py.
 - Use schema pattern Base -> Create -> Update -> Response in backend/api/schemas.py.
-- Use constants from backend/api/messages.py for API errors/log templates (avoid inline message strings).
+- Use constants from backend/api/strings.py for API errors/log templates (avoid inline message strings).
 - `POST /credentials/` and `POST /records/` stay guarded as side-effect-created resources only.
 - Entity IDs use `uuid.uuid4()` string keys.
 - `Class.schedule` is JSON list data, not a separate schedule table; each entry uses `{ days: [...], start_time, end_time }`.

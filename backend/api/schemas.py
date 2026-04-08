@@ -481,6 +481,29 @@ class LogoutOptionsBase(BaseModel):
     session_token: str
 
 
+# Web login (QR-scanned login flow)
+class WebLoginInitiateResponse(BaseModel):
+    token: str
+    url: str
+    ttl: int
+    poll_interval: int
+
+
+class WebLoginVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    web_login_token: str
+    user_id: str
+    credential: dict
+    device_signature: str
+    device_public_key: str
+
+
+class WebLoginPollResponse(BaseModel):
+    status: str
+    session: LoginSessionBase | None = None
+
+
 # Play Integrity
 class PlayIntegrityVouchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

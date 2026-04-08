@@ -8,7 +8,7 @@ export const ApiPaths = {
 	adminRegister: (userId: string) => `/admin/register/${userId}`,
 	adminUnregister: (userId: string) => `/admin/unregister/${userId}`,
 	teachers: "/teachers",
-	classes: "/classes",
+	classes: "/classes/",
 	class: (classId: string) => `/classes/${classId}`,
 	sessions: "/sessions",
 	sessionsByClass: (classId: string) => `/sessions/by-class/${classId}`,
@@ -23,7 +23,7 @@ export const ApiPaths = {
 	auditEvents: "/audit",
 	auditExport: "/audit/export",
 	auditEvent: (eventId: string) => `/audit/${eventId}`,
-	policies: "/policies",
+	policies: "/policies/",
 	policy: (policyId: string) => `/policies/${policyId}`,
 	userPolicy: (userId: string) => `/policies/user/${userId}`,
 	credentials: "/credentials/",
@@ -43,6 +43,9 @@ export const ApiPaths = {
 	eventRules: (eventId: string) => `/events/${eventId}/rules`,
 	eventRule: (eventId: string, ruleId: string) =>
 		`/events/${eventId}/rules/${ruleId}`,
+	webLoginInitiate: "/auth/web-login/initiate",
+	webLoginPoll: (token: string) =>
+		`/auth/web-login/poll?token=${encodeURIComponent(token)}`,
 } as const;
 
 export const ErrorMessages = {

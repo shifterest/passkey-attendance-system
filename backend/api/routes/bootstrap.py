@@ -6,10 +6,10 @@ from api.config import settings
 from api.redis import redis_client
 from api.schemas import UserRole
 from api.services.audit_service import log_audit_event
-from api.services.auth_service import create_login_session
+from api.services.auth_service import create_registration_session
 from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
-from database.models import LoginSession, User
+from database.models import Credential, RegistrationSession, User
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -86,10 +86,39 @@ def _validate_bootstrap_token(bootstrap_token: str | None) -> str:
 @router.get("/status")
 def bootstrap_status(db: Session = Depends(get_db)):
     if not settings.bootstrap_enabled:
-        return False
+        return {"phase": "disabled"}
     if redis_client.get(BOOTSTRAP_COMPLETED_KEY):
-        return False
-    return not _bootstrap_initialized(db)
+        operator = (
+            db.query(User)
+            .filter(User.role.in_([UserRole.OPERATOR, UserRole.ADMIN]))
+            .first()
+        )
+        if operator:
+            has_credential = (
+                db.query(Credential.id)
+                .filter(Credential.user_id == operator.id)
+                .first()
+                is not None
+            )
+            if not has_credential:
+                reg_session = RegistrationSession(
+                    id=str(uuid.uuid4()),
+                    user_id=operator.id,
+                    created_at=datetime.now(timezone.utc),
+                    expires_at=datetime.now(timezone.utc)
+                    + timedelta(seconds=settings.registration_timeout),
+                )
+                db.add(reg_session)
+                db.commit()
+                reg_response = create_registration_session(reg_session)
+                return {
+                    "phase": "pending_registration",
+                    "registration_url": reg_response.url,
+                }
+        return {"phase": "completed"}
+    if _bootstrap_initialized(db):
+        return {"phase": "completed"}
+    return {"phase": "ready"}
 
 
 @router.post("/operator")
@@ -117,14 +146,14 @@ def initialize_operator(
         db.refresh(new_operator)
         logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
 
-        new_session = LoginSession(
+        reg_session = RegistrationSession(
             id=str(uuid.uuid4()),
             user_id=new_operator.id,
             created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=1800),
-            last_activity_at=None,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(seconds=settings.registration_timeout),
         )
-        db.add(new_session)
+        db.add(reg_session)
         db.commit()
 
         redis_client.delete(token_key)
@@ -132,7 +161,8 @@ def initialize_operator(
         logger.info(Logs.BOOTSTRAP_COMPLETED)
         log_audit_event(AuditEvents.BOOTSTRAP_COMPLETED, new_operator.id, None, {}, db)
 
-        return create_login_session(new_session)
+        reg_response = create_registration_session(reg_session)
+        return {"registration_url": reg_response.url}
     except HTTPException:
         raise
     except Exception as e:

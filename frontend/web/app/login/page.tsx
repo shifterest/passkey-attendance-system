@@ -4,14 +4,21 @@ import {
 	IconBrandGithub,
 	IconChevronRight,
 	IconInfoCircle,
-	IconKey,
-	IconPassword,
+	IconRefresh,
 	IconShoe,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getBootstrapStatus, persistBrowserSession } from "@/app/lib/api";
+import { QRCodeSVG } from "qrcode.react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type BootstrapStatusDto,
+	getBootstrapStatus,
+	persistBrowserSession,
+	type WebLoginInitiateDto,
+	webLoginInitiate,
+	webLoginPoll,
+} from "@/app/lib/api";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -35,18 +42,25 @@ import { Field, FieldDescription } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
-// TODO: Throw error if can't connect to API
 export default function LoginPage() {
 	const router = useRouter();
-	const [isBootstrapMode, setIsBootstrapMode] = useState(false);
 	const [loading, setLoading] = useState(true);
-	const [bootstrapping, setBootstrapping] = useState(false);
+	const [phase, setPhase] = useState<BootstrapStatusDto["phase"]>("completed");
+	const [registrationUrl, setRegistrationUrl] = useState<string | null>(null);
+
 	const [bootstrapDialogOpen, setBootstrapDialogOpen] = useState(false);
+	const [bootstrapping, setBootstrapping] = useState(false);
 	const [bootstrapTokenInput, setBootstrapTokenInput] = useState("");
 	const [bootstrapTokenInvalid, setBootstrapTokenInvalid] = useState(false);
 	const [bootstrapRateLimitSeconds, setBootstrapRateLimitSeconds] = useState<
 		number | null
 	>(null);
+	const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+
+	const [webLogin, setWebLogin] = useState<WebLoginInitiateDto | null>(null);
+	const [webLoginError, setWebLoginError] = useState(false);
+	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
 		if (localStorage.getItem("session_token")) {
@@ -54,10 +68,13 @@ export default function LoginPage() {
 			return;
 		}
 
-		const checkBootstrap = async () => {
+		const init = async () => {
 			try {
-				const data = await getBootstrapStatus();
-				setIsBootstrapMode(Boolean(data));
+				const status = await getBootstrapStatus();
+				setPhase(status.phase);
+				if (status.registration_url) {
+					setRegistrationUrl(status.registration_url);
+				}
 			} catch (error) {
 				console.error("Failed to check bootstrap status", error);
 			} finally {
@@ -65,8 +82,8 @@ export default function LoginPage() {
 			}
 		};
 
-		checkBootstrap();
-	}, []);
+		init();
+	}, [router]);
 
 	useEffect(() => {
 		if (!bootstrapRateLimitSeconds) return;
@@ -81,18 +98,17 @@ export default function LoginPage() {
 	const bootstrap = async (token: string) => {
 		setBootstrapping(true);
 		setBootstrapTokenInvalid(false);
+		setBootstrapError(null);
 		try {
 			const response = await fetch(
 				`${process.env.NEXT_PUBLIC_API_ORIGIN}/bootstrap/operator`,
 				{
 					method: "POST",
-					headers: {
-						"X-Bootstrap-Token": token,
-					},
+					headers: { "X-Bootstrap-Token": token },
 				},
 			);
 			if (response.status === 429) {
-				const retryAfter = parseInt(
+				const retryAfter = Number.parseInt(
 					response.headers.get("Retry-After") ?? "60",
 					10,
 				);
@@ -107,15 +123,80 @@ export default function LoginPage() {
 				throw new Error(await response.text());
 			}
 			const data = await response.json();
-			persistBrowserSession(data);
+			setRegistrationUrl(data.registration_url);
+			setPhase("pending_registration");
 			setBootstrapDialogOpen(false);
-			router.push("/dashboard");
 		} catch (error) {
 			console.error("Failed to bootstrap", error);
+			setBootstrapError("Something went wrong. Please try again.");
 		} finally {
 			setBootstrapping(false);
 		}
 	};
+
+	const stopPolling = useCallback(() => {
+		if (pollRef.current) {
+			clearInterval(pollRef.current);
+			pollRef.current = null;
+		}
+	}, []);
+
+	const clearRefreshTimer = useCallback(() => {
+		if (refreshTimerRef.current) {
+			clearTimeout(refreshTimerRef.current);
+			refreshTimerRef.current = null;
+		}
+	}, []);
+
+	const startWebLoginRef = useRef<(() => Promise<void>) | null>(null);
+
+	const startWebLogin = useCallback(async () => {
+		setWebLoginError(false);
+		try {
+			const data = await webLoginInitiate();
+			setWebLogin(data);
+
+			stopPolling();
+			pollRef.current = setInterval(async () => {
+				try {
+					const result = await webLoginPoll(data.token);
+					if (result.status === "completed" && result.session) {
+						stopPolling();
+						clearRefreshTimer();
+						persistBrowserSession(result.session);
+						router.push("/dashboard");
+					}
+					if (result.status === "consumed") {
+						stopPolling();
+						clearRefreshTimer();
+						startWebLoginRef.current?.();
+					}
+				} catch {
+					// poll errors are transient; keep trying
+				}
+			}, data.poll_interval * 1000);
+
+			clearRefreshTimer();
+			refreshTimerRef.current = setTimeout(() => {
+				stopPolling();
+				startWebLoginRef.current?.();
+			}, data.ttl * 1000);
+		} catch {
+			setWebLoginError(true);
+		}
+	}, [stopPolling, clearRefreshTimer, router]);
+
+	startWebLoginRef.current = startWebLogin;
+
+	useEffect(() => {
+		if (phase === "completed" || phase === "disabled") {
+			startWebLogin();
+		}
+		return () => {
+			stopPolling();
+			clearRefreshTimer();
+		};
+	}, [phase, startWebLogin, stopPolling, clearRefreshTimer]);
 
 	if (loading) {
 		return (
@@ -131,7 +212,13 @@ export default function LoginPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle className="text-xl">Passkey Attendance System</CardTitle>
-						<CardDescription>Select any of the options below</CardDescription>
+						<CardDescription>
+							{phase === "ready" && "First-time setup required"}
+							{phase === "pending_registration" &&
+								"Scan with your phone to finish setup"}
+							{(phase === "completed" || phase === "disabled") &&
+								"Scan with your phone to sign in"}
+						</CardDescription>
 						<CardAction>
 							<Dialog>
 								<DialogTrigger
@@ -190,37 +277,77 @@ export default function LoginPage() {
 						</CardAction>
 					</CardHeader>
 					<CardContent>
-						<Field>
-							{isBootstrapMode ? (
-								<Button
-									onClick={() => setBootstrapDialogOpen(true)}
-									disabled={bootstrapping}
-								>
-									{loading ? (
-										<Spinner data-icon="inline-start" />
-									) : (
-										<IconShoe data-icon="inline-start" />
-									)}
-									Bootstrap and auto-login
+						{phase === "ready" && (
+							<Field>
+								<Button onClick={() => setBootstrapDialogOpen(true)}>
+									<IconShoe data-icon="inline-start" />
+									Set up operator account
 								</Button>
-							) : (
-								<>
-									<Button disabled>
-										<IconKey data-icon="inline-start" />
-										Login with passkey
-									</Button>
-									<Button variant="outline">
-										<IconPassword data-icon="inline-start" />
-										Login with password and 2FA
-									</Button>
-									<FieldDescription className="text-center">
-										{/* TODO: Add dialog to proceed to MIS office for account registration*/}
-										Don't have access to your account yet?{" "}
-										<a href="#!">Register</a>
-									</FieldDescription>
-								</>
-							)}
-						</Field>
+								<FieldDescription className="text-center">
+									Enter the bootstrap token from server logs to create the first
+									operator account.
+								</FieldDescription>
+							</Field>
+						)}
+
+						{phase === "pending_registration" && registrationUrl && (
+							<div className="flex flex-col items-center gap-4">
+								<QRCodeSVG
+									value={registrationUrl}
+									size={224}
+									level="H"
+									marginSize={4}
+								/>
+								<FieldDescription className="text-center">
+									Scan this QR code with the PAS app to register the operator
+									device and passkey. Once registered, refresh this page to sign
+									in.
+								</FieldDescription>
+								<Button
+									variant="outline"
+									className="w-full"
+									onClick={() => window.location.reload()}
+								>
+									<IconRefresh data-icon="inline-start" />
+									Refresh
+								</Button>
+							</div>
+						)}
+
+						{(phase === "completed" || phase === "disabled") && (
+							<div className="flex flex-col items-center gap-4">
+								{webLoginError ? (
+									<>
+										<FieldDescription className="text-destructive text-center">
+											Could not connect to the server.
+										</FieldDescription>
+										<Button
+											variant="outline"
+											className="w-full"
+											onClick={startWebLogin}
+										>
+											<IconRefresh data-icon="inline-start" />
+											Retry
+										</Button>
+									</>
+								) : webLogin ? (
+									<>
+										<QRCodeSVG
+											value={webLogin.url}
+											size={224}
+											level="H"
+											marginSize={4}
+										/>
+										<FieldDescription className="text-center">
+											Open the PAS app, scan this code, and authenticate with
+											your passkey.
+										</FieldDescription>
+									</>
+								) : (
+									<Spinner className="size-6" />
+								)}
+							</div>
+						)}
 					</CardContent>
 				</Card>
 				<FieldDescription className="px-6 text-center">
@@ -235,6 +362,7 @@ export default function LoginPage() {
 					if (!open) {
 						setBootstrapTokenInput("");
 						setBootstrapTokenInvalid(false);
+						setBootstrapError(null);
 					}
 				}}
 			>
@@ -249,8 +377,8 @@ export default function LoginPage() {
 						<DialogHeader>
 							<DialogTitle>Enter bootstrap token</DialogTitle>
 							<DialogDescription>
-								Bootstrap the system with an operator account using a valid
-								token.
+								Enter the token printed in the server logs to create the
+								operator account.
 							</DialogDescription>
 						</DialogHeader>
 						<Field>
@@ -260,6 +388,7 @@ export default function LoginPage() {
 								onChange={(e) => {
 									setBootstrapTokenInput(e.target.value);
 									setBootstrapTokenInvalid(false);
+									setBootstrapError(null);
 								}}
 								aria-invalid={bootstrapTokenInvalid || undefined}
 								disabled={bootstrapping || !!bootstrapRateLimitSeconds}
@@ -267,6 +396,11 @@ export default function LoginPage() {
 							{bootstrapTokenInvalid && (
 								<FieldDescription className="text-destructive">
 									The bootstrap token is not valid.
+								</FieldDescription>
+							)}
+							{bootstrapError && (
+								<FieldDescription className="text-destructive">
+									{bootstrapError}
 								</FieldDescription>
 							)}
 							{!!bootstrapRateLimitSeconds && (

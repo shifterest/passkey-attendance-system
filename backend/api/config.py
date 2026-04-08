@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     # Timeouts
     challenge_timeout: int = 180
     login_timeout: int = 1800
+    login_timeout_privileged: int = 2592000
     registration_timeout: int = 180
+    web_login_token_ttl_seconds: int = 120
+    web_login_poll_interval_hint: int = 3
 
     # Credential policy
     max_active_credentials_per_user: int = 1
@@ -46,7 +49,7 @@ class Settings(BaseSettings):
 
     # Bootstrap
     bootstrap_enabled: bool = False
-    bootstrap_token_ttl_seconds: int = 300
+    bootstrap_token_ttl_seconds: int = 86400
 
     # Network proximity
     school_subnet_cidr: str | None = None

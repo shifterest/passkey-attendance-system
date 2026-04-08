@@ -167,6 +167,7 @@ def register_verify(
             )
         except HTTPException:
             log_audit_event(AuditEvents.DEVICE_SIGNATURE_FAILURE, None, user.id, {}, db)
+            db.commit()
             raise
 
         key_security_level = None
@@ -193,6 +194,7 @@ def register_verify(
                     DeviceAttestationFailureDetail(reason=str(e)).model_dump(),
                     db,
                 )
+                db.commit()
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=Messages.DEVICE_KEY_INSECURE,
@@ -218,7 +220,9 @@ def register_verify(
             credential_id=encode_base64url(registration_verification.credential_id),
             sign_count=0,
             key_security_level=key_security_level,
-            attestation_cert_serial=leaf_serial_hex if settings.android_key_attestation_required else None,
+            attestation_cert_serial=leaf_serial_hex
+            if settings.android_key_attestation_required
+            else None,
             attestation_crl_verified=crl_verified,
             registered_at=datetime.now(timezone.utc),
         )

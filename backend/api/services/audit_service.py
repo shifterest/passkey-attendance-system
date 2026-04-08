@@ -21,4 +21,4 @@ def log_audit_event(
         created_at=datetime.now(timezone.utc),
     )
     db.add(event)
-    db.commit()
+    db.flush()

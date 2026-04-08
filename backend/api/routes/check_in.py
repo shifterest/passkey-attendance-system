@@ -438,6 +438,7 @@ def check_in_verify(
                 DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
                 db,
             )
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
@@ -468,6 +469,7 @@ def check_in_verify(
                 ).model_dump(),
                 db,
             )
+            db.commit()
             raise
 
         attempted_at = datetime.now(timezone.utc)

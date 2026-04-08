@@ -126,6 +126,11 @@ class Messages:
     SESSION_USER_MISMATCH = "Login session user mismatch"
     LOGOUT_SUCCESSFUL = "Logout successful"
 
+    # Web login
+    WEB_LOGIN_TOKEN_NOT_FOUND = "Web login token not found or expired"
+    WEB_LOGIN_TOKEN_PENDING = "Waiting for mobile app authentication"
+    WEB_LOGIN_TOKEN_CONSUMED = "This login token has already been used"
+
     # Bootstrap
     BOOTSTRAP_DISABLED = "Bootstrap is disabled"
     BOOTSTRAP_ALREADY_COMPLETED = "Bootstrap has already been completed"
@@ -238,6 +243,8 @@ class Logs:
 
     # Login/logout
     LOGIN_SUCCESSFUL = "Logged in user: {full_name} (ID: {user_id})"
+    WEB_LOGIN_INITIATED = "Web login token issued: {token_id}"
+    WEB_LOGIN_COMPLETED = "Web login completed for user: {full_name} (ID: {user_id})"
     OPERATOR_CREATED = "Created operator: {user_id}"
 
     # Bootstrap

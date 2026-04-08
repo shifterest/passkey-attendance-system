@@ -200,17 +200,44 @@ async function requestAll<T>(
 	return results;
 }
 
+export type BootstrapStatusDto = {
+	phase: "disabled" | "ready" | "pending_registration" | "completed";
+	registration_url?: string;
+};
+
+export type WebLoginInitiateDto = {
+	token: string;
+	url: string;
+	ttl: number;
+	poll_interval: number;
+};
+
+export type WebLoginPollDto = {
+	status: "pending" | "completed" | "consumed";
+	session: LoginSessionDto | null;
+};
+
 export function getBootstrapStatus() {
-	return request<boolean>(ApiPaths.bootstrapStatus);
+	return request<BootstrapStatusDto>(ApiPaths.bootstrapStatus);
 }
 
 export function bootstrapOperator(bootstrapToken: string) {
-	return request<LoginSessionDto>(ApiPaths.bootstrapOperator, {
+	return request<{ registration_url: string }>(ApiPaths.bootstrapOperator, {
 		method: "POST",
 		headers: {
 			"X-Bootstrap-Token": bootstrapToken,
 		},
 	});
+}
+
+export function webLoginInitiate() {
+	return request<WebLoginInitiateDto>(ApiPaths.webLoginInitiate, {
+		method: "POST",
+	});
+}
+
+export function webLoginPoll(token: string) {
+	return request<WebLoginPollDto>(ApiPaths.webLoginPoll(token));
 }
 
 export function getUser(userId: string) {
