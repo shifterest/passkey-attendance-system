@@ -68,9 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 context.push('/web-login-scan');
                               },
                               icon: const Icon(Icons.qr_code_scanner),
-                              label: const Text(
-                                LoginStrings.buttonLoginWebQr,
-                              ),
+                              label: const Text(LoginStrings.buttonLoginWebQr),
                             ),
                           ] else ...[
                             FilledButton.icon(

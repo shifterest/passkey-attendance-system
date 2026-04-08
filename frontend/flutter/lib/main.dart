@@ -64,7 +64,7 @@ final _router = GoRouter(
           login: login,
           webLoginToken: webLoginToken,
         );
-      }
+      },
     ),
     GoRoute(
       path: '/register',

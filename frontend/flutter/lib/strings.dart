@@ -71,7 +71,8 @@ final class QrStrings {
   static const String errorUnexpectedFailure =
       'Unable to process the scanned QR code';
   static const String errorInvalidWebLoginQr = 'Invalid web login QR code';
-  static const String errorMissingWebLoginToken = 'Missing token in web login QR';
+  static const String errorMissingWebLoginToken =
+      'Missing token in web login QR';
 }
 
 final class HomeStrings {

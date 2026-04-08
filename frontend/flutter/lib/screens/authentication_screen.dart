@@ -183,8 +183,8 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     try {
       setState(() {
         _status = (widget.webLoginToken != null || widget.login)
-          ? AuthStrings.loggingIn
-          : AuthStrings.checkingIn;
+            ? AuthStrings.loggingIn
+            : AuthStrings.checkingIn;
       });
 
       await _authenticate();

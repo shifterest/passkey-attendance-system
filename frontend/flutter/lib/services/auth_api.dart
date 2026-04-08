@@ -113,7 +113,10 @@ class AuthApi {
   ) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
 
-    dynamic webLoginResponse = await client.post(ApiPaths.webLoginVerify, response);
+    dynamic webLoginResponse = await client.post(
+      ApiPaths.webLoginVerify,
+      response,
+    );
     if (webLoginResponse is Map<String, dynamic>) {
       return webLoginResponse;
     } else {
