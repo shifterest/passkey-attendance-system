@@ -108,6 +108,19 @@ class AuthApi {
     }
   }
 
+  static Future<Map<String, dynamic>> webLoginVerify(
+    Map<String, dynamic> response,
+  ) async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+
+    dynamic webLoginResponse = await client.post(ApiPaths.webLoginVerify, response);
+    if (webLoginResponse is Map<String, dynamic>) {
+      return webLoginResponse;
+    } else {
+      throw Exception('Invalid response from server');
+    }
+  }
+
   static Future<Map<String, dynamic>> logout(
     String userId,
     String sessionToken,

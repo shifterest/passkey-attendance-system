@@ -21,10 +21,12 @@ class AuthenticationScreen extends StatefulWidget {
     super.key,
     required this.userId,
     this.login = false,
+    this.webLoginToken,
   });
 
   final String userId;
   final bool login;
+  final String? webLoginToken;
 
   @override
   State<AuthenticationScreen> createState() => _AuthenticationScreenState();
@@ -180,13 +182,15 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
     try {
       setState(() {
-        _status = widget.login ? AuthStrings.loggingIn : AuthStrings.checkingIn;
+        _status = (widget.webLoginToken != null || widget.login)
+          ? AuthStrings.loggingIn
+          : AuthStrings.checkingIn;
       });
 
       await _authenticate();
       if (!mounted) return;
 
-      if (widget.login) {
+      if (widget.webLoginToken != null || widget.login) {
         context.go('/');
       } else {
         context.pushReplacement('/check-in-result', extra: _checkInRecord);
@@ -212,20 +216,20 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
   Future<bool> _authenticate() async {
     setState(() {
-      _status = widget.login
+      _status = (widget.webLoginToken != null || widget.login)
           ? AuthStrings.initiatingLogin
           : AuthStrings.initiatingCheckIn;
     });
 
     Map<String, dynamic> optionsJson;
-    if (widget.login) {
+    if (widget.webLoginToken != null || widget.login) {
       optionsJson = await AuthApi.loginOptions(widget.userId);
     } else {
       optionsJson = await AuthApi.checkInOptions(widget.userId);
     }
 
     Map<String, dynamic> credentialJson;
-    if (widget.login) {
+    if (widget.webLoginToken != null || widget.login) {
       credentialJson = await passkey.login(optionsJson, widget.userId);
     } else {
       final sessionId = optionsJson['session_id'];
@@ -265,7 +269,13 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       _status = AuthStrings.verifyingPasskey;
     });
 
-    if (widget.login) {
+    if (widget.webLoginToken != null) {
+      await AuthApi.webLoginVerify({
+        ...credentialJson,
+        'web_login_token': widget.webLoginToken!,
+      });
+      unawaited(submitPlayIntegrityVouch());
+    } else if (widget.login) {
       final loginResponse = await AuthApi.loginVerify(credentialJson);
       final sessionToken = loginResponse['session_token'];
       final expiresIn = loginResponse['expires_in'];

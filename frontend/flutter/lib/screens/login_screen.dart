@@ -64,10 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             ElevatedButton.icon(
-                              onPressed: null,
-                              icon: const Icon(Icons.password),
+                              onPressed: () {
+                                context.push('/web-login-scan');
+                              },
+                              icon: const Icon(Icons.qr_code_scanner),
                               label: const Text(
-                                LoginStrings.buttonLoginPassword,
+                                LoginStrings.buttonLoginWebQr,
                               ),
                             ),
                           ] else ...[

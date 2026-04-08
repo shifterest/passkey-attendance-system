@@ -315,28 +315,42 @@ def web_login_verify(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
 
-    options = generate_authentication_options(
-        rp_id=settings.rp_id,
-        timeout=settings.challenge_timeout * 1000,
-        user_verification=UserVerificationRequirement.REQUIRED,
-    )
-    challenge_bytes = options.challenge
-    issued_at_ms = issued_at_ms_now()
+    challenge_key = f"login_challenge:{user.id}"
+    issued_at_ms_key = f"login_issued_at_ms:{user.id}"
+
+    challenge_bytes = redis_client.getdel(challenge_key)
+    if not challenge_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
+        )
+    issued_at_ms = load_issued_at_ms(issued_at_ms_key, Messages.AUTH_NO_PENDING)
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    if now_ms - issued_at_ms > settings.device_payload_max_age_ms:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=Messages.DEVICE_PAYLOAD_STALE,
+        )
 
     user_credential = get_user_credential_for_assertion(
         user_id=user.id,
         assertion_credential=request_data.credential,
         db=db,
     )
+    user_sign_count = user_credential.sign_count
 
     try:
-        verify_authentication_response(
+        if not isinstance(challenge_bytes, bytes):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=Messages.INVALID_CHALLENGE_DATA,
+            )
+        authentication_verification = verify_authentication_response(
             credential=request_data.credential,
             expected_challenge=challenge_bytes,
             expected_origin=[settings.web_origin, settings.app_origin],
             expected_rp_id=settings.rp_id,
             credential_public_key=bytes.fromhex(user_credential.public_key),
-            credential_current_sign_count=user_credential.sign_count,
+            credential_current_sign_count=user_sign_count,
         )
     except InvalidAuthenticationResponse as e:
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
@@ -389,6 +403,21 @@ def web_login_verify(
         if user.role in (UserRole.ADMIN, UserRole.OPERATOR)
         else settings.login_timeout
     )
+
+    user_credential.sign_count = authentication_verification.new_sign_count
+    if (
+        authentication_verification.new_sign_count > 0
+        and authentication_verification.new_sign_count <= user_sign_count
+    ):
+        user_credential.sign_count_anomaly = True
+        log_audit_event(
+            AuditEvents.SIGN_COUNT_ANOMALY,
+            user.id,
+            user.id,
+            SignCountAnomalyDetail(credential_id=user_credential.id).model_dump(),
+            db,
+        )
+
     new_session = LoginSession(
         id=str(uuid.uuid4()),
         user_id=user.id,

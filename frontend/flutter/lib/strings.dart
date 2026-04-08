@@ -5,6 +5,7 @@ final class ApiPaths {
   static const String checkInVerify = '/auth/check-in/verify';
   static const String loginOptions = '/auth/login/options';
   static const String loginVerify = '/auth/login/verify';
+  static const String webLoginVerify = '/auth/web-login/verify';
   static const String logout = '/auth/logout';
   static const String playIntegrityVouch = '/auth/play-integrity/vouch';
   static const String playIntegrityNonce = '/auth/play-integrity/nonce';
@@ -69,6 +70,8 @@ final class QrStrings {
   static const String errorMissingData = 'Missing registration data';
   static const String errorUnexpectedFailure =
       'Unable to process the scanned QR code';
+  static const String errorInvalidWebLoginQr = 'Invalid web login QR code';
+  static const String errorMissingWebLoginToken = 'Missing token in web login QR';
 }
 
 final class HomeStrings {
@@ -102,7 +105,7 @@ final class LoginStrings {
   static const String appTitle = 'Passkey attendance system';
   static const String selectOptions = 'Select any of the options below';
   static const String buttonLoginPasskey = 'Login with passkey';
-  static const String buttonLoginPassword = 'Login with password and 2FA';
+  static const String buttonLoginWebQr = 'Scan web login QR';
   static const String buttonRegisterPasskey = 'Register a new passkey';
 }
 

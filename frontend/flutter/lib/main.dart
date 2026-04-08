@@ -9,6 +9,7 @@ import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
 import 'package:passkey_attendance_system/screens/offline_check_in_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
+import 'package:passkey_attendance_system/screens/web_login_scanner_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_dashboard_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_home_screen.dart';
 import 'package:passkey_attendance_system/screens/attendance_history_screen.dart';
@@ -46,15 +47,24 @@ final _router = GoRouter(
       builder: (context, state) => const QrScannerScreen(),
     ),
     GoRoute(
+      path: '/web-login-scan',
+      builder: (context, state) => const WebLoginScannerScreen(),
+    ),
+    GoRoute(
       path: '/authenticate',
       builder: (context, state) {
         final userId = state.uri.queryParameters['user_id'];
         final login = state.uri.queryParameters['login'] == 'true';
+        final webLoginToken = state.uri.queryParameters['web_login_token'];
         if (userId == null || userId.isEmpty) {
           return const LoginScreen();
         }
-        return AuthenticationScreen(userId: userId, login: login);
-      },
+        return AuthenticationScreen(
+          userId: userId,
+          login: login,
+          webLoginToken: webLoginToken,
+        );
+      }
     ),
     GoRoute(
       path: '/register',
