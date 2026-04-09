@@ -6,6 +6,8 @@ import {
 	IconChevronRight,
 	IconChevronsLeft,
 	IconChevronsRight,
+	IconCircleCheckFilled,
+	IconCircleXFilled,
 	IconFilter,
 	IconLayoutColumns,
 } from "@tabler/icons-react";
@@ -69,7 +71,7 @@ const columns: ColumnDef<UserDto>[] = [
 	{
 		id: "select",
 		header: ({ table }) => (
-			<div className="flex items-center justify-center">
+			<div className="flex w-8 items-center justify-center">
 				<Checkbox
 					checked={table.getIsAllPageRowsSelected()}
 					indeterminate={
@@ -102,6 +104,29 @@ const columns: ColumnDef<UserDto>[] = [
 		),
 	},
 	{
+		accessorKey: "school_id",
+		header: "School ID",
+		cell: ({ row }) => (
+			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
+		),
+	},
+	{
+		accessorKey: "registered",
+		header: "Registration",
+		cell: ({ row }) =>
+			row.original.registered ? (
+				<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+					<IconCircleCheckFilled />
+					Registered
+				</Badge>
+			) : (
+				<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+					<IconCircleXFilled />
+					Unregistered
+				</Badge>
+			),
+	},
+	{
 		accessorKey: "role",
 		filterFn: includesSomeFilter,
 		header: "Role",
@@ -122,24 +147,6 @@ const columns: ColumnDef<UserDto>[] = [
 				{row.original.email}
 			</span>
 		),
-	},
-	{
-		accessorKey: "school_id",
-		header: "School ID",
-		cell: ({ row }) => (
-			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
-		),
-	},
-	{
-		accessorKey: "program",
-		header: "Program",
-		cell: ({ row }) => row.original.program ?? "—",
-	},
-	{
-		accessorKey: "year_level",
-		header: "Year level",
-		cell: ({ row }) =>
-			row.original.year_level != null ? row.original.year_level : "—",
 	},
 ];
 
@@ -305,7 +312,7 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 				<div className="overflow-hidden rounded-lg border">
 					<Table>
-						<TableHeader className="bg-muted sticky top-0 z-10">
+						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
 									{hg.headers.map((h) => (

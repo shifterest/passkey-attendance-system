@@ -114,5 +114,7 @@ def get_teacher_details(user_id: str, db: Session):
         "class_count": len(classes),
         "student_count": len(student_ids),
         "has_open_session": has_open_session,
+        "registered": db.query(Credential).filter(Credential.user_id == user_id).first()
+        is not None,
         "default_policy": default_policy,
     }

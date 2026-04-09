@@ -8,6 +8,7 @@ import {
 	IconChevronsRight,
 	IconCircle,
 	IconCircleCheckFilled,
+	IconCircleXFilled,
 	IconFilter,
 	IconLayoutColumns,
 } from "@tabler/icons-react";
@@ -75,7 +76,7 @@ const columns: ColumnDef<TeacherDto>[] = [
 	{
 		id: "select",
 		header: ({ table }) => (
-			<div className="flex items-center justify-center">
+			<div className="flex w-8 items-center justify-center">
 				<Checkbox
 					checked={table.getIsAllPageRowsSelected()}
 					indeterminate={
@@ -108,6 +109,29 @@ const columns: ColumnDef<TeacherDto>[] = [
 		),
 	},
 	{
+		accessorKey: "school_id",
+		header: "School ID",
+		cell: ({ row }) => (
+			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
+		),
+	},
+	{
+		accessorKey: "registered",
+		header: "Registration",
+		cell: ({ row }) =>
+			row.original.registered ? (
+				<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+					<IconCircleCheckFilled />
+					Registered
+				</Badge>
+			) : (
+				<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+					<IconCircleXFilled />
+					Unregistered
+				</Badge>
+			),
+	},
+	{
 		accessorKey: "email",
 		header: "Email",
 		cell: ({ row }) => (
@@ -117,11 +141,21 @@ const columns: ColumnDef<TeacherDto>[] = [
 		),
 	},
 	{
-		accessorKey: "school_id",
-		header: "School ID",
-		cell: ({ row }) => (
-			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
-		),
+		accessorKey: "has_open_session",
+		filterFn: includesSomeFilter,
+		header: "Session",
+		cell: ({ row }) =>
+			row.original.has_open_session ? (
+				<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+					<IconCircleCheckFilled />
+					Active
+				</Badge>
+			) : (
+				<Badge variant="outline" className="px-1.5 text-muted-foreground">
+					<IconCircle />
+					Inactive
+				</Badge>
+			),
 	},
 	{
 		accessorKey: "class_count",
@@ -136,23 +170,6 @@ const columns: ColumnDef<TeacherDto>[] = [
 		cell: ({ row }) => (
 			<span className="text-sm">{row.original.student_count}</span>
 		),
-	},
-	{
-		accessorKey: "has_open_session",
-		filterFn: includesSomeFilter,
-		header: "Session",
-		cell: ({ row }) =>
-			row.original.has_open_session ? (
-				<Badge variant="default" className="gap-1 text-xs">
-					<IconCircleCheckFilled />
-					Active
-				</Badge>
-			) : (
-				<Badge variant="secondary" className="gap-1 text-xs">
-					<IconCircle />
-					Inactive
-				</Badge>
-			),
 	},
 ];
 
@@ -329,7 +346,7 @@ export function DataTableTeachers({
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 				<div className="overflow-hidden rounded-lg border">
 					<Table>
-						<TableHeader className="bg-muted sticky top-0 z-10">
+						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
 									{hg.headers.map((h) => (

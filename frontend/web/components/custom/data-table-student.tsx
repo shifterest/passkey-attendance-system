@@ -122,6 +122,14 @@ const includesSomeFilter: FilterFn<z.infer<typeof schema>> = (
 	return filterValue.includes(cellValue);
 };
 
+function inferYear(schoolId: string | null): string {
+	if (!schoolId) return "Unknown";
+	const value = schoolId.trim();
+	if (value.length < 4) return "Unknown";
+	const year = value.slice(0, 4);
+	return /^\d{4}$/.test(year) ? year : "Unknown";
+}
+
 function columns(
 	setRegistrationQrDialogState: (row: Row<z.infer<typeof schema>>) => void,
 	onUnregister: (userId: string) => Promise<void>,
@@ -130,7 +138,7 @@ function columns(
 		{
 			id: "select",
 			header: ({ table }) => (
-				<div className="flex items-center justify-center">
+				<div className="flex w-8 items-center justify-center">
 					<Checkbox
 						checked={table.getIsAllPageRowsSelected()}
 						indeterminate={
@@ -159,49 +167,81 @@ function columns(
 		{
 			accessorKey: "full_name",
 			header: "Full name",
-			// cell: ({ row }) => {
-			// 	return <TableCellViewer item={row.original} />;
-			// },
 			enableHiding: false,
-		},
-		{
-			accessorKey: "ongoing_class",
-			header: "Ongoing class",
-			cell: ({ row }) =>
-				row.original.ongoing_class ? row.original.ongoing_class : "—",
-		},
-		{
-			accessorKey: "in_class",
-			filterFn: includesSomeFilter,
-			header: "In class",
-			cell: ({ row }) => (
-				<div>
-					<Badge variant="outline" className="text-muted-foreground px-1.5">
-						{row.original.in_class ? (
-							<IconCircleCheckFilled className="fill-primary" />
-						) : row.original.ongoing_class ? (
-							<IconCircleXFilled className="fill-destructive" />
-						) : (
-							<IconCircle />
-						)}
-						{row.original.in_class
-							? "In class"
-							: row.original.ongoing_class
-								? "Not in class"
-								: "No ongoing class"}
-					</Badge>
-				</div>
-			),
 		},
 		{
 			accessorKey: "school_id",
 			header: "School ID",
-			cell: ({ row }) => row.original.school_id,
+			cell: ({ row }) => (
+				<span className="font-mono text-sm">
+					{row.original.school_id ?? "—"}
+				</span>
+			),
+		},
+		{
+			accessorKey: "registered",
+			filterFn: includesSomeFilter,
+			header: "Registration",
+			cell: ({ row }) =>
+				row.original.registered ? (
+					<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+						<IconCircleCheckFilled />
+						Registered
+					</Badge>
+				) : (
+					<button
+						type="button"
+						className="cursor-pointer"
+						onClick={() => setRegistrationQrDialogState(row)}
+						tabIndex={0}
+					>
+						<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+							<IconCircleXFilled />
+							Unregistered
+						</Badge>
+					</button>
+				),
 		},
 		{
 			accessorKey: "email",
 			header: "Email",
-			cell: ({ row }) => row.original.email,
+			cell: ({ row }) => (
+				<span className="text-sm text-muted-foreground">
+					{row.original.email}
+				</span>
+			),
+		},
+		{
+			accessorKey: "ongoing_class",
+			header: "Session",
+			cell: ({ row }) =>
+				row.original.ongoing_class ? (
+					<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+						<IconCircleCheckFilled />
+						{row.original.ongoing_class}
+					</Badge>
+				) : (
+					"—"
+				),
+		},
+		{
+			accessorKey: "in_class",
+			filterFn: includesSomeFilter,
+			header: "Checked in",
+			cell: ({ row }) => {
+				if (!row.original.ongoing_class) return "—";
+				return row.original.in_class ? (
+					<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+						<IconCircleCheckFilled />
+						Checked in
+					</Badge>
+				) : (
+					<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+						<IconCircleXFilled />
+						Not checked in
+					</Badge>
+				);
+			},
 		},
 		{
 			accessorKey: "records",
@@ -217,21 +257,6 @@ function columns(
 			accessorKey: "enrollments",
 			header: "Enrollments",
 			cell: ({ row }) => row.original.enrollments,
-		},
-		{
-			accessorKey: "registered",
-			filterFn: includesSomeFilter,
-			header: "Registration",
-			cell: ({ row }) => (
-				<Badge variant="outline" className="text-muted-foreground px-1.5">
-					{row.original.registered ? (
-						<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-					) : (
-						<IconCircleXFilled className="fill-red-500 dark:fill-red-400" />
-					)}
-					{row.original.registered ? "Registered" : "Unregistered"}
-				</Badge>
-			),
 		},
 		{
 			id: "actions",
@@ -354,6 +379,29 @@ export function DataTableStudent({
 		[data],
 	);
 	const [globalFilter, setGlobalFilter] = useState("");
+	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
+
+	const yearOptions = React.useMemo(
+		() =>
+			[...new Set(data.map((r) => inferYear(r.school_id)))].sort(),
+		[data],
+	);
+
+	const filteredData = React.useMemo(
+		() =>
+			yearFilter.length === 0
+				? data
+				: data.filter((r) => yearFilter.includes(inferYear(r.school_id))),
+		[data, yearFilter],
+	);
+
+	const toggleYearFilter = (year: string, checked: boolean) => {
+		setYearFilter((prev) => {
+			if (checked) return [...new Set([...prev, year])];
+			if (prev.length === 1 && prev.includes(year)) return prev;
+			return prev.filter((y) => y !== year);
+		});
+	};
 
 	React.useEffect(() => {
 		setData(initialData);
@@ -440,7 +488,7 @@ export function DataTableStudent({
 	);
 
 	const table = useReactTable({
-		data,
+		data: filteredData,
 		columns: columns(setRegistrationQrDialogState, handleUnregister),
 		state: {
 			sorting,
@@ -565,14 +613,14 @@ export function DataTableStudent({
 							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
-								<DropdownMenuLabel>In class</DropdownMenuLabel>
+								<DropdownMenuLabel>Checked in</DropdownMenuLabel>
 								<DropdownMenuCheckboxItem
 									checked={isFilterValueChecked("in_class", true)}
 									onCheckedChange={(checked) => {
 										toggleFilterValue("in_class", true, checked);
 									}}
 								>
-									In class
+									Checked in
 								</DropdownMenuCheckboxItem>
 								<DropdownMenuCheckboxItem
 									checked={isFilterValueChecked("in_class", false)}
@@ -580,13 +628,31 @@ export function DataTableStudent({
 										toggleFilterValue("in_class", false, checked);
 									}}
 								>
-									Not in class
+									Not checked in
 								</DropdownMenuCheckboxItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Year</DropdownMenuLabel>
+								{yearOptions.map((year) => (
+									<DropdownMenuCheckboxItem
+										key={year}
+										checked={yearFilter.includes(year)}
+										onCheckedChange={(checked) =>
+											toggleYearFilter(year, checked)
+										}
+									>
+										{year}
+									</DropdownMenuCheckboxItem>
+								))}
 							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								variant="destructive"
-								onClick={() => setColumnFilters(getDefaultColumnFilters())}
+								onClick={() => {
+									setColumnFilters(getDefaultColumnFilters());
+									setYearFilter([]);
+								}}
 							>
 								Reset filters
 							</DropdownMenuItem>
@@ -647,7 +713,7 @@ export function DataTableStudent({
 						onDragEnd={handleDragEnd}
 					>
 						<Table>
-							<TableHeader className="bg-muted sticky top-0 z-10">
+							<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 								{table.getHeaderGroups().map((headerGroup) => (
 									<TableRow key={headerGroup.id}>
 										{headerGroup.headers.map((header) => {

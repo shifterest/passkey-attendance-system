@@ -4,8 +4,11 @@ import {
 	IconChevronDown,
 	IconChevronLeft,
 	IconChevronRight,
+	IconChevronsLeft,
+	IconChevronsRight,
 	IconDotsVertical,
 	IconFileImport,
+	IconFilter,
 	IconLayoutColumns,
 	IconPlus,
 	IconTrash,
@@ -31,6 +34,7 @@ import {
 import { DataTable } from "@/components/custom/data-table";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
 import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
+import { SearchForm } from "@/components/custom/search-form";
 import { PageHeader } from "@/components/custom/page-header";
 import {
 	AlertDialog,
@@ -52,10 +56,11 @@ import {
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -88,8 +93,8 @@ export function DataTableEnrollments({
 	const [openDialog, setOpenDialog] = React.useState(false);
 	const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
 	const [query, setQuery] = React.useState("");
-	const [selectedClassFilter, setSelectedClassFilter] = React.useState("all");
-	const [selectedYearFilter, setSelectedYearFilter] = React.useState("all");
+	const [classFilter, setClassFilter] = React.useState<string[]>([]);
+	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -133,14 +138,14 @@ export function DataTableEnrollments({
 			}
 
 			if (
-				selectedClassFilter !== "all" &&
-				enrollment.class_id !== selectedClassFilter
+				classFilter.length > 0 &&
+				!classFilter.includes(enrollment.class_id)
 			) {
 				return false;
 			}
 			if (
-				selectedYearFilter !== "all" &&
-				inferYear(student.school_id) !== selectedYearFilter
+				yearFilter.length > 0 &&
+				!yearFilter.includes(inferYear(student.school_id))
 			) {
 				return false;
 			}
@@ -160,8 +165,8 @@ export function DataTableEnrollments({
 		classById,
 		studentById,
 		query,
-		selectedClassFilter,
-		selectedYearFilter,
+		classFilter,
+		yearFilter,
 	]);
 
 	const handleDelete = React.useCallback(
@@ -383,119 +388,183 @@ export function DataTableEnrollments({
 					{statusMessage}
 				</div>
 			)}
-			<FieldGroup className="grid gap-3 rounded-lg border p-3 md:grid-cols-3">
-				<Field>
-					<FieldLabel htmlFor="enrollment-filter-query">Search</FieldLabel>
-					<Input
-						id="enrollment-filter-query"
-						value={query}
-						onChange={(event) => setQuery(event.currentTarget.value)}
-						placeholder="Student, school ID, class code"
-					/>
-				</Field>
-				<Field>
-					<FieldLabel htmlFor="enrollment-filter-class">Class</FieldLabel>
-					<Select
-						value={selectedClassFilter}
-						onValueChange={(value) => setSelectedClassFilter(value ?? "all")}
-					>
-						<SelectTrigger id="enrollment-filter-class" className="w-full">
-							<SelectValue placeholder="All classes" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								<SelectItem value="all">All classes</SelectItem>
+			<div className="flex items-center justify-between">
+				<SearchForm onSearch={(q) => setQuery(q)} />
+				<div className="flex items-center gap-2">
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
+						>
+							<IconFilter data-icon="inline-start" />
+							Filter
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Class</DropdownMenuLabel>
 								{classes.map((classValue) => (
-									<SelectItem key={classValue.id} value={classValue.id}>
-										{classValue.course_code} - {classValue.course_name}
-									</SelectItem>
+									<DropdownMenuCheckboxItem
+										key={classValue.id}
+										checked={classFilter.includes(classValue.id)}
+										onCheckedChange={(checked) =>
+											setClassFilter((prev) =>
+												checked
+													? [...prev, classValue.id]
+													: prev.filter((id) => id !== classValue.id),
+											)
+										}
+									>
+										{classValue.course_code}
+									</DropdownMenuCheckboxItem>
 								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-				</Field>
-				<Field>
-					<FieldLabel htmlFor="enrollment-filter-year">Year</FieldLabel>
-					<Select
-						value={selectedYearFilter}
-						onValueChange={(value) => setSelectedYearFilter(value ?? "all")}
-					>
-						<SelectTrigger id="enrollment-filter-year" className="w-full">
-							<SelectValue placeholder="All years" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								<SelectItem value="all">All years</SelectItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Year</DropdownMenuLabel>
 								{yearOptions.map((year) => (
-									<SelectItem key={year} value={year}>
+									<DropdownMenuCheckboxItem
+										key={year}
+										checked={yearFilter.includes(year)}
+										onCheckedChange={(checked) =>
+											setYearFilter((prev) =>
+												checked
+													? [...prev, year]
+													: prev.filter((y) => y !== year),
+											)
+										}
+									>
 										{year}
-									</SelectItem>
+									</DropdownMenuCheckboxItem>
 								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-				</Field>
-			</FieldGroup>
-			<div className="flex items-center justify-end">
-				<DropdownMenu>
-					<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-						<IconLayoutColumns data-icon="inline-start" />
-						Columns
-						<IconChevronDown data-icon="inline-end" />
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-40">
-						{table
-							.getAllColumns()
-							.filter(
-								(column) =>
-									typeof column.accessorFn !== "undefined" &&
-									column.getCanHide(),
-							)
-							.map((column) => (
-								<DropdownMenuCheckboxItem
-									key={column.id}
-									checked={column.getIsVisible()}
-									onCheckedChange={(value) => column.toggleVisibility(!!value)}
-								>
-									{column.id
-										.replace(/_/g, " ")
-										.replace(/\bid\b/g, "ID")
-										.split(" ")
-										.map((w) =>
-											w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
-										)
-										.join(" ")}
-								</DropdownMenuCheckboxItem>
-							))}
-					</DropdownMenuContent>
-				</DropdownMenu>
+							</DropdownMenuGroup>
+							{(classFilter.length > 0 || yearFilter.length > 0) && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										variant="destructive"
+										onClick={() => {
+											setClassFilter([]);
+											setYearFilter([]);
+										}}
+									>
+										Reset filters
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<DropdownMenu>
+						<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+							<IconLayoutColumns data-icon="inline-start" />
+							Columns
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-40">
+							{table
+								.getAllColumns()
+								.filter(
+									(column) =>
+										typeof column.accessorFn !== "undefined" &&
+										column.getCanHide(),
+								)
+								.map((column) => (
+									<DropdownMenuCheckboxItem
+										key={column.id}
+										checked={column.getIsVisible()}
+										onCheckedChange={(value) =>
+											column.toggleVisibility(!!value)
+										}
+									>
+										{column.id
+											.replace(/_/g, " ")
+											.replace(/\bid\b/g, "ID")
+											.split(" ")
+											.map((w) =>
+												w === "ID"
+													? w
+													: w.charAt(0).toUpperCase() + w.slice(1),
+											)
+											.join(" ")}
+									</DropdownMenuCheckboxItem>
+								))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 			</div>
 			<DataTable table={table} emptyMessage="No enrollments found." />
-			<div className="flex items-center justify-between px-2">
-				<span className="text-sm text-muted-foreground">
+			<div className="flex items-center justify-between px-4">
+				<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
 					{table.getFilteredSelectedRowModel().rows.length} of{" "}
 					{table.getFilteredRowModel().rows.length} row(s) selected.
-				</span>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage()}
-					>
-						<IconChevronLeft />
-					</Button>
-					<span className="text-sm text-muted-foreground">
-						{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-					</span>
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-					>
-						<IconChevronRight />
-					</Button>
+				</div>
+				<div className="flex w-full items-center gap-8 lg:w-fit">
+					<div className="hidden items-center gap-2 lg:flex">
+						<Label htmlFor="rows-per-page" className="text-sm font-medium">
+							Rows per page
+						</Label>
+						<Select
+							value={`${table.getState().pagination.pageSize}`}
+							onValueChange={(v) => table.setPageSize(Number(v))}
+						>
+							<SelectTrigger size="sm" className="w-20" id="rows-per-page">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent side="top">
+								<SelectGroup>
+									{[10, 20, 30, 50].map((s) => (
+										<SelectItem key={s} value={`${s}`}>
+											{s}
+										</SelectItem>
+									))}
+								</SelectGroup>
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="flex w-fit items-center justify-center text-sm font-medium">
+						Page {table.getState().pagination.pageIndex + 1} of{" "}
+						{table.getPageCount()}
+					</div>
+					<div className="ml-auto flex items-center gap-2 lg:ml-0">
+						<Button
+							variant="outline"
+							className="hidden h-8 w-8 p-0 lg:flex"
+							onClick={() => table.setPageIndex(0)}
+							disabled={!table.getCanPreviousPage()}
+						>
+							<span className="sr-only">Go to first page</span>
+							<IconChevronsLeft />
+						</Button>
+						<Button
+							variant="outline"
+							className="size-8"
+							size="icon"
+							onClick={() => table.previousPage()}
+							disabled={!table.getCanPreviousPage()}
+						>
+							<span className="sr-only">Go to previous page</span>
+							<IconChevronLeft />
+						</Button>
+						<Button
+							variant="outline"
+							className="size-8"
+							size="icon"
+							onClick={() => table.nextPage()}
+							disabled={!table.getCanNextPage()}
+						>
+							<span className="sr-only">Go to next page</span>
+							<IconChevronRight />
+						</Button>
+						<Button
+							variant="outline"
+							className="hidden size-8 lg:flex"
+							size="icon"
+							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+							disabled={!table.getCanNextPage()}
+						>
+							<span className="sr-only">Go to last page</span>
+							<IconChevronsRight />
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>

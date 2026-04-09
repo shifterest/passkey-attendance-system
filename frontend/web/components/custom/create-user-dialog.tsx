@@ -90,9 +90,13 @@ export function CreateUserDialog({
 			</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Create user</DialogTitle>
+					<DialogTitle>
+						{allowedRoles.length === 1 ? `Create ${role}` : "Create user"}
+					</DialogTitle>
 					<DialogDescription>
-						Add a new user account to the system.
+						{allowedRoles.length === 1
+							? `Add a new ${role} account to the system.`
+							: "Add a new user account to the system."}
 					</DialogDescription>
 				</DialogHeader>
 				<FieldGroup>
@@ -150,7 +154,7 @@ export function CreateUserDialog({
 							placeholder="20210001"
 						/>
 					</Field>
-					{(role === "student" || allowedRoles.length === 1) && (
+					{role === "student" && (
 						<>
 							<Field>
 								<FieldLabel htmlFor="create-user-program">

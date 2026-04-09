@@ -25,7 +25,10 @@ export function DataTable<T>({
 					{table.getHeaderGroups().map((hg) => (
 						<TableRow key={hg.id}>
 							{hg.headers.map((h) => (
-								<TableHead key={h.id}>
+								<TableHead
+									key={h.id}
+									className={h.column.id === "select" ? "w-8" : ""}
+								>
 									{h.isPlaceholder
 										? null
 										: flexRender(h.column.columnDef.header, h.getContext())}

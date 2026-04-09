@@ -18,6 +18,7 @@ export type UserDto = {
 	school_id: string | null;
 	program: string | null;
 	year_level: number | null;
+	registered: boolean;
 };
 
 export type UserExtendedDto = {
@@ -79,6 +80,7 @@ export type TeacherDto = {
 	full_name: string;
 	email: string;
 	school_id: string | null;
+	registered: boolean;
 	class_count: number;
 	student_count: number;
 	has_open_session: boolean;

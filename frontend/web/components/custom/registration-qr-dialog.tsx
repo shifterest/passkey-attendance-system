@@ -43,7 +43,7 @@ export function RegistrationQrDialog({
 						register their device and passkey.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="flex justify-center px-4">
+				<div className="flex justify-center rounded-xl border p-4">
 					<QRCodeSVG value={session.url} size={256} level="H" marginSize={4} />
 				</div>
 			</DialogContent>

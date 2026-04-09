@@ -1,6 +1,12 @@
 "use client";
 
-import { IconChevronDown, IconFilter, IconSearch } from "@tabler/icons-react";
+import {
+	IconChevronDown,
+	IconFilter,
+	IconMinus,
+	IconPlus,
+	IconSearch,
+} from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +92,9 @@ export function EnrollmentManageDialog({
 	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
 	const [blockSize, setBlockSize] = React.useState(50);
 	const [offset, setOffset] = React.useState(0);
+
+	const clampBlock = (v: number) => Math.max(1, Math.min(100, v));
+	const clampOffset = (v: number) => Math.max(0, v);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 	const [submitting, setSubmitting] = React.useState(false);
 	const chipsRef = useComboboxAnchor();
@@ -283,31 +292,19 @@ export function EnrollmentManageDialog({
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</div>
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<Checkbox
-									checked={allVisibleSelected}
-									onCheckedChange={(checked) =>
-										toggleSelectVisible(Boolean(checked))
-									}
-									aria-label="Select visible students"
-								/>
-								<span className="text-sm text-muted-foreground">
-									Select visible
-								</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<Badge variant="outline">
-									{filteredStudents.length} visible
-								</Badge>
-								<Badge variant="outline">{selectedIds.size} selected</Badge>
-							</div>
-						</div>
 						<div className="max-h-[360px] overflow-y-auto rounded-md border">
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead className="w-10" />
+										<TableHead className="w-10">
+											<Checkbox
+												checked={allVisibleSelected}
+												onCheckedChange={(checked) =>
+													toggleSelectVisible(Boolean(checked))
+												}
+												aria-label="Select visible students"
+											/>
+										</TableHead>
 										<TableHead>Student</TableHead>
 										<TableHead>School ID</TableHead>
 										<TableHead>Year</TableHead>
@@ -346,53 +343,108 @@ export function EnrollmentManageDialog({
 								</TableBody>
 							</Table>
 						</div>
-						<div className="flex flex-wrap items-end gap-2 border-t pt-3">
-							<div className="flex items-center gap-2">
-								<Label htmlFor="block-size" className="text-sm">
-									Block
-								</Label>
-								<Input
-									id="block-size"
-									type="number"
-									min={1}
-									value={blockSize}
-									onChange={(event) =>
-										setBlockSize(Number(event.currentTarget.value || 1))
-									}
-									className="w-20"
-								/>
+						<div className="flex flex-wrap items-start gap-4 border-t pt-3">
+							<div className="flex flex-1 flex-col gap-1">
+								<span className="text-sm font-medium">Block size</span>
+								<span className="text-xs text-muted-foreground">
+									Select first N rows
+								</span>
+								<div className="flex items-center">
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="h-9 rounded-r-none border-r-0"
+										onClick={() => setBlockSize((v) => clampBlock(v - 1))}
+										disabled={blockSize <= 1}
+									>
+										<IconMinus />
+									</Button>
+									<input
+										type="number"
+										min={1}
+										max={100}
+										value={blockSize}
+										onChange={(e) =>
+											setBlockSize(
+												clampBlock(Number(e.currentTarget.value) || 1),
+											)
+										}
+										className="h-9 w-16 border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+									/>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="h-9 rounded-l-none border-l-0"
+										onClick={() => setBlockSize((v) => clampBlock(v + 1))}
+										disabled={blockSize >= 100}
+									>
+										<IconPlus />
+									</Button>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full"
+									onClick={() => selectRange(0, blockSize)}
+								>
+									Select first {blockSize}
+								</Button>
 							</div>
-							<div className="flex items-center gap-2">
-								<Label htmlFor="block-offset" className="text-sm">
-									Offset
-								</Label>
-								<Input
-									id="block-offset"
-									type="number"
-									min={0}
-									value={offset}
-									onChange={(event) =>
-										setOffset(Number(event.currentTarget.value || 0))
-									}
-									className="w-20"
-								/>
+							<div className="flex flex-1 flex-col gap-1">
+								<span className="text-sm font-medium">Offset</span>
+								<span className="text-xs text-muted-foreground">
+									Start from row N
+								</span>
+								<div className="flex items-center">
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="h-9 rounded-r-none border-r-0"
+										onClick={() => setOffset((v) => clampOffset(v - 10))}
+										disabled={offset <= 0}
+									>
+										<IconMinus />
+									</Button>
+									<input
+										type="number"
+										min={0}
+										step={10}
+										value={offset}
+										onChange={(e) =>
+											setOffset(clampOffset(Number(e.currentTarget.value) || 0))
+										}
+										className="h-9 w-16 border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+									/>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="h-9 rounded-l-none border-l-0"
+										onClick={() => setOffset((v) => clampOffset(v + 10))}
+									>
+										<IconPlus />
+									</Button>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full"
+									onClick={() => selectRange(offset, blockSize)}
+								>
+									Select from row {offset}
+								</Button>
 							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => selectRange(0, blockSize)}
-							>
-								Select first {blockSize}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={() => selectRange(offset, blockSize)}
-							>
-								Select from offset
-							</Button>
+							<div className="flex w-full items-center justify-end gap-2 pt-1">
+								<Badge variant="outline">
+									{filteredStudents.length} visible
+								</Badge>
+								<Badge variant="outline">{selectedIds.size} selected</Badge>
+							</div>
 						</div>
 					</div>
 				</FieldGroup>

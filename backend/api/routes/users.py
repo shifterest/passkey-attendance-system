@@ -12,7 +12,7 @@ from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
 from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
-from database.models import User
+from database.models import Credential, User
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -29,7 +29,14 @@ def get_all_users(
     query = db.query(User)
     if role is not None:
         query = query.filter(User.role == role)
-    return query.all()
+    users = query.all()
+    credentialed = {
+        row[0]
+        for row in db.query(Credential.user_id)
+        .filter(Credential.user_id.in_([u.id for u in users]))
+        .all()
+    }
+    return [{**u.__dict__, "registered": u.id in credentialed} for u in users]
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -49,7 +56,10 @@ def get_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
-    return user
+    registered = (
+        db.query(Credential).filter(Credential.user_id == user_id).first() is not None
+    )
+    return {**user.__dict__, "registered": registered}
 
 
 @router.post("/", response_model=UserResponse)

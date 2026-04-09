@@ -54,6 +54,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    registered: bool = False
 
 
 class UserStudentResponse(UserBase):
@@ -75,6 +76,7 @@ class UserTeacherResponse(UserBase):
     class_count: int
     student_count: int
     has_open_session: bool
+    registered: bool
     default_policy: "ClassPolicyResponse | None" = None
 
 
