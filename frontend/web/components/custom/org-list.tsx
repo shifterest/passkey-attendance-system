@@ -1,14 +1,18 @@
 "use client";
 
 import {
+	IconChevronDown,
 	IconChevronLeft,
 	IconChevronRight,
 	IconChevronsLeft,
 	IconChevronsRight,
 	IconDotsVertical,
+	IconFileImport,
+	IconLayoutColumns,
 	IconPlus,
 	IconTrash,
 } from "@tabler/icons-react";
+import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
 import {
 	type ColumnDef,
 	flexRender,
@@ -16,6 +20,7 @@ import {
 	getFilteredRowModel,
 	getPaginationRowModel,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +28,9 @@ import * as React from "react";
 import type { OrgDto } from "@/app/lib/api";
 import { createOrg, deleteOrg } from "@/app/lib/api";
 import { SearchForm } from "@/components/custom/search-form";
+import { PageHeader } from "@/components/custom/page-header";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogClose,
@@ -36,6 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -62,6 +70,33 @@ import {
 } from "@/components/ui/table";
 
 const columns: ColumnDef<OrgDto>[] = [
+	{
+		id: "select",
+		header: ({ table }) => (
+			<div className="flex items-center justify-center">
+				<Checkbox
+					checked={table.getIsAllPageRowsSelected()}
+					indeterminate={
+						table.getIsSomePageRowsSelected() &&
+						!table.getIsAllPageRowsSelected()
+					}
+					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+					aria-label="Select all"
+				/>
+			</div>
+		),
+		cell: ({ row }) => (
+			<div className="flex w-8 items-center justify-center">
+				<Checkbox
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => row.toggleSelected(!!value)}
+					aria-label="Select row"
+				/>
+			</div>
+		),
+		enableSorting: false,
+		enableHiding: false,
+	},
 	{
 		accessorKey: "name",
 		header: "Name",
@@ -93,6 +128,9 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 		pageIndex: 0,
 		pageSize: 10,
 	});
+	const [rowSelection, setRowSelection] = React.useState({});
+	const [columnVisibility, setColumnVisibility] =
+		React.useState<VisibilityState>({});
 	const [createOpen, setCreateOpen] = React.useState(false);
 	const [name, setName] = React.useState("");
 	const [description, setDescription] = React.useState("");
@@ -164,7 +202,10 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 	const table = useReactTable({
 		data,
 		columns: allColumns,
-		state: { pagination, globalFilter },
+		state: { pagination, globalFilter, columnVisibility, rowSelection },
+		enableRowSelection: true,
+		onRowSelectionChange: setRowSelection,
+		onColumnVisibilityChange: setColumnVisibility,
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
@@ -181,55 +222,98 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 
 	return (
 		<div className="flex flex-col gap-4">
+			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+				<PageHeader
+					title="Organizations"
+					description="Manage organizations and membership-based attendance."
+					actions={
+						<>
+							<ImportUsersDialog
+								trigger={
+									<Button variant="outline" size="sm">
+										<IconFileImport data-icon="inline-start" />
+										Import
+									</Button>
+								}
+							/>
+							<DialogTrigger render={<Button size="sm" />}>
+								<IconPlus data-icon="inline-start" />
+								Create
+							</DialogTrigger>
+						</>
+					}
+				/>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Create organization</DialogTitle>
+						<DialogDescription>
+							Add a new organization to manage membership-based attendance.
+						</DialogDescription>
+					</DialogHeader>
+					<FieldGroup>
+						<Field>
+							<FieldLabel htmlFor="org-name">Name</FieldLabel>
+							<Input
+								id="org-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder="Organization name"
+							/>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor="org-desc">Description (optional)</FieldLabel>
+							<Input
+								id="org-desc"
+								value={description}
+								onChange={(e) => setDescription(e.target.value)}
+								placeholder="Short description"
+							/>
+						</Field>
+					</FieldGroup>
+					<DialogFooter>
+						<DialogClose render={<Button variant="outline" />}>
+							Cancel
+						</DialogClose>
+						<Button onClick={handleCreate} disabled={creating || !name.trim()}>
+							{creating ? "Creating…" : "Create"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-					<DialogTrigger render={<Button size="sm" />}>
-						<IconPlus data-icon="inline-start" />
-						Create
-					</DialogTrigger>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Create organization</DialogTitle>
-							<DialogDescription>
-								Add a new organization to manage membership-based attendance.
-							</DialogDescription>
-						</DialogHeader>
-						<FieldGroup>
-							<Field>
-								<FieldLabel htmlFor="org-name">Name</FieldLabel>
-								<Input
-									id="org-name"
-									value={name}
-									onChange={(e) => setName(e.target.value)}
-									placeholder="Organization name"
-								/>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="org-desc">
-									Description (optional)
-								</FieldLabel>
-								<Input
-									id="org-desc"
-									value={description}
-									onChange={(e) => setDescription(e.target.value)}
-									placeholder="Short description"
-								/>
-							</Field>
-						</FieldGroup>
-						<DialogFooter>
-							<DialogClose render={<Button variant="outline" />}>
-								Cancel
-							</DialogClose>
-							<Button
-								onClick={handleCreate}
-								disabled={creating || !name.trim()}
-							>
-								{creating ? "Creating…" : "Create"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
+				<DropdownMenu>
+					<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+						<IconLayoutColumns data-icon="inline-start" />
+						Columns
+						<IconChevronDown data-icon="inline-end" />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-40">
+						{table
+							.getAllColumns()
+							.filter(
+								(column) =>
+									typeof column.accessorFn !== "undefined" &&
+									column.getCanHide(),
+							)
+							.map((column) => (
+								<DropdownMenuCheckboxItem
+									key={column.id}
+									checked={column.getIsVisible()}
+									onCheckedChange={(value) => column.toggleVisibility(!!value)}
+								>
+									{column.id
+										.replace(/_/g, " ")
+										.replace(/\bid\b/g, "ID")
+										.split(" ")
+										.map((w) =>
+											w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
+										)
+										.join(" ")}
+								</DropdownMenuCheckboxItem>
+							))}
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</div>
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 				<div className="overflow-hidden rounded-lg border">
@@ -276,7 +360,8 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 				</div>
 				<div className="flex items-center justify-between px-4">
 					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-						{table.getFilteredRowModel().rows.length} organization(s) total.
+						{table.getFilteredSelectedRowModel().rows.length} of{" "}
+						{table.getFilteredRowModel().rows.length} row(s) selected.
 					</div>
 					<div className="flex w-full items-center gap-8 lg:w-fit">
 						<div className="hidden items-center gap-2 lg:flex">

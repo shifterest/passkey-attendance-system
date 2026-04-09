@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import {
 	Card,
 	CardAction,
@@ -13,6 +13,8 @@ import {
 import {
 	type ChartConfig,
 	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
 	ChartTooltip,
 	ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -25,8 +27,6 @@ import {
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-export const description = "An interactive area chart";
 
 const chartConfig = {
 	records: {
@@ -133,33 +133,7 @@ export function ChartAreaInteractive({ data }: { data: ChartDatum[] }) {
 					config={chartConfig}
 					className="aspect-auto h-[250px] w-full"
 				>
-					<AreaChart data={filteredData}>
-						<defs>
-							<linearGradient id="fillRecords" x1="0" y1="0" x2="0" y2="1">
-								<stop
-									offset="5%"
-									stopColor="var(--color-records)"
-									stopOpacity={1.0}
-								/>
-								<stop
-									offset="95%"
-									stopColor="var(--color-records)"
-									stopOpacity={0.1}
-								/>
-							</linearGradient>
-							<linearGradient id="fillFlagged" x1="0" y1="0" x2="0" y2="1">
-								<stop
-									offset="5%"
-									stopColor="var(--color-flagged)"
-									stopOpacity={0.8}
-								/>
-								<stop
-									offset="95%"
-									stopColor="var(--color-flagged)"
-									stopOpacity={0.1}
-								/>
-							</linearGradient>
-						</defs>
+					<BarChart accessibilityLayer data={filteredData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="date"
@@ -176,7 +150,6 @@ export function ChartAreaInteractive({ data }: { data: ChartDatum[] }) {
 							}}
 						/>
 						<ChartTooltip
-							cursor={false}
 							content={
 								<ChartTooltipContent
 									labelFormatter={(value) => {
@@ -185,24 +158,24 @@ export function ChartAreaInteractive({ data }: { data: ChartDatum[] }) {
 											day: "numeric",
 										});
 									}}
-									indicator="dot"
+									hideLabel
 								/>
 							}
 						/>
-						<Area
-							dataKey="flagged"
-							type="natural"
-							fill="url(#fillFlagged)"
-							stroke="var(--color-flagged)"
-							strokeDasharray="4 4"
-						/>
-						<Area
+						<ChartLegend content={<ChartLegendContent />} />
+						<Bar
 							dataKey="records"
-							type="natural"
-							fill="url(#fillRecords)"
-							stroke="var(--color-records)"
+							stackId="a"
+							fill="var(--color-records)"
+							radius={[0, 0, 4, 4]}
 						/>
-					</AreaChart>
+						<Bar
+							dataKey="flagged"
+							stackId="a"
+							fill="var(--color-flagged)"
+							radius={[4, 4, 0, 0]}
+						/>
+					</BarChart>
 				</ChartContainer>
 			</CardContent>
 		</Card>

@@ -7,6 +7,7 @@ export const ApiPaths = {
 	student: (studentId: string) => `/students/${studentId}`,
 	adminRegister: (userId: string) => `/admin/register/${userId}`,
 	adminUnregister: (userId: string) => `/admin/unregister/${userId}`,
+	adminImportUsers: "/admin/import-users",
 	teachers: "/teachers",
 	classes: "/classes/",
 	class: (classId: string) => `/classes/${classId}`,

@@ -7,6 +7,7 @@ import {
 	IconChevronsLeft,
 	IconChevronsRight,
 	IconFilter,
+	IconLayoutColumns,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -21,12 +22,14 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import * as React from "react";
 import type { UserDto } from "@/app/lib/api";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -63,6 +66,33 @@ const includesSomeFilter: FilterFn<UserDto> = (row, columnId, filterValue) => {
 };
 
 const columns: ColumnDef<UserDto>[] = [
+	{
+		id: "select",
+		header: ({ table }) => (
+			<div className="flex items-center justify-center">
+				<Checkbox
+					checked={table.getIsAllPageRowsSelected()}
+					indeterminate={
+						table.getIsSomePageRowsSelected() &&
+						!table.getIsAllPageRowsSelected()
+					}
+					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+					aria-label="Select all"
+				/>
+			</div>
+		),
+		cell: ({ row }) => (
+			<div className="flex w-8 items-center justify-center">
+				<Checkbox
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => row.toggleSelected(!!value)}
+					aria-label="Select row"
+				/>
+			</div>
+		),
+		enableSorting: false,
+		enableHiding: false,
+	},
 	{
 		accessorKey: "full_name",
 		header: "Full name",
@@ -119,6 +149,9 @@ const getDefaultColumnFilters = (): ColumnFiltersState => [
 
 export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 	const [data, setData] = React.useState(initialData);
+	const [rowSelection, setRowSelection] = React.useState({});
+	const [columnVisibility, setColumnVisibility] =
+		React.useState<VisibilityState>({});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		getDefaultColumnFilters,
 	);
@@ -136,7 +169,14 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 	const table = useReactTable({
 		data,
 		columns,
-		state: { sorting, columnFilters, pagination, globalFilter },
+		state: {
+			sorting,
+			columnVisibility,
+			rowSelection,
+			columnFilters,
+			pagination,
+			globalFilter,
+		},
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
@@ -146,7 +186,10 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			);
 		},
 		getRowId: (row) => row.id,
+		enableRowSelection: true,
+		onRowSelectionChange: setRowSelection,
 		onSortingChange: setSorting,
+		onColumnVisibilityChange: setColumnVisibility,
 		onColumnFiltersChange: setColumnFilters,
 		onPaginationChange: setPagination,
 		getCoreRowModel: getCoreRowModel(),
@@ -221,6 +264,42 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
+						>
+							<IconLayoutColumns data-icon="inline-start" />
+							Columns
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-40">
+							{table
+								.getAllColumns()
+								.filter(
+									(column) =>
+										typeof column.accessorFn !== "undefined" &&
+										column.getCanHide(),
+								)
+								.map((column) => (
+									<DropdownMenuCheckboxItem
+										key={column.id}
+										checked={column.getIsVisible()}
+										onCheckedChange={(value) =>
+											column.toggleVisibility(!!value)
+										}
+									>
+										{column.id
+											.replace(/_/g, " ")
+											.replace(/\bid\b/g, "ID")
+											.split(" ")
+											.map((w) =>
+												w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
+											)
+											.join(" ")}
+									</DropdownMenuCheckboxItem>
+								))}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
@@ -268,7 +347,8 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 				</div>
 				<div className="flex items-center justify-between px-4">
 					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-						{table.getFilteredRowModel().rows.length} user(s) total.
+						{table.getFilteredSelectedRowModel().rows.length} of{" "}
+						{table.getFilteredRowModel().rows.length} row(s) selected.
 					</div>
 					<div className="flex w-full items-center gap-8 lg:w-fit">
 						<div className="hidden items-center gap-2 lg:flex">

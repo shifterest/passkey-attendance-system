@@ -3,13 +3,6 @@
 import { IconMoon, IconSettings2, IconSun } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -30,14 +23,17 @@ export default function SettingsPage() {
 				</p>
 			</div>
 			<Separator />
-			<Card className="max-w-md">
-				<CardHeader>
-					<CardTitle>Appearance</CardTitle>
-					<CardDescription>Choose your preferred theme.</CardDescription>
-				</CardHeader>
-				<CardContent>
+			<div className="flex flex-col gap-4">
+				<div className="flex items-center justify-between">
+					<div>
+						<p className="text-sm font-medium">Appearance</p>
+						<p className="text-sm text-muted-foreground">
+							Choose your preferred theme.
+						</p>
+					</div>
 					{mounted && (
 						<ToggleGroup
+							variant="outline"
 							value={theme ? [theme] : ["system"]}
 							onValueChange={(value) => {
 								if (value.length > 0) setTheme(value[0]);
@@ -57,8 +53,8 @@ export default function SettingsPage() {
 							</ToggleGroupItem>
 						</ToggleGroup>
 					)}
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		</div>
 	);
 }

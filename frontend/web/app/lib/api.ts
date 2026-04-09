@@ -282,6 +282,28 @@ export function createUser(data: {
 	});
 }
 
+export type ImportUsersResult = {
+	dry_run: boolean;
+	created: number;
+	skipped: number;
+	errors: { row: number; reason: string; data: Record<string, string> }[];
+};
+
+export async function importUsers(
+	file: File,
+	format: "generic" | "banner" = "generic",
+	dryRun = false,
+): Promise<ImportUsersResult> {
+	const formData = new FormData();
+	formData.append("file", file);
+	formData.append("format", format);
+	formData.append("dry_run", String(dryRun));
+	return request<ImportUsersResult>(ApiPaths.adminImportUsers, {
+		method: "POST",
+		body: formData,
+	});
+}
+
 export function getTeachers() {
 	return request<TeacherDto[]>(ApiPaths.teachers);
 }

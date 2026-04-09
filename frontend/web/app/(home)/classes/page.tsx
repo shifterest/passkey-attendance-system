@@ -1,14 +1,39 @@
-import { getClasses } from "@/app/lib/api";
+import { IconFileImport, IconPlus } from "@tabler/icons-react";
+import { getClasses, getTeachers } from "@/app/lib/api";
+import { CreateClassDialog } from "@/components/custom/create-class-dialog";
 import { DataTableClasses } from "@/components/custom/data-table-classes";
+import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
 import { PageHeader } from "@/components/custom/page-header";
+import { Button } from "@/components/ui/button";
 
 export default async function Page() {
-	const classes = await getClasses();
+	const [classes, teachers] = await Promise.all([getClasses(), getTeachers()]);
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 			<PageHeader
 				title="Classes"
 				description="Manage courses, schedules, and assurance thresholds."
+				actions={
+					<>
+						<ImportUsersDialog
+							trigger={
+								<Button variant="outline" size="sm">
+									<IconFileImport data-icon="inline-start" />
+									Import
+								</Button>
+							}
+						/>
+						<CreateClassDialog
+							teachers={teachers}
+							trigger={
+								<Button size="sm">
+									<IconPlus data-icon="inline-start" />
+									Create
+								</Button>
+							}
+						/>
+					</>
+				}
 			/>
 			<DataTableClasses data={classes} />
 		</div>

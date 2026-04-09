@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geistMonoHeading = Geist_Mono({subsets:['latin'],variable:'--font-heading'});
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -27,7 +30,7 @@ export default function RootLayout({
 	return (
 		<html
 			lang="en"
-			className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+			className={cn("antialiased", geistSans.variable, geistMono.variable, geistMonoHeading.variable)}
 			suppressHydrationWarning
 		>
 			<body

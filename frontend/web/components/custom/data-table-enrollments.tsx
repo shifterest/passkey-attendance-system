@@ -1,9 +1,12 @@
 "use client";
 
 import {
+	IconChevronDown,
 	IconChevronLeft,
 	IconChevronRight,
 	IconDotsVertical,
+	IconFileImport,
+	IconLayoutColumns,
 	IconPlus,
 	IconTrash,
 } from "@tabler/icons-react";
@@ -14,6 +17,7 @@ import {
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
@@ -26,6 +30,8 @@ import {
 } from "@/app/lib/api";
 import { DataTable } from "@/components/custom/data-table";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
+import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
+import { PageHeader } from "@/components/custom/page-header";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -39,8 +45,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenu,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -83,6 +91,9 @@ export function DataTableEnrollments({
 	const [selectedClassFilter, setSelectedClassFilter] = React.useState("all");
 	const [selectedYearFilter, setSelectedYearFilter] = React.useState("all");
 	const [sorting, setSorting] = React.useState<SortingState>([]);
+	const [rowSelection, setRowSelection] = React.useState({});
+	const [columnVisibility, setColumnVisibility] =
+		React.useState<VisibilityState>({});
 
 	const classById = React.useMemo(
 		() => new Map(classes.map((classValue) => [classValue.id, classValue])),
@@ -192,6 +203,35 @@ export function DataTableEnrollments({
 	const columns = React.useMemo<ColumnDef<ClassEnrollmentDto>[]>(
 		() => [
 			{
+				id: "select",
+				header: ({ table }) => (
+					<div className="flex items-center justify-center">
+						<Checkbox
+							checked={table.getIsAllPageRowsSelected()}
+							indeterminate={
+								table.getIsSomePageRowsSelected() &&
+								!table.getIsAllPageRowsSelected()
+							}
+							onCheckedChange={(value) =>
+								table.toggleAllPageRowsSelected(!!value)
+							}
+							aria-label="Select all"
+						/>
+					</div>
+				),
+				cell: ({ row }) => (
+					<div className="flex w-8 items-center justify-center">
+						<Checkbox
+							checked={row.getIsSelected()}
+							onCheckedChange={(value) => row.toggleSelected(!!value)}
+							aria-label="Select row"
+						/>
+					</div>
+				),
+				enableSorting: false,
+				enableHiding: false,
+			},
+			{
 				accessorKey: "student_id",
 				header: "Student",
 				cell: ({ row }) => {
@@ -297,8 +337,11 @@ export function DataTableEnrollments({
 	const table = useReactTable({
 		data: filtered,
 		columns,
-		state: { sorting },
+		state: { sorting, columnVisibility, rowSelection },
+		enableRowSelection: true,
+		onRowSelectionChange: setRowSelection,
 		onSortingChange: setSorting,
+		onColumnVisibilityChange: setColumnVisibility,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
@@ -315,12 +358,26 @@ export function DataTableEnrollments({
 				prefilledClassId={searchParams.get("class_id") ?? undefined}
 				onSubmit={handleCreateBatch}
 			/>
-			<div className="flex items-center justify-between">
-				<Button type="button" onClick={() => setOpenDialog(true)}>
-					<IconPlus data-icon="inline-start" />
-					Create
-				</Button>
-			</div>
+			<PageHeader
+				title="Enrollments"
+				description="Manage student-class enrollments."
+				actions={
+					<>
+						<ImportUsersDialog
+							trigger={
+								<Button variant="outline" size="sm">
+									<IconFileImport data-icon="inline-start" />
+									Import
+								</Button>
+							}
+						/>
+						<Button size="sm" onClick={() => setOpenDialog(true)}>
+							<IconPlus data-icon="inline-start" />
+							Create
+						</Button>
+					</>
+				}
+			/>
 			{statusMessage && (
 				<div className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">
 					{statusMessage}
@@ -379,10 +436,45 @@ export function DataTableEnrollments({
 					</Select>
 				</Field>
 			</FieldGroup>
+			<div className="flex items-center justify-end">
+				<DropdownMenu>
+					<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+						<IconLayoutColumns data-icon="inline-start" />
+						Columns
+						<IconChevronDown data-icon="inline-end" />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-40">
+						{table
+							.getAllColumns()
+							.filter(
+								(column) =>
+									typeof column.accessorFn !== "undefined" &&
+									column.getCanHide(),
+							)
+							.map((column) => (
+								<DropdownMenuCheckboxItem
+									key={column.id}
+									checked={column.getIsVisible()}
+									onCheckedChange={(value) => column.toggleVisibility(!!value)}
+								>
+									{column.id
+										.replace(/_/g, " ")
+										.replace(/\bid\b/g, "ID")
+										.split(" ")
+										.map((w) =>
+											w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
+										)
+										.join(" ")}
+								</DropdownMenuCheckboxItem>
+							))}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
 			<DataTable table={table} emptyMessage="No enrollments found." />
 			<div className="flex items-center justify-between px-2">
 				<span className="text-sm text-muted-foreground">
-					{table.getFilteredRowModel().rows.length} enrollments
+					{table.getFilteredSelectedRowModel().rows.length} of{" "}
+					{table.getFilteredRowModel().rows.length} row(s) selected.
 				</span>
 				<div className="flex items-center gap-2">
 					<Button
