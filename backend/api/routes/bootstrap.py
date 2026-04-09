@@ -142,7 +142,7 @@ def initialize_operator(
 
     try:
         db.add(new_operator)
-        db.commit()
+        db.flush()
         db.refresh(new_operator)
         logger.info(Logs.OPERATOR_CREATED.format(user_id=new_operator.id))
 
@@ -154,12 +154,12 @@ def initialize_operator(
             + timedelta(seconds=settings.registration_timeout),
         )
         db.add(reg_session)
+        log_audit_event(AuditEvents.BOOTSTRAP_COMPLETED, new_operator.id, None, {}, db)
         db.commit()
 
         redis_client.delete(token_key)
         redis_client.set(BOOTSTRAP_COMPLETED_KEY, "1")
         logger.info(Logs.BOOTSTRAP_COMPLETED)
-        log_audit_event(AuditEvents.BOOTSTRAP_COMPLETED, new_operator.id, None, {}, db)
 
         reg_response = create_registration_session(reg_session)
         return {"registration_url": reg_response.url}

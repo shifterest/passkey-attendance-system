@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart' hide Config;
 import 'package:passkey_attendance_system/screens/authentication_screen.dart';
 import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
 import 'package:passkey_attendance_system/screens/offline_check_in_screen.dart';
@@ -16,11 +15,13 @@ import 'package:passkey_attendance_system/screens/attendance_history_screen.dart
 import 'package:passkey_attendance_system/screens/teacher_offline_scanner_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_offline_session_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_session_screen.dart';
+import 'package:passkey_attendance_system/screens/student_shell.dart';
 
 import 'config/config.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/session_store.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -136,6 +137,9 @@ class ErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       home: Scaffold(
         body: Center(
           child: Padding(
@@ -170,26 +174,27 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: SessionStore.isSessionValid(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (snapshot.data != true) {
-          return const LoginScreen();
-        }
-        final role = SessionStore.getRole();
-        if (role == 'teacher') {
-          return const TeacherHomeScreen();
-        }
-        if (role == 'admin' || role == 'operator') {
-          return const HomeScreen();
-        }
-        return const HomeScreen();
-      },
+    return ValueListenableBuilder<int>(
+      valueListenable: SessionStore.sessionRevision,
+      builder: (context, revision, _) => FutureBuilder<bool>(
+        key: ValueKey(revision),
+        future: SessionStore.isSessionValid(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.data != true) {
+            return const LoginScreen();
+          }
+          final role = SessionStore.getRole();
+          if (role == 'teacher') {
+            return const TeacherHomeScreen();
+          }
+          return const StudentShell();
+        },
+      ),
     );
   }
 }
@@ -252,15 +257,8 @@ class _MainState extends State<Main> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        textTheme: GoogleFonts.googleSansFlexTextTheme(),
-      ),
-      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-        textTheme: GoogleFonts.googleSansFlexTextTheme(
-          ThemeData.dark().textTheme,
-        ),
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       routerConfig: _router,
     );
   }

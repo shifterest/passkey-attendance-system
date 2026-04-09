@@ -69,6 +69,13 @@ def update_credential(
         )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(credential, key, value)
+    log_audit_event(
+        AuditEvents.CREDENTIAL_UPDATED,
+        _.id,
+        credential_id,
+        {"fields": list(updated_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     logger.info(
         Logs.CREDENTIAL_EDITED.format(
@@ -93,8 +100,6 @@ def delete_credential(
     target_user_id = credential.user_id
     old_credential_id = credential.credential_id
     old_key_security_level = credential.key_security_level
-    db.delete(credential)
-    db.commit()
     log_audit_event(
         event_type=AuditEvents.CREDENTIAL_REVOKED,
         actor_id=current_user.id,
@@ -108,6 +113,8 @@ def delete_credential(
         ).model_dump(),
         db=db,
     )
+    db.delete(credential)
+    db.commit()
     logger.info(
         Logs.CREDENTIAL_REVOKED.format(
             credential_id=credential_id,

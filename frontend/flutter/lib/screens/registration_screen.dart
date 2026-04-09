@@ -4,6 +4,7 @@ import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/auth_scaffold.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -96,55 +97,75 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isRegistering) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            spacing: 8,
-            children: [
-              CircularProgressIndicator(),
-              Text(
-                _status,
-                style: Theme.of(context).textTheme.bodyLarge,
-                textAlign: TextAlign.center,
+      return AuthScaffold(
+        title: RegistrationStrings.title,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              RegistrationStrings.subtitle,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 24),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(24),
               ),
-            ],
-          ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _status,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.go('/'),
+              child: const Text(RegistrationStrings.cancel),
+            ),
+          ],
         ),
       );
     }
 
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: 12,
-            children: [
-              Text(
-                RegistrationStrings.errorBody,
-                style: Theme.of(context).textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-              if (_error != null)
-                Text(
-                  _error!,
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-              FilledButton(
-                onPressed: _startRegistration,
-                child: const Text('Retry Registration'),
-              ),
-              TextButton(
-                onPressed: () => context.go('/'),
-                child: const Text('Return to Login'),
-              ),
-            ],
+    return AuthScaffold(
+      title: RegistrationStrings.title,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            RegistrationStrings.errorBody,
+            style: Theme.of(context).textTheme.bodyLarge,
+            textAlign: TextAlign.left,
           ),
-        ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: Theme.of(context).textTheme.bodySmall),
+          ],
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: _startRegistration,
+            child: const Text(RegistrationStrings.retry),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () => context.go('/'),
+            child: const Text(RegistrationStrings.returnToLogin),
+          ),
+        ],
       ),
     );
   }

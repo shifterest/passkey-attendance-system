@@ -25,6 +25,7 @@ from .routes import (
     records,
     register,
     root,
+    semesters,
     sessions,
     students,
     teachers,
@@ -121,6 +122,7 @@ app.include_router(orgs.router)
 app.include_router(policies.router)
 app.include_router(records.router)
 app.include_router(register.router)
+app.include_router(semesters.router)
 app.include_router(sessions.router)
 app.include_router(students.router)
 app.include_router(teachers.router)

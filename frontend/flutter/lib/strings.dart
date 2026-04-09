@@ -57,15 +57,27 @@ final class AuthStrings {
 }
 
 final class RegistrationStrings {
+  static const String title = 'Register device';
+  static const String subtitle =
+      'Link this phone and your passkey to the attendance system.';
   static const String registering = 'Registering...';
   static const String initiating = 'Initiating registration with server...';
   static const String creatingPasskey = 'Creating passkey...';
   static const String verifyingPasskey = 'Verifying passkey with server...';
   static const String errorBody =
       'Something went wrong during registration. Please try again.';
+  static const String retry = 'Retry registration';
+  static const String returnToLogin = 'Return to login';
+  static const String cancel = 'Cancel';
 }
 
 final class QrStrings {
+  static const String registrationTitle = 'Scan registration QR';
+  static const String registrationBody =
+      'Align the registration code inside the frame to continue.';
+  static const String webLoginTitle = 'Scan web login QR';
+  static const String webLoginBody =
+      'Align the web login code inside the frame to continue sign-in.';
   static const String errorInvalidQr = 'Invalid registration QR code';
   static const String errorMissingData = 'Missing registration data';
   static const String errorUnexpectedFailure =
@@ -73,12 +85,28 @@ final class QrStrings {
   static const String errorInvalidWebLoginQr = 'Invalid web login QR code';
   static const String errorMissingWebLoginToken =
       'Missing token in web login QR';
+  static const String torch = 'Torch';
 }
 
 final class HomeStrings {
   static const String appBarTitle = 'Attendance';
+  static const String dashboardTitle = 'Dashboard';
+  static const String dashboardTab = 'Dashboard';
+  static const String historyTab = 'History';
+  static const String offlineTab = 'Offline';
   static const String backToLogin = 'Back to Login';
   static const String signedIn = 'Signed in';
+  static const String readyTitle = 'Ready to check in';
+  static const String readyBody =
+      'Use your passkey when your attendance window opens.';
+  static const String quickActions = 'Quick actions';
+  static const String integrityTitle = 'Integrity';
+  static const String integrityHealthy =
+      'Play Integrity vouched and device binding active.';
+  static const String integrityNeedsRefresh =
+      'Your Play Integrity vouch expires soon. Refresh device integrity soon.';
+  static const String recentStatus = 'Most recent result';
+  static const String scoreLabel = 'Score';
   static const String checkInNow = 'Check In Now';
   static const String checkInOffline = 'Check In Offline';
   static const String viewHistory = 'Attendance History';
@@ -103,8 +131,11 @@ final class CheckInResultStrings {
 }
 
 final class LoginStrings {
-  static const String appTitle = 'Passkey attendance system';
-  static const String selectOptions = 'Select any of the options below';
+  static const String appTitle = 'Passkey Attendance\nSystem';
+  static const String subtitleRegistered =
+      'Continue with your passkey or scan a web login code.';
+  static const String subtitleUnregistered =
+      'Register this device to start using passkey attendance.';
   static const String buttonLoginPasskey = 'Login with passkey';
   static const String buttonLoginWebQr = 'Scan web login QR';
   static const String buttonRegisterPasskey = 'Register a new passkey';
@@ -170,6 +201,7 @@ final class OfflineStrings {
 
 final class HistoryStrings {
   static const String title = 'Attendance History';
+  static const String subtitle = 'Review recent attendance results.';
   static const String noRecords = 'No attendance records yet';
   static const String notLoggedIn = 'Not logged in';
   static const String score = 'Score';

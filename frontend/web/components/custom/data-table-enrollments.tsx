@@ -2,20 +2,14 @@
 
 import {
 	IconChevronDown,
-	IconChevronLeft,
-	IconChevronRight,
-	IconChevronsLeft,
-	IconChevronsRight,
 	IconDotsVertical,
 	IconFileImport,
 	IconFilter,
-	IconLayoutColumns,
 	IconPlus,
 	IconTrash,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
-	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
@@ -32,6 +26,12 @@ import {
 	deleteEnrollment,
 	type UserExtendedDto,
 } from "@/app/lib/api";
+import {
+	DataTableBody,
+	DataTableColumnVisibility,
+	DataTablePagination,
+	SortableHeader,
+} from "@/components/custom/data-table-shared";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
 import { ImportEnrollmentsDialog } from "@/components/custom/import-enrollments-dialog";
 import { SetPageHeader } from "@/components/custom/page-header-context";
@@ -60,31 +60,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-
-function inferYear(schoolId: string | null): string {
-	if (!schoolId) return "Unknown";
-	const value = schoolId.trim();
-	if (value.length < 4) return "Unknown";
-	const year = value.slice(0, 4);
-	return /^\d{4}$/.test(year) ? year : "Unknown";
-}
 
 export function DataTableEnrollments({
 	enrollments: initialEnrollments,
@@ -100,9 +75,16 @@ export function DataTableEnrollments({
 	const [enrollments, setEnrollments] = React.useState(initialEnrollments);
 	const [openDialog, setOpenDialog] = React.useState(false);
 	const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+
+	React.useEffect(() => {
+		if (statusMessage) {
+			const timer = setTimeout(() => setStatusMessage(null), 5000);
+			return () => clearTimeout(timer);
+		}
+	}, [statusMessage]);
 	const [query, setQuery] = React.useState("");
 	const [classFilter, setClassFilter] = React.useState<string[]>([]);
-	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
+	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -129,11 +111,13 @@ export function DataTableEnrollments({
 	}, [searchParams, classById]);
 
 	const yearOptions = React.useMemo(() => {
-		const values = new Set<string>();
+		const values = new Set<number>();
 		for (const student of students) {
-			values.add(inferYear(student.school_id));
+			if (student.enrollment_year !== null) {
+				values.add(student.enrollment_year);
+			}
 		}
-		return Array.from(values).sort();
+		return Array.from(values).sort((a, b) => a - b);
 	}, [students]);
 
 	const filtered = React.useMemo(() => {
@@ -153,7 +137,8 @@ export function DataTableEnrollments({
 			}
 			if (
 				yearFilter.length > 0 &&
-				!yearFilter.includes(inferYear(student.school_id))
+				(student.enrollment_year === null ||
+					!yearFilter.includes(student.enrollment_year))
 			) {
 				return false;
 			}
@@ -266,11 +251,11 @@ export function DataTableEnrollments({
 				},
 			},
 			{
-				id: "year",
-				header: "Year",
+				id: "enrollment_year",
+				header: "Enrollment Year",
 				cell: ({ row }) => {
 					const student = studentById.get(row.original.student_id);
-					return inferYear(student?.school_id ?? null);
+					return student?.enrollment_year ?? "—";
 				},
 			},
 			{
@@ -288,6 +273,17 @@ export function DataTableEnrollments({
 						</div>
 					);
 				},
+			},
+			{
+				id: "enrolled_at",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Enrolled" />
+				),
+				accessorFn: (row) => row.enrolled_at,
+				cell: ({ row }) =>
+					row.original.enrolled_at
+						? new Date(row.original.enrolled_at).toLocaleDateString()
+						: "—",
 			},
 			{
 				id: "actions",
@@ -421,7 +417,7 @@ export function DataTableEnrollments({
 							</DropdownMenuGroup>
 							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
-								<DropdownMenuLabel>Year</DropdownMenuLabel>
+								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
 								{yearOptions.map((year) => (
 									<DropdownMenuCheckboxItem
 										key={year}
@@ -454,161 +450,11 @@ export function DataTableEnrollments({
 							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
-						>
-							<IconLayoutColumns data-icon="inline-start" />
-							Columns
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-40">
-							{table
-								.getAllColumns()
-								.filter(
-									(column) =>
-										typeof column.accessorFn !== "undefined" &&
-										column.getCanHide(),
-								)
-								.map((column) => (
-									<DropdownMenuCheckboxItem
-										key={column.id}
-										checked={column.getIsVisible()}
-										onCheckedChange={(value) =>
-											column.toggleVisibility(!!value)
-										}
-									>
-										{column.id
-											.replace(/_/g, " ")
-											.replace(/\bid\b/g, "ID")
-											.split(" ")
-											.map((w) =>
-												w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
-											)
-											.join(" ")}
-									</DropdownMenuCheckboxItem>
-								))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>
-			<div className="overflow-hidden rounded-lg border">
-				<Table>
-					<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
-						{table.getHeaderGroups().map((hg) => (
-							<TableRow key={hg.id}>
-								{hg.headers.map((h) => (
-									<TableHead key={h.id} colSpan={h.colSpan}>
-										{h.isPlaceholder
-											? null
-											: flexRender(h.column.columnDef.header, h.getContext())}
-									</TableHead>
-								))}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody className="**:data-[slot=table-cell]:first:w-8">
-						{table.getRowModel().rows.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow key={row.id}>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									No enrollments found.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
-			<div className="flex items-center justify-between px-4">
-				<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-					{table.getFilteredSelectedRowModel().rows.length} of{" "}
-					{table.getFilteredRowModel().rows.length} row(s) selected.
-				</div>
-				<div className="flex w-full items-center gap-8 lg:w-fit">
-					<div className="hidden items-center gap-2 lg:flex">
-						<Label htmlFor="rows-per-page" className="text-sm font-medium">
-							Rows per page
-						</Label>
-						<Select
-							value={`${table.getState().pagination.pageSize}`}
-							onValueChange={(v) => table.setPageSize(Number(v))}
-						>
-							<SelectTrigger size="sm" className="w-20" id="rows-per-page">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent side="top">
-								<SelectGroup>
-									{[10, 20, 30, 50].map((s) => (
-										<SelectItem key={s} value={`${s}`}>
-											{s}
-										</SelectItem>
-									))}
-								</SelectGroup>
-							</SelectContent>
-						</Select>
-					</div>
-					<div className="flex w-fit items-center justify-center text-sm font-medium">
-						Page {table.getState().pagination.pageIndex + 1} of{" "}
-						{table.getPageCount()}
-					</div>
-					<div className="ml-auto flex items-center gap-2 lg:ml-0">
-						<Button
-							variant="outline"
-							className="hidden h-8 w-8 p-0 lg:flex"
-							onClick={() => table.setPageIndex(0)}
-							disabled={!table.getCanPreviousPage()}
-						>
-							<span className="sr-only">Go to first page</span>
-							<IconChevronsLeft />
-						</Button>
-						<Button
-							variant="outline"
-							className="size-8"
-							size="icon"
-							onClick={() => table.previousPage()}
-							disabled={!table.getCanPreviousPage()}
-						>
-							<span className="sr-only">Go to previous page</span>
-							<IconChevronLeft />
-						</Button>
-						<Button
-							variant="outline"
-							className="size-8"
-							size="icon"
-							onClick={() => table.nextPage()}
-							disabled={!table.getCanNextPage()}
-						>
-							<span className="sr-only">Go to next page</span>
-							<IconChevronRight />
-						</Button>
-						<Button
-							variant="outline"
-							className="hidden size-8 lg:flex"
-							size="icon"
-							onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-							disabled={!table.getCanNextPage()}
-						>
-							<span className="sr-only">Go to last page</span>
-							<IconChevronsRight />
-						</Button>
-					</div>
-				</div>
-			</div>
+			<DataTableBody table={table} columnCount={columns.length} />
+			<DataTablePagination table={table} pageSizeOptions={[10, 20, 30, 50]} />
 		</div>
 	);
 }

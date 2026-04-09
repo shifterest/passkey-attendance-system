@@ -51,6 +51,9 @@ export const ApiPaths = {
 	webLoginInitiate: "/auth/web-login/initiate",
 	webLoginPoll: (token: string) =>
 		`/auth/web-login/poll?token=${encodeURIComponent(token)}`,
+	semesters: "/semesters/",
+	activeSemester: "/semesters/active",
+	semester: (semesterId: string) => `/semesters/${semesterId}`,
 } as const;
 
 export const ErrorMessages = {

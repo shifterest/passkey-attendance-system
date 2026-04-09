@@ -22,6 +22,14 @@ class Messages:
     CLASS_TEACHER_INVALID_ROLE = "Invalid teacher role"
     CLASS_DELETED = "Class deleted"
 
+    # Semesters
+    SEMESTER_NOT_FOUND = "Semester not found"
+    SEMESTER_DELETED = "Semester deleted"
+    SEMESTER_DATE_OVERLAP = "Semester dates overlap with an existing semester"
+    SESSION_CLASS_NOT_IN_SEMESTER = (
+        "Cannot open session: class is not in an active semester"
+    )
+
     # Class policies
     CLASS_POLICY_NOT_FOUND = "Class policy not found"
     CLASS_POLICY_DELETED = "Class policy deleted"
@@ -187,6 +195,11 @@ class Logs:
     ENROLLMENT_ADDED = "Added enrollment: student {student_name} in class {class_name} (ID: {enrollment_id})"
     ENROLLMENT_EDITED = "Updated enrollment: {enrollment_id}"
 
+    # Semesters
+    SEMESTER_ADDED = "Added semester: {name} (ID: {semester_id})"
+    SEMESTER_EDITED = "Updated semester: {name} (ID: {semester_id})"
+    SEMESTER_ACTIVATED = "Activated semester: {name} (ID: {semester_id})"
+
     # Attendance sessions
     BLE_TOKEN_MISMATCH = "BLE token mismatch or absent for user {user_id} on session {session_id} — BLE score not applied"
     NFC_TOKEN_MISMATCH = "NFC token mismatch or absent for user {user_id} on session {session_id} — NFC score not applied"
@@ -275,3 +288,41 @@ class AuditEvents:
     OFFLINE_RECORD_ESCALATED = "offline_record_escalated"
     SIGN_COUNT_ANOMALY = "sign_count_anomaly"
     USER_UPDATED = "user_updated"
+    USER_CREATED = "user_created"
+    USER_DELETED = "user_deleted"
+    CLASS_CREATED = "class_created"
+    CLASS_UPDATED = "class_updated"
+    CLASS_DELETED = "class_deleted"
+    ENROLLMENT_CREATED = "enrollment_created"
+    POLICY_CREATED = "policy_created"
+    POLICY_UPDATED = "policy_updated"
+    POLICY_DELETED = "policy_deleted"
+    IMPORT_COMPLETED = "import_completed"
+    REGISTRATION_QR_ISSUED = "registration_qr_issued"
+    REGISTRATION_QR_REGENERATED = "registration_qr_regenerated"
+    CREDENTIAL_UNREGISTERED = "credential_unregistered"
+    SEMESTER_CREATED = "semester_created"
+    SEMESTER_UPDATED = "semester_updated"
+    SEMESTER_DELETED = "semester_deleted"
+    ORG_CREATED = "org_created"
+    ORG_UPDATED = "org_updated"
+    ORG_DELETED = "org_deleted"
+    CREDENTIAL_UPDATED = "credential_updated"
+    ENROLLMENT_UPDATED = "enrollment_updated"
+    SESSION_OPENED = "session_opened"
+    SESSION_CLOSED = "session_closed"
+    SESSION_UPDATED = "session_updated"
+    SESSION_DELETED = "session_deleted"
+    RECORD_UPDATED = "record_updated"
+    RECORD_DELETED = "record_deleted"
+    CHECK_IN_SUCCESS = "check_in_success"
+    OFFLINE_SYNC_SUCCESS = "offline_sync_success"
+    EVENT_CREATED = "event_created"
+    EVENT_UPDATED = "event_updated"
+    EVENT_DELETED = "event_deleted"
+    EVENT_RULE_CREATED = "event_rule_created"
+    EVENT_RULE_DELETED = "event_rule_deleted"
+    ORG_MEMBERSHIP_GRANTED = "org_membership_granted"
+    ORG_MEMBERSHIP_REVOKED = "org_membership_revoked"
+    ORG_RULE_CREATED = "org_rule_created"
+    ORG_RULE_DELETED = "org_rule_deleted"

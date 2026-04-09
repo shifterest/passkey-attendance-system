@@ -2,8 +2,9 @@ import logging
 import uuid
 
 from api.schemas import ClassPolicyCreate, ClassPolicyResponse, ClassPolicyUpdate
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from api.strings import Logs, Messages
+from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
 from database.models import Class, ClassPolicy, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -103,6 +104,13 @@ def create_policy(
         max_check_ins=policy_data.max_check_ins,
     )
     db.add(new_policy)
+    log_audit_event(
+        AuditEvents.POLICY_CREATED,
+        current_user.id,
+        new_policy.id,
+        {"class_id": policy_data.class_id},
+        db,
+    )
     db.commit()
     db.refresh(new_policy)
     logger.info(Logs.CLASS_POLICY_ADDED.format(policy_id=new_policy.id))
@@ -123,8 +131,16 @@ def update_policy(
             detail=Messages.CLASS_POLICY_NOT_FOUND,
         )
     _assert_can_modify(policy, current_user)
-    for key, value in updated_data.model_dump(exclude_unset=True).items():
+    updated_fields = updated_data.model_dump(exclude_unset=True)
+    for key, value in updated_fields.items():
         setattr(policy, key, value)
+    log_audit_event(
+        AuditEvents.POLICY_UPDATED,
+        current_user.id,
+        policy.id,
+        {"updated_fields": list(updated_fields.keys())},
+        db,
+    )
     db.commit()
     logger.info(Logs.CLASS_POLICY_EDITED.format(policy_id=policy.id))
     return policy
@@ -144,5 +160,12 @@ def delete_policy(
         )
     _assert_can_modify(policy, current_user)
     db.delete(policy)
+    log_audit_event(
+        AuditEvents.POLICY_DELETED,
+        current_user.id,
+        policy_id,
+        {"class_id": policy.class_id},
+        db,
+    )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

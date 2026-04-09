@@ -1,29 +1,28 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconChevronLeft,
-	IconChevronRight,
-	IconChevronsLeft,
-	IconChevronsRight,
-	IconFilter,
-	IconLayoutColumns,
-} from "@tabler/icons-react";
+import { IconChevronDown, IconFilter } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
 	type FilterFn,
-	flexRender,
 	getCoreRowModel,
 	getFacetedRowModel,
 	getFacetedUniqueValues,
 	getFilteredRowModel,
 	getPaginationRowModel,
+	getSortedRowModel,
+	type SortingState,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
 import * as React from "react";
 import type { AuditEventDto } from "@/app/lib/api";
+import {
+	DataTableBody,
+	DataTableColumnVisibility,
+	DataTablePagination,
+	SortableHeader,
+} from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,27 +37,13 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
 	manual_approval: "text-yellow-600 dark:text-yellow-400",
+	manual_attendance: "text-yellow-600 dark:text-yellow-400",
 	credential_revoked: "text-destructive",
+	credential_unregistered: "text-destructive",
+	credential_updated: "text-blue-600 dark:text-blue-400",
 	device_attestation_failure: "text-destructive",
 	device_attestation_verified: "text-blue-600 dark:text-blue-400",
 	device_key_mismatch: "text-destructive",
@@ -66,6 +51,46 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
 	sign_count_anomaly: "text-orange-500 dark:text-orange-400",
 	bootstrap_attempt: "text-purple-600 dark:text-purple-400",
 	bootstrap_completed: "text-purple-600 dark:text-purple-400",
+	import_completed: "text-green-600 dark:text-green-400",
+	registration_qr_issued: "text-blue-600 dark:text-blue-400",
+	registration_qr_regenerated: "text-blue-600 dark:text-blue-400",
+	enrollment_created: "text-green-600 dark:text-green-400",
+	enrollment_updated: "text-blue-600 dark:text-blue-400",
+	enrollment_deleted: "text-destructive",
+	class_created: "text-green-600 dark:text-green-400",
+	class_updated: "text-blue-600 dark:text-blue-400",
+	class_deleted: "text-destructive",
+	session_opened: "text-green-600 dark:text-green-400",
+	session_closed: "text-orange-500 dark:text-orange-400",
+	session_updated: "text-blue-600 dark:text-blue-400",
+	session_deleted: "text-destructive",
+	record_updated: "text-blue-600 dark:text-blue-400",
+	record_deleted: "text-destructive",
+	check_in_success: "text-green-600 dark:text-green-400",
+	offline_sync_success: "text-green-600 dark:text-green-400",
+	offline_signature_failure: "text-destructive",
+	offline_record_escalated: "text-orange-500 dark:text-orange-400",
+	org_created: "text-green-600 dark:text-green-400",
+	org_updated: "text-blue-600 dark:text-blue-400",
+	org_deleted: "text-destructive",
+	org_membership_granted: "text-green-600 dark:text-green-400",
+	org_membership_revoked: "text-destructive",
+	org_rule_created: "text-green-600 dark:text-green-400",
+	org_rule_deleted: "text-destructive",
+	event_created: "text-green-600 dark:text-green-400",
+	event_updated: "text-blue-600 dark:text-blue-400",
+	event_deleted: "text-destructive",
+	event_rule_created: "text-green-600 dark:text-green-400",
+	event_rule_deleted: "text-destructive",
+	user_created: "text-green-600 dark:text-green-400",
+	user_updated: "text-blue-600 dark:text-blue-400",
+	user_deleted: "text-destructive",
+	policy_created: "text-green-600 dark:text-green-400",
+	policy_updated: "text-blue-600 dark:text-blue-400",
+	policy_deleted: "text-destructive",
+	semester_created: "text-green-600 dark:text-green-400",
+	semester_updated: "text-blue-600 dark:text-blue-400",
+	semester_deleted: "text-destructive",
 };
 
 function renderDetailSummary(event: AuditEventDto) {
@@ -133,7 +158,9 @@ const columns: ColumnDef<AuditEventDto>[] = [
 	},
 	{
 		accessorKey: "created_at",
-		header: "Timestamp",
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Timestamp" />
+		),
 		cell: ({ row }) => (
 			<span className="whitespace-nowrap text-sm">
 				{new Date(row.original.created_at).toLocaleString()}
@@ -199,6 +226,9 @@ export function DataTableLogs({
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		[],
 	);
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{ id: "created_at", desc: true },
+	]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
 		pageSize: 25,
@@ -219,6 +249,7 @@ export function DataTableLogs({
 		data,
 		columns,
 		state: {
+			sorting,
 			columnFilters,
 			columnVisibility,
 			rowSelection,
@@ -227,6 +258,7 @@ export function DataTableLogs({
 		},
 		enableRowSelection: true,
 		onRowSelectionChange: setRowSelection,
+		onSortingChange: setSorting,
 		onColumnVisibilityChange: setColumnVisibility,
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
@@ -242,6 +274,7 @@ export function DataTableLogs({
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
 		getFacetedRowModel: getFacetedRowModel(),
 		getFacetedUniqueValues: getFacetedUniqueValues(),
 	});
@@ -310,162 +343,12 @@ export function DataTableLogs({
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
-						>
-							<IconLayoutColumns data-icon="inline-start" />
-							Columns
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-40">
-							{table
-								.getAllColumns()
-								.filter(
-									(column) =>
-										typeof column.accessorFn !== "undefined" &&
-										column.getCanHide(),
-								)
-								.map((column) => (
-									<DropdownMenuCheckboxItem
-										key={column.id}
-										checked={column.getIsVisible()}
-										onCheckedChange={(value) =>
-											column.toggleVisibility(!!value)
-										}
-									>
-										{column.id
-											.replace(/_/g, " ")
-											.replace(/\bid\b/g, "ID")
-											.split(" ")
-											.map((w) =>
-												w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
-											)
-											.join(" ")}
-									</DropdownMenuCheckboxItem>
-								))}
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-				<div className="overflow-hidden rounded-lg border">
-					<Table>
-						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
-							{table.getHeaderGroups().map((hg) => (
-								<TableRow key={hg.id}>
-									{hg.headers.map((h) => (
-										<TableHead key={h.id} colSpan={h.colSpan}>
-											{h.isPlaceholder
-												? null
-												: flexRender(h.column.columnDef.header, h.getContext())}
-										</TableHead>
-									))}
-								</TableRow>
-							))}
-						</TableHeader>
-						<TableBody className="**:data-[slot=table-cell]:first:w-8">
-							{table.getRowModel().rows.length ? (
-								table.getRowModel().rows.map((row) => (
-									<TableRow key={row.id}>
-										{row.getVisibleCells().map((cell) => (
-											<TableCell key={cell.id}>
-												{flexRender(
-													cell.column.columnDef.cell,
-													cell.getContext(),
-												)}
-											</TableCell>
-										))}
-									</TableRow>
-								))
-							) : (
-								<TableRow>
-									<TableCell
-										colSpan={columns.length}
-										className="h-24 text-center"
-									>
-										No results.
-									</TableCell>
-								</TableRow>
-							)}
-						</TableBody>
-					</Table>
-				</div>
-				<div className="flex items-center justify-between px-4">
-					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-						{table.getFilteredSelectedRowModel().rows.length} of{" "}
-						{table.getFilteredRowModel().rows.length} row(s) selected.
-					</div>
-					<div className="flex w-full items-center gap-8 lg:w-fit">
-						<div className="hidden items-center gap-2 lg:flex">
-							<Label htmlFor="rows-per-page" className="text-sm font-medium">
-								Rows per page
-							</Label>
-							<Select
-								value={`${table.getState().pagination.pageSize}`}
-								onValueChange={(v) => table.setPageSize(Number(v))}
-							>
-								<SelectTrigger size="sm" className="w-20" id="rows-per-page">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent side="top">
-									<SelectGroup>
-										{[25, 50, 100].map((s) => (
-											<SelectItem key={s} value={`${s}`}>
-												{s}
-											</SelectItem>
-										))}
-									</SelectGroup>
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="flex w-fit items-center justify-center text-sm font-medium">
-							Page {table.getState().pagination.pageIndex + 1} of{" "}
-							{table.getPageCount()}
-						</div>
-						<div className="ml-auto flex items-center gap-2 lg:ml-0">
-							<Button
-								variant="outline"
-								className="hidden h-8 w-8 p-0 lg:flex"
-								onClick={() => table.setPageIndex(0)}
-								disabled={!table.getCanPreviousPage()}
-							>
-								<span className="sr-only">Go to first page</span>
-								<IconChevronsLeft />
-							</Button>
-							<Button
-								variant="outline"
-								className="size-8"
-								size="icon"
-								onClick={() => table.previousPage()}
-								disabled={!table.getCanPreviousPage()}
-							>
-								<span className="sr-only">Go to previous page</span>
-								<IconChevronLeft />
-							</Button>
-							<Button
-								variant="outline"
-								className="size-8"
-								size="icon"
-								onClick={() => table.nextPage()}
-								disabled={!table.getCanNextPage()}
-							>
-								<span className="sr-only">Go to next page</span>
-								<IconChevronRight />
-							</Button>
-							<Button
-								variant="outline"
-								className="hidden size-8 lg:flex"
-								size="icon"
-								onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-								disabled={!table.getCanNextPage()}
-							>
-								<span className="sr-only">Go to last page</span>
-								<IconChevronsRight />
-							</Button>
-						</div>
-					</div>
-				</div>
+				<DataTableBody table={table} columnCount={columns.length} />
+				<DataTablePagination table={table} pageSizeOptions={[25, 50, 100]} />
 			</div>
 		</div>
 	);

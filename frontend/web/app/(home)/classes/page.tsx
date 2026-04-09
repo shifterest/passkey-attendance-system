@@ -1,5 +1,5 @@
 import { IconFileImport, IconPlus } from "@tabler/icons-react";
-import { getClasses, getTeachers } from "@/app/lib/api";
+import { getClasses, getSemesters, getTeachers } from "@/app/lib/api";
 import { CreateClassDialog } from "@/components/custom/create-class-dialog";
 import { DataTableClasses } from "@/components/custom/data-table-classes";
 import { ImportClassesDialog } from "@/components/custom/import-classes-dialog";
@@ -7,7 +7,11 @@ import { SetPageHeader } from "@/components/custom/page-header-context";
 import { Button } from "@/components/ui/button";
 
 export default async function Page() {
-	const [classes, teachers] = await Promise.all([getClasses(), getTeachers()]);
+	const [classes, teachers, semesters] = await Promise.all([
+		getClasses(),
+		getTeachers(),
+		getSemesters(),
+	]);
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 			<SetPageHeader
@@ -25,6 +29,7 @@ export default async function Page() {
 						/>
 						<CreateClassDialog
 							teachers={teachers}
+							semesters={semesters}
 							trigger={
 								<Button size="sm">
 									<IconPlus data-icon="inline-start" />
@@ -35,7 +40,7 @@ export default async function Page() {
 					</div>
 				}
 			/>
-			<DataTableClasses data={classes} />
+			<DataTableClasses data={classes} teachers={teachers} />
 		</div>
 	);
 }

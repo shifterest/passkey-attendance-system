@@ -5,8 +5,9 @@ import {
 	IconChalkboard,
 	IconChalkboardTeacher,
 	IconClipboard,
-	IconDashboard,
+	IconLayoutDashboardFilled,
 	IconLogs,
+	IconScale,
 	IconTool,
 	IconUser,
 	IconUserEdit,
@@ -30,7 +31,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		IconItem,
 		React.ComponentType<{ className?: string }>
 	> = {
-		dashboard: IconDashboard,
+		dashboard: IconLayoutDashboardFilled,
 		logs: IconLogs,
 		users: IconUser,
 		students: IconUserEdit,
@@ -39,6 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		classes: IconChalkboard,
 		enrollments: IconClipboard,
 		records: IconClipboard,
+		policies: IconScale,
 		orgs: IconUsersGroup,
 		events: IconCalendarEvent,
 	};

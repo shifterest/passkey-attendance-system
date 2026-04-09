@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function SiteHeader() {
-	const { title, description, actions } = usePageHeaderState();
+	const { title, description, actionsRef } = usePageHeaderState();
 
 	return (
 		<header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -23,11 +23,10 @@ export function SiteHeader() {
 						</span>
 					)}
 				</div>
-				{actions && (
-					<div className="ml-auto flex items-center gap-2 shrink-0">
-						{actions}
-					</div>
-				)}
+				<div
+					ref={actionsRef}
+					className="ml-auto flex items-center gap-2 shrink-0"
+				/>
 			</div>
 		</header>
 	);

@@ -164,6 +164,18 @@ def open_teacher_session(
 
     target_class = matching_classes[0]
 
+    if target_class.semester_id is not None:
+        from database.models import Semester
+
+        semester = (
+            db.query(Semester).filter(Semester.id == target_class.semester_id).first()
+        )
+        if semester is None or not semester.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=Messages.SESSION_CLASS_NOT_IN_SEMESTER,
+            )
+
     class_policy = (
         db.query(ClassPolicy).filter(ClassPolicy.class_id == target_class.id).first()
     )
@@ -214,6 +226,13 @@ def open_teacher_session(
     )
 
     db.add(new_session)
+    log_audit_event(
+        AuditEvents.SESSION_OPENED,
+        current_user.id,
+        new_session.id,
+        {"class_id": target_class.id},
+        db,
+    )
     db.commit()
     db.refresh(new_session)
     redis_client.set(
@@ -402,6 +421,13 @@ def offline_sync(
                 )
             )
 
+    log_audit_event(
+        AuditEvents.OFFLINE_SYNC_SUCCESS,
+        current_user.id,
+        new_session.id,
+        {"record_count": len(results), "class_id": sync_data.class_id},
+        db,
+    )
     db.commit()
     logger.info(Logs.SESSION_ADDED.format(session_id=new_session.id))
     return OfflineSyncResponse(session_id=new_session.id, results=results)
@@ -499,6 +525,13 @@ def close_session(
             detail=Messages.SESSION_ALREADY_CLOSED,
         )
     session.status = "closed"
+    log_audit_event(
+        AuditEvents.SESSION_CLOSED,
+        current_user.id,
+        session_id,
+        {},
+        db,
+    )
     db.commit()
     logger.info(
         Logs.SESSION_CLOSED.format(session_id=session.id, user_id=current_user.id)
@@ -526,6 +559,13 @@ def update_session(
             )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(session, key, value)
+    log_audit_event(
+        AuditEvents.SESSION_UPDATED,
+        current_user.id,
+        session_id,
+        {"fields": list(updated_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     logger.info(Logs.SESSION_EDITED.format(session_id=session.id))
     return session
@@ -542,6 +582,13 @@ def delete_session(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.SESSION_DELETED,
+        _.id,
+        session_id,
+        {"class_id": session.class_id},
+        db,
+    )
     db.delete(session)
     db.commit()
     return Response(status_code=204)

@@ -320,6 +320,11 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     } else {
       final result = await AuthApi.checkInVerify(credentialJson);
       _checkInRecord = result;
+      await SessionStore.saveLastCheckIn(
+        status: result['status'] as String? ?? 'unknown',
+        band: result['assurance_band_recorded'] as String? ?? 'unknown',
+        score: result['assurance_score'] as int? ?? 0,
+      );
       unawaited(submitPlayIntegrityVouch());
     }
     return true;

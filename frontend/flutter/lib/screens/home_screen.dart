@@ -5,9 +5,19 @@ import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/api_client.dart';
+import 'package:passkey_attendance_system/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.embedded = false,
+    this.onOpenHistory,
+    this.onOpenOffline,
+  });
+
+  final bool embedded;
+  final VoidCallback? onOpenHistory;
+  final VoidCallback? onOpenOffline;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,7 +33,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    SessionStore.sessionRevision.addListener(_handleSessionRevision);
     _userIdFuture = SessionStore.getUserId();
+    _loadLastCheckIn();
+    _checkPiVouchStatus();
+  }
+
+  void _handleSessionRevision() {
     _loadLastCheckIn();
     _checkPiVouchStatus();
   }
@@ -31,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SessionStore.sessionRevision.removeListener(_handleSessionRevision);
     super.dispose();
   }
 
@@ -43,9 +60,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadLastCheckIn() async {
     final data = await SessionStore.getLastCheckIn();
-    if (mounted && data != null) {
+    if (mounted) {
       setState(() => _lastCheckIn = data);
     }
+  }
+
+  Future<void> _refreshDashboard() async {
+    await Future.wait([_loadLastCheckIn(), _checkPiVouchStatus()]);
   }
 
   Future<void> _checkPiVouchStatus() async {
@@ -93,33 +114,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: _userIdFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+  Future<void> _goToCheckIn(String userId) async {
+    await context.push('/authenticate?user_id=${Uri.encodeComponent(userId)}');
+  }
 
-        final userId = snapshot.data;
-        if (userId == null || userId.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: const Text(HomeStrings.appBarTitle)),
-            body: Center(
-              child: FilledButton(
-                onPressed: () => GoRouter.of(context).go('/'),
-                child: const Text(HomeStrings.backToLogin),
-              ),
+  Widget _buildInfoCard({
+    required BuildContext context,
+    required String label,
+    required Widget child,
+    Color? color,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: AppTheme.sectionLabel(theme.textTheme, theme.colorScheme)
+                  .copyWith(
+                    color: color == null
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.onPrimaryContainer.withValues(
+                            alpha: 0.8,
+                          ),
+                  ),
             ),
-          );
-        }
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text(HomeStrings.appBarTitle),
+  Widget _buildDashboard(BuildContext context, String userId) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final status = _lastCheckIn?['status'] as String?;
+    final band = _lastCheckIn?['band'] as String?;
+    final score = _lastCheckIn?['score'];
+    final savedTime = _lastCheckIn?['time'] as String?;
+
+    return RefreshIndicator(
+      onRefresh: _refreshDashboard,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 124,
             actions: [
               IconButton(
                 onPressed: _isLoggingOut ? null : () => _logout(userId),
@@ -129,120 +178,185 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.logout),
+                    : const Icon(Icons.logout_rounded),
               ),
             ],
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 20,
+                bottom: 14,
+              ),
+              title: Text(
+                HomeStrings.dashboardTitle,
+                style: AppTheme.sliverTitle(theme.textTheme, colorScheme),
+              ),
+            ),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  HomeStrings.signedIn,
-                  style: Theme.of(context).textTheme.titleMedium,
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildInfoCard(
+                  context: context,
+                  label: HomeStrings.readyTitle,
+                  color: colorScheme.primaryContainer,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        status == null
+                            ? HomeStrings.readyBody
+                            : '${status[0].toUpperCase()}${status.substring(1)}${band != null ? ' · ${band.toString().toUpperCase()}' : ''}',
+                        style: AppTheme.heroMetric(
+                          theme.textTheme,
+                          colorScheme,
+                        ).copyWith(color: colorScheme.onPrimaryContainer),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        HomeStrings.userId(userId),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer.withValues(
+                            alpha: 0.82,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.icon(
+                        onPressed: () => _goToCheckIn(userId),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.onPrimaryContainer,
+                          foregroundColor: colorScheme.primaryContainer,
+                        ),
+                        icon: const Icon(Icons.how_to_reg_rounded),
+                        label: const Text(HomeStrings.checkInNow),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  HomeStrings.userId(userId),
-                  style: Theme.of(context).textTheme.bodyMedium,
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  context: context,
+                  label: HomeStrings.quickActions,
+                  child: Column(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed:
+                            widget.onOpenHistory ??
+                            () => context.push('/history'),
+                        icon: const Icon(Icons.history_rounded),
+                        label: const Text(HomeStrings.viewHistory),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed:
+                            widget.onOpenOffline ??
+                            () => context.push('/offline-check-in'),
+                        icon: const Icon(Icons.wifi_off_rounded),
+                        label: const Text(HomeStrings.checkInOffline),
+                      ),
+                    ],
+                  ),
                 ),
-                if (_piVouchExpiresSoon) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  context: context,
+                  label: HomeStrings.integrityTitle,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        _piVouchExpiresSoon
+                            ? Icons.warning_amber_rounded
+                            : Icons.verified_user_rounded,
+                        color: _piVouchExpiresSoon
+                            ? Colors.orange
+                            : colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _piVouchExpiresSoon
+                              ? HomeStrings.integrityNeedsRefresh
+                              : HomeStrings.integrityHealthy,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_lastCheckIn != null)
+                  _buildInfoCard(
+                    context: context,
+                    label: HomeStrings.recentStatus,
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.warning_amber,
-                          color: Colors.orange,
-                          size: 20,
+                        Icon(
+                          Icons.circle,
+                          size: 12,
+                          color: switch (status) {
+                            'present' => Colors.green,
+                            'late' => Colors.orange,
+                            _ => Colors.red,
+                          },
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: Text(
-                            HomeStrings.piVouchExpiring,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (_lastCheckIn != null) ...[
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            HomeStrings.lastCheckIn,
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.circle,
-                                size: 10,
-                                color: switch (_lastCheckIn!['status']) {
-                                  'present' => Colors.green,
-                                  'late' => Colors.orange,
-                                  _ => Colors.red,
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              Text(_lastCheckIn!['status'] as String? ?? ''),
-                              const SizedBox(width: 12),
                               Text(
-                                _lastCheckIn!['band'] as String? ?? '',
-                                style: Theme.of(context).textTheme.bodySmall,
+                                '${status?[0].toUpperCase() ?? ''}${status?.substring(1) ?? ''}',
+                                style: theme.textTheme.titleMedium,
                               ),
-                              const Spacer(),
+                              const SizedBox(height: 4),
                               Text(
-                                _lastCheckIn!['date'] as String? ?? '',
-                                style: Theme.of(context).textTheme.bodySmall,
+                                '${HomeStrings.scoreLabel}: ${score ?? '—'}${savedTime != null ? ' · $savedTime' : ''}',
+                                style: theme.textTheme.bodySmall,
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        if (band != null)
+                          Chip(
+                            label: Text(band.toUpperCase()),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () {
-                    context.push(
-                      '/authenticate?user_id=${Uri.encodeComponent(userId)}',
-                    );
-                  },
-                  icon: const Icon(Icons.how_to_reg),
-                  label: const Text(HomeStrings.checkInNow),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => context.push('/offline-check-in'),
-                  icon: const Icon(Icons.wifi_off),
-                  label: const Text(HomeStrings.checkInOffline),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => context.push('/history'),
-                  icon: const Icon(Icons.history),
-                  label: const Text(HomeStrings.viewHistory),
-                ),
-              ],
+              ]),
             ),
           ),
-        );
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: _userIdFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          final loading = const Center(child: CircularProgressIndicator());
+          return widget.embedded ? loading : Scaffold(body: loading);
+        }
+
+        final userId = snapshot.data;
+        if (userId == null || userId.isEmpty) {
+          final fallback = Center(
+            child: FilledButton(
+              onPressed: () => GoRouter.of(context).go('/'),
+              child: const Text(HomeStrings.backToLogin),
+            ),
+          );
+          return widget.embedded ? fallback : Scaffold(body: fallback);
+        }
+
+        final dashboard = _buildDashboard(context, userId);
+        return widget.embedded ? dashboard : Scaffold(body: dashboard);
       },
     );
   }

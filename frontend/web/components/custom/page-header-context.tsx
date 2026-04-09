@@ -4,19 +4,21 @@ import {
 	createContext,
 	type Dispatch,
 	type ReactNode,
+	type RefObject,
 	type SetStateAction,
 	useContext,
 	useEffect,
+	useRef,
 	useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 type PageHeaderContextValue = {
 	title: string;
 	description: string;
-	actions: ReactNode;
 	setTitle: Dispatch<SetStateAction<string>>;
 	setDescription: Dispatch<SetStateAction<string>>;
-	setActions: Dispatch<SetStateAction<ReactNode>>;
+	actionsRef: RefObject<HTMLDivElement | null>;
 };
 
 const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
@@ -24,16 +26,15 @@ const PageHeaderContext = createContext<PageHeaderContextValue | null>(null);
 export function PageHeaderProvider({ children }: { children: ReactNode }) {
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
-	const [actions, setActions] = useState<ReactNode>(null);
+	const actionsRef = useRef<HTMLDivElement | null>(null);
 	return (
 		<PageHeaderContext
 			value={{
 				title,
 				description,
-				actions,
 				setTitle,
 				setDescription,
-				setActions,
+				actionsRef,
 			}}
 		>
 			{children}
@@ -47,7 +48,7 @@ export function usePageHeaderState() {
 	return {
 		title: ctx.title,
 		description: ctx.description,
-		actions: ctx.actions,
+		actionsRef: ctx.actionsRef,
 	};
 }
 
@@ -62,7 +63,8 @@ export function SetPageHeader({
 }) {
 	const ctx = useContext(PageHeaderContext);
 	if (!ctx) throw new Error("SetPageHeader requires PageHeaderProvider");
-	const { setTitle, setDescription, setActions } = ctx;
+	const { setTitle, setDescription, actionsRef } = ctx;
+	const [mounted, setMounted] = useState(false);
 	useEffect(() => {
 		setTitle(title);
 		return () => setTitle("");
@@ -72,8 +74,10 @@ export function SetPageHeader({
 		return () => setDescription("");
 	}, [description, setDescription]);
 	useEffect(() => {
-		setActions(actions ?? null);
-		return () => setActions(null);
-	}, [actions, setActions]);
-	return null;
+		setMounted(true);
+		return () => setMounted(false);
+	}, []);
+	return mounted && actions && actionsRef.current
+		? createPortal(actions, actionsRef.current)
+		: null;
 }

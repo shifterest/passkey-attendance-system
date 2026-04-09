@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from api.config import settings
+from api.services.audit_service import log_audit_event
 from api.services.auth_service import create_registration_session
 from api.services.import_service import (
     process_class_import,
@@ -12,7 +13,7 @@ from api.services.import_service import (
     process_org_import,
 )
 from api.services.session_service import require_role
-from api.strings import Logs, Messages
+from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
 from database.models import Credential, RegistrationSession, User
 from fastapi import (
@@ -51,10 +52,16 @@ def register_user(
         + timedelta(seconds=settings.registration_timeout),
     )
     db.add(new_session)
+    log_audit_event(
+        AuditEvents.REGISTRATION_QR_ISSUED,
+        _.id,
+        user_id,
+        {"expires_in": settings.registration_timeout},
+        db,
+    )
     db.commit()
 
     response = create_registration_session(new_session)
-
     logger.info(
         Logs.REGISTER_SESSION_CREATED.format(full_name=user.full_name, user_id=user.id)
     )
@@ -81,6 +88,14 @@ def unregister_user(
 
     for credential in credentials:
         db.delete(credential)
+
+    log_audit_event(
+        AuditEvents.CREDENTIAL_UNREGISTERED,
+        _.id,
+        user_id,
+        {"credential_count": len(credentials)},
+        db,
+    )
     db.commit()
 
     logger.info(
@@ -103,6 +118,20 @@ async def import_users(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
         )
+    if not dry_run:
+        log_audit_event(
+            AuditEvents.IMPORT_COMPLETED,
+            _.id,
+            None,
+            {
+                "type": "users",
+                "format": format,
+                "created": result.get("created", 0),
+                "updated": result.get("updated", 0),
+            },
+            db,
+        )
+        db.commit()
     return result
 
 
@@ -119,6 +148,15 @@ async def import_classes(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
         )
+    if not dry_run:
+        log_audit_event(
+            AuditEvents.IMPORT_COMPLETED,
+            _.id,
+            None,
+            {"type": "classes", "created": result.get("created", 0)},
+            db,
+        )
+        db.commit()
     return result
 
 
@@ -135,6 +173,15 @@ async def import_enrollments(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
         )
+    if not dry_run:
+        log_audit_event(
+            AuditEvents.IMPORT_COMPLETED,
+            _.id,
+            None,
+            {"type": "enrollments", "created": result.get("created", 0)},
+            db,
+        )
+        db.commit()
     return result
 
 
@@ -151,4 +198,13 @@ async def import_orgs(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
         )
+    if not dry_run:
+        log_audit_event(
+            AuditEvents.IMPORT_COMPLETED,
+            _.id,
+            None,
+            {"type": "orgs", "created": result.get("created", 0)},
+            db,
+        )
+        db.commit()
     return result

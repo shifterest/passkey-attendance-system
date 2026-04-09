@@ -3,9 +3,12 @@ import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/api_client.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/theme/app_theme.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
-  const AttendanceHistoryScreen({super.key});
+  const AttendanceHistoryScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<AttendanceHistoryScreen> createState() =>
@@ -61,32 +64,71 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text(HistoryStrings.title)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(_error!, textAlign: TextAlign.center),
+  Widget _buildScrollContent(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return RefreshIndicator(
+      onRefresh: _fetchRecords,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 112,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 20,
+                bottom: 14,
               ),
-            )
-          : _records == null || _records!.isEmpty
-          ? const Center(child: Text(HistoryStrings.noRecords))
-          : RefreshIndicator(
-              onRefresh: _fetchRecords,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _records!.length,
-                itemBuilder: (context, index) {
-                  return _RecordCard(record: _records![index]);
-                },
+              title: Text(
+                HistoryStrings.title,
+                style: AppTheme.sliverTitle(theme.textTheme, theme.colorScheme),
               ),
             ),
+          ),
+          if (_loading)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(_error!, textAlign: TextAlign.center),
+                ),
+              ),
+            )
+          else if (_records == null || _records!.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text(HistoryStrings.noRecords)),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _RecordCard(record: _records![index]),
+                  );
+                }, childCount: _records!.length),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _buildScrollContent(context);
+    return widget.embedded ? content : Scaffold(body: content);
   }
 }
 
@@ -128,9 +170,8 @@ class _RecordCard extends StatelessWidget {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Icon(Icons.circle, color: statusColor, size: 10),
@@ -152,12 +193,12 @@ class _RecordCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                            horizontal: 8,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             bandLabel,
@@ -190,7 +231,7 @@ class _RecordCard extends StatelessWidget {
                               return Chip(
                                 label: Text(
                                   label,
-                                  style: const TextStyle(fontSize: 10),
+                                  style: const TextStyle(fontSize: 11),
                                 ),
                                 visualDensity: VisualDensity.compact,
                                 materialTapTargetSize:

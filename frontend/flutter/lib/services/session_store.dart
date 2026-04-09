@@ -1,14 +1,20 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class SessionStore {
   static late final SharedPreferencesWithCache prefs;
+  static final ValueNotifier<int> sessionRevision = ValueNotifier<int>(0);
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(),
   );
+
+  static void _notifySessionChanged() {
+    sessionRevision.value = sessionRevision.value + 1;
+  }
 
   static Future<void> init() async {
     prefs = await SharedPreferencesWithCache.create(
@@ -35,10 +41,12 @@ class SessionStore {
       'sessionExpiry',
       DateTime.now().add(Duration(seconds: expiresIn)).toIso8601String(),
     );
+    _notifySessionChanged();
   }
 
   static Future<void> saveUserId(String userId) async {
     await prefs.setString('userId', userId);
+    _notifySessionChanged();
   }
 
   static Future<String> getDeviceId() async {
@@ -73,10 +81,12 @@ class SessionStore {
     await _secureStorage.delete(key: 'sessionToken');
     await prefs.remove("sessionExpiry");
     await prefs.remove("role");
+    _notifySessionChanged();
   }
 
   static Future<void> saveRole(String role) async {
     await prefs.setString('role', role);
+    _notifySessionChanged();
   }
 
   static String? getRole() {
@@ -88,13 +98,17 @@ class SessionStore {
     required String band,
     required int score,
   }) async {
+    final now = DateTime.now();
     final data = jsonEncode({
       'status': status,
       'band': band,
       'score': score,
-      'date': DateTime.now().toIso8601String().split('T').first,
+      'date': '${now.month}/${now.day}',
+      'time': '${now.hour}:${now.minute.toString().padLeft(2, '0')}',
+      'saved_at': now.toIso8601String(),
     });
     await prefs.setString('lastCheckIn', data);
+    _notifySessionChanged();
   }
 
   static Future<Map<String, dynamic>?> getLastCheckIn() async {

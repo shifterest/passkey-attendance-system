@@ -24,6 +24,9 @@ def get_student_details(user_id: str, db: Session):
         db.query(AttendanceRecord).filter(AttendanceRecord.user_id == user_id).all()
     )
     flagged = sum(1 for r in attendance_records if r.is_flagged)
+    low_assurance = sum(
+        1 for r in attendance_records if r.assurance_band_recorded == "low"
+    )
     registered = (
         db.query(Credential).filter(Credential.user_id == user_id).first() is not None
     )
@@ -80,6 +83,7 @@ def get_student_details(user_id: str, db: Session):
         "in_class": in_class,
         "records": records,
         "flagged": flagged,
+        "low_assurance": low_assurance,
         "registered": registered,
     }
 

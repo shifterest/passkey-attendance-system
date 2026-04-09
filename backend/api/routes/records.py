@@ -254,7 +254,6 @@ def approve_record(
     record.manually_approved = True
     record.manually_approved_by = current_user.id
     record.manually_approved_reason = body.reason
-    db.commit()
     log_audit_event(
         event_type=AuditEvents.MANUAL_APPROVAL,
         actor_id=current_user.id,
@@ -267,6 +266,7 @@ def approve_record(
         ).model_dump(),
         db=db,
     )
+    db.commit()
     logger.info(
         Logs.RECORD_APPROVED.format(record_id=record.id, user_id=current_user.id)
     )
@@ -361,8 +361,6 @@ def create_manual_record(
         gps_is_mock=False,
     )
     db.add(new_record)
-    db.commit()
-    db.refresh(new_record)
     log_audit_event(
         AuditEvents.MANUAL_ATTENDANCE,
         current_user.id,
@@ -378,6 +376,8 @@ def create_manual_record(
         ).model_dump(exclude_none=True),
         db,
     )
+    db.commit()
+    db.refresh(new_record)
     logger.info(
         Logs.MANUAL_RECORD_CREATED.format(
             record_id=new_record.id,
@@ -545,6 +545,13 @@ def update_record(
                 )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(record, key, value)
+    log_audit_event(
+        AuditEvents.RECORD_UPDATED,
+        current_user.id,
+        record_id,
+        {"fields": list(updated_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     logger.info(Logs.RECORD_EDITED.format(record_id=record.id))
     return record
@@ -561,6 +568,13 @@ def delete_record(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.RECORD_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.RECORD_DELETED,
+        _.id,
+        record_id,
+        {"user_id": record.user_id, "session_id": record.session_id},
+        db,
+    )
     db.delete(record)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

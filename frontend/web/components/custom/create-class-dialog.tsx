@@ -3,7 +3,7 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { createClass, type TeacherDto } from "@/app/lib/api";
+import { createClass, type SemesterDto, type TeacherDto } from "@/app/lib/api";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -26,7 +26,15 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = [
+	{ key: "Sun", label: "S" },
+	{ key: "Mon", label: "M" },
+	{ key: "Tue", label: "T" },
+	{ key: "Wed", label: "W" },
+	{ key: "Thu", label: "T" },
+	{ key: "Fri", label: "F" },
+	{ key: "Sat", label: "S" },
+];
 
 interface ScheduleBlock {
 	days: string[];
@@ -36,17 +44,20 @@ interface ScheduleBlock {
 
 interface CreateClassDialogProps {
 	teachers: TeacherDto[];
+	semesters: SemesterDto[];
 	trigger: React.ReactNode;
 }
 
 export function CreateClassDialog({
 	teachers,
+	semesters,
 	trigger,
 }: CreateClassDialogProps) {
 	const router = useRouter();
 	const [open, setOpen] = React.useState(false);
 	const [submitting, setSubmitting] = React.useState(false);
 	const [teacherId, setTeacherId] = React.useState("");
+	const [semesterId, setSemesterId] = React.useState("");
 	const [courseCode, setCourseCode] = React.useState("");
 	const [courseName, setCourseName] = React.useState("");
 	const [schedule, setSchedule] = React.useState<ScheduleBlock[]>([
@@ -55,6 +66,7 @@ export function CreateClassDialog({
 
 	function reset() {
 		setTeacherId("");
+		setSemesterId("");
 		setCourseCode("");
 		setCourseName("");
 		setSchedule([{ days: [], start_time: "08:00", end_time: "09:00" }]);
@@ -79,7 +91,13 @@ export function CreateClassDialog({
 	}
 
 	async function handleSubmit() {
-		if (!courseCode.trim() || !courseName.trim() || !teacherId || submitting)
+		if (
+			!courseCode.trim() ||
+			!courseName.trim() ||
+			!teacherId ||
+			!semesterId ||
+			submitting
+		)
 			return;
 		const validSchedule = schedule.filter(
 			(b) => b.days.length > 0 && b.start_time && b.end_time,
@@ -88,6 +106,7 @@ export function CreateClassDialog({
 		try {
 			await createClass({
 				teacher_id: teacherId,
+				semester_id: semesterId,
 				course_code: courseCode.trim(),
 				course_name: courseName.trim(),
 				schedule: validSchedule,
@@ -113,7 +132,7 @@ export function CreateClassDialog({
 			>
 				{!React.isValidElement(trigger) && trigger}
 			</DialogTrigger>
-			<DialogContent className="max-w-lg">
+			<DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Create class</DialogTitle>
 					<DialogDescription>
@@ -137,6 +156,28 @@ export function CreateClassDialog({
 									{teachers.map((t) => (
 										<SelectItem key={t.id} value={t.id}>
 											{t.full_name}
+										</SelectItem>
+									))}
+								</SelectGroup>
+							</SelectContent>
+						</Select>
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="create-class-semester">Semester</FieldLabel>
+						<Select
+							value={semesterId}
+							onValueChange={(v) => {
+								if (v !== null) setSemesterId(v);
+							}}
+						>
+							<SelectTrigger id="create-class-semester" className="w-full">
+								<SelectValue placeholder="Select a semester" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectGroup>
+									{semesters.map((s) => (
+										<SelectItem key={s.id} value={s.id}>
+											{s.name}
 										</SelectItem>
 									))}
 								</SelectGroup>
@@ -185,19 +226,22 @@ export function CreateClassDialog({
 										</Button>
 									)}
 								</div>
-								<div className="flex flex-wrap gap-1">
+								<div className="grid grid-cols-7 gap-1">
 									{DAYS.map((day) => (
 										<Button
-											key={day}
-											variant={block.days.includes(day) ? "default" : "outline"}
+											key={day.key}
+											variant={
+												block.days.includes(day.key) ? "default" : "outline"
+											}
 											size="sm"
-											className="h-7 px-2 text-xs"
-											onClick={() => toggleDay(i, day)}
+											className="h-8 text-xs"
+											onClick={() => toggleDay(i, day.key)}
 										>
-											{day}
+											{day.label}
 										</Button>
 									))}
 								</div>
+								<div className="border-t" />
 								<div className="grid grid-cols-2 gap-2">
 									<Field>
 										<FieldLabel className="text-xs">Start</FieldLabel>
@@ -247,7 +291,8 @@ export function CreateClassDialog({
 							submitting ||
 							!courseCode.trim() ||
 							!courseName.trim() ||
-							!teacherId
+							!teacherId ||
+							!semesterId
 						}
 					>
 						{submitting ? "Creating…" : "Create"}

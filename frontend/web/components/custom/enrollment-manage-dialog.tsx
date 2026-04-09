@@ -9,7 +9,7 @@ import {
 } from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -62,14 +62,6 @@ type Props = {
 	onSubmit: (classIds: string[], studentIds: string[]) => Promise<void>;
 };
 
-function inferYear(schoolId: string | null): string {
-	if (!schoolId) return "Unknown";
-	const value = schoolId.trim();
-	if (value.length < 4) return "Unknown";
-	const year = value.slice(0, 4);
-	return /^\d{4}$/.test(year) ? year : "Unknown";
-}
-
 function sortBySchoolId(a: UserExtendedDto, b: UserExtendedDto) {
 	const aId = a.school_id ?? "";
 	const bId = b.school_id ?? "";
@@ -89,7 +81,8 @@ export function EnrollmentManageDialog({
 }: Props) {
 	const [classIds, setClassIds] = React.useState<string[]>([]);
 	const [query, setQuery] = React.useState("");
-	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
+	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
+	const [programFilter, setProgramFilter] = React.useState<string[]>([]);
 	const [blockSize, setBlockSize] = React.useState(50);
 	const [offset, setOffset] = React.useState(0);
 
@@ -104,6 +97,7 @@ export function EnrollmentManageDialog({
 		setClassIds(prefilledClassId ? [prefilledClassId] : []);
 		setQuery("");
 		setYearFilter([]);
+		setProgramFilter([]);
 		setBlockSize(50);
 		setOffset(0);
 		setSelectedIds(new Set());
@@ -119,9 +113,17 @@ export function EnrollmentManageDialog({
 	);
 
 	const yearOptions = React.useMemo(() => {
+		const values = new Set<number>();
+		for (const student of students) {
+			if (student.enrollment_year != null) values.add(student.enrollment_year);
+		}
+		return Array.from(values).sort((a, b) => a - b);
+	}, [students]);
+
+	const programOptions = React.useMemo(() => {
 		const values = new Set<string>();
 		for (const student of students) {
-			values.add(inferYear(student.school_id));
+			if (student.program) values.add(student.program);
 		}
 		return Array.from(values).sort();
 	}, [students]);
@@ -132,7 +134,14 @@ export function EnrollmentManageDialog({
 			.filter((student) => {
 				if (
 					yearFilter.length > 0 &&
-					!yearFilter.includes(inferYear(student.school_id))
+					(student.enrollment_year == null ||
+						!yearFilter.includes(student.enrollment_year))
+				) {
+					return false;
+				}
+				if (
+					programFilter.length > 0 &&
+					(!student.program || !programFilter.includes(student.program))
 				) {
 					return false;
 				}
@@ -146,7 +155,7 @@ export function EnrollmentManageDialog({
 				);
 			})
 			.sort(sortBySchoolId);
-	}, [students, query, yearFilter]);
+	}, [students, query, yearFilter, programFilter]);
 
 	const allVisibleSelected =
 		filteredStudents.length > 0 &&
@@ -190,10 +199,17 @@ export function EnrollmentManageDialog({
 		setSelectedIds(new Set(range.map((student) => student.id)));
 	};
 
-	const toggleYearFilter = (year: string, checked: boolean) => {
+	const toggleYearFilter = (year: number, checked: boolean) => {
 		setYearFilter((prev) => {
 			if (checked) return [...new Set([...prev, year])];
 			return prev.filter((y) => y !== year);
+		});
+	};
+
+	const toggleProgramFilter = (program: string, checked: boolean) => {
+		setProgramFilter((prev) => {
+			if (checked) return [...new Set([...prev, program])];
+			return prev.filter((p) => p !== program);
 		});
 	};
 
@@ -263,12 +279,12 @@ export function EnrollmentManageDialog({
 								render={<Button variant="outline" size="sm" />}
 							>
 								<IconFilter data-icon="inline-start" />
-								Year
+								Filter
 								<IconChevronDown data-icon="inline-end" />
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-40">
+							<DropdownMenuContent align="end" className="w-48">
 								<DropdownMenuGroup>
-									<DropdownMenuLabel>Year</DropdownMenuLabel>
+									<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
 									{yearOptions.map((year) => (
 										<DropdownMenuCheckboxItem
 											key={year}
@@ -281,12 +297,34 @@ export function EnrollmentManageDialog({
 										</DropdownMenuCheckboxItem>
 									))}
 								</DropdownMenuGroup>
-								{yearFilter.length > 0 && (
+								{programOptions.length > 0 && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuGroup>
+											<DropdownMenuLabel>Program</DropdownMenuLabel>
+											{programOptions.map((program) => (
+												<DropdownMenuCheckboxItem
+													key={program}
+													checked={programFilter.includes(program)}
+													onCheckedChange={(checked) =>
+														toggleProgramFilter(program, checked)
+													}
+												>
+													{program}
+												</DropdownMenuCheckboxItem>
+											))}
+										</DropdownMenuGroup>
+									</>
+								)}
+								{(yearFilter.length > 0 || programFilter.length > 0) && (
 									<>
 										<DropdownMenuSeparator />
 										<DropdownMenuItem
 											variant="destructive"
-											onClick={() => setYearFilter([])}
+											onClick={() => {
+												setYearFilter([]);
+												setProgramFilter([]);
+											}}
 										>
 											Reset filters
 										</DropdownMenuItem>
@@ -310,7 +348,7 @@ export function EnrollmentManageDialog({
 									</TableHead>
 									<TableHead>Student</TableHead>
 									<TableHead>School ID</TableHead>
-									<TableHead>Year</TableHead>
+									<TableHead>Enrollment Year</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -339,7 +377,7 @@ export function EnrollmentManageDialog({
 											<TableCell className="font-mono text-xs">
 												{student.school_id ?? "-"}
 											</TableCell>
-											<TableCell>{inferYear(student.school_id)}</TableCell>
+											<TableCell>{student.enrollment_year ?? "-"}</TableCell>
 										</TableRow>
 									))
 								)}
@@ -429,9 +467,13 @@ export function EnrollmentManageDialog({
 								Select range
 							</Button>
 						</div>
-						<div className="ml-auto flex items-center gap-2">
-							<Badge variant="outline">{filteredStudents.length} visible</Badge>
-							<Badge variant="outline">{selectedIds.size} selected</Badge>
+						<div className="ml-auto flex items-center gap-3">
+							<span className="text-xs text-muted-foreground">
+								{filteredStudents.length} visible
+							</span>
+							<span className="text-xs text-muted-foreground">
+								{selectedIds.size} selected
+							</span>
 						</div>
 					</div>
 				</div>

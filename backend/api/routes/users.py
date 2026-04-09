@@ -66,7 +66,7 @@ def get_user(
 def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     new_user = User(
         id=str(uuid.uuid4()),
@@ -76,8 +76,16 @@ def create_user(
         school_id=user_data.school_id,
         program=user_data.program,
         year_level=user_data.year_level,
+        enrollment_year=user_data.enrollment_year,
     )
     db.add(new_user)
+    log_audit_event(
+        event_type=AuditEvents.USER_CREATED,
+        actor_id=current_user.id,
+        target_id=new_user.id,
+        detail={"role": user_data.role, "full_name": user_data.full_name},
+        db=db,
+    )
     db.commit()
     db.refresh(new_user)
     logger.info(
@@ -122,13 +130,20 @@ def update_user(
 def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.USER_DELETED,
+        current_user.id,
+        user_id,
+        {"role": user.role, "full_name": user.full_name},
+        db,
+    )
     db.delete(user)
     db.commit()
     return Response(status_code=204)

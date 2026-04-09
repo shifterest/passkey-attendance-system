@@ -7,10 +7,18 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/offline_payload_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/theme/app_theme.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 
 class OfflineCheckInScreen extends StatefulWidget {
-  const OfflineCheckInScreen({super.key});
+  const OfflineCheckInScreen({
+    super.key,
+    this.embedded = false,
+    this.onReturnToDashboard,
+  });
+
+  final bool embedded;
+  final VoidCallback? onReturnToDashboard;
 
   @override
   State<OfflineCheckInScreen> createState() => _OfflineCheckInScreenState();
@@ -133,17 +141,41 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text(OfflineStrings.studentTitle)),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: _scanning
-            ? _buildScanning()
-            : _sessionId != null
-            ? _buildSessionFound()
-            : _buildScanFailed(),
+    final theme = Theme.of(context);
+    final content = CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
       ),
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          expandedHeight: 112,
+          flexibleSpace: FlexibleSpaceBar(
+            titlePadding: const EdgeInsetsDirectional.only(
+              start: 20,
+              bottom: 14,
+            ),
+            title: Text(
+              OfflineStrings.studentTitle,
+              style: AppTheme.sliverTitle(theme.textTheme, theme.colorScheme),
+            ),
+          ),
+        ),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: _scanning
+                ? _buildScanning()
+                : _sessionId != null
+                ? _buildSessionFound()
+                : _buildScanFailed(),
+          ),
+        ),
+      ],
     );
+
+    return widget.embedded ? content : Scaffold(body: content);
   }
 
   Widget _buildScanning() {
@@ -254,6 +286,10 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
           width: double.infinity,
           child: OutlinedButton(
             onPressed: () {
+              if (widget.onReturnToDashboard != null) {
+                widget.onReturnToDashboard!();
+                return;
+              }
               if (context.canPop()) {
                 context.pop();
               } else {

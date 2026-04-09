@@ -4,9 +4,19 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+
+function formatExpiry(seconds: number): string {
+	if (seconds >= 3600) {
+		const h = Math.floor(seconds / 3600);
+		return `${h} hour${h > 1 ? "s" : ""}`;
+	}
+	const m = Math.ceil(seconds / 60);
+	return `${m} minute${m > 1 ? "s" : ""}`;
+}
 
 export function RegistrationQrDialog({
 	open,
@@ -22,11 +32,11 @@ export function RegistrationQrDialog({
 	if (session === null) {
 		return (
 			<Dialog open={open} onOpenChange={onOpenChange}>
-				<DialogContent>
+				<DialogContent className="max-w-sm">
 					<DialogHeader>
-						<DialogTitle>Register user</DialogTitle>
+						<DialogTitle>Registration unavailable</DialogTitle>
 						<DialogDescription>
-							There was an error in getting a registration session.
+							Could not start a registration session. Please try again.
 						</DialogDescription>
 					</DialogHeader>
 				</DialogContent>
@@ -35,17 +45,32 @@ export function RegistrationQrDialog({
 	}
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Register user</DialogTitle>
+			<DialogContent className="max-w-sm">
+				<DialogHeader className="text-center">
+					<DialogTitle>
+						{fullName ? `Register ${fullName}` : "Register user"}
+					</DialogTitle>
 					<DialogDescription>
-						The user {fullName ? `(${fullName})` : ""} must scan this QR code to
-						register their device and passkey.
+						Open the attendance app and scan this code to register a passkey and
+						device key.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="flex justify-center rounded-xl border p-4">
-					<QRCodeSVG value={session.url} size={256} level="H" marginSize={4} />
+				<div className="flex justify-center">
+					<div className="inline-flex rounded-lg border bg-white p-3">
+						<QRCodeSVG
+							value={session.url}
+							size={200}
+							level="H"
+							marginSize={2}
+						/>
+					</div>
 				</div>
+				<DialogFooter className="justify-center sm:justify-center">
+					<p className="text-center text-xs text-muted-foreground">
+						This code expires in {formatExpiry(session.expires_in)}. The dialog
+						will close automatically once registration is complete.
+					</p>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);

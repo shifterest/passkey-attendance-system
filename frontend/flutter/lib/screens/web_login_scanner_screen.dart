@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/scanner_shell.dart';
 
 class WebLoginScannerScreen extends StatefulWidget {
   const WebLoginScannerScreen({super.key});
@@ -28,91 +29,82 @@ class _WebLoginScannerScreenState extends State<WebLoginScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Container(
-          color: Colors.black,
-          child: Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
-            child: SizedBox.square(
-              dimension:
-                  min(
-                    MediaQuery.of(context).size.width,
-                    MediaQuery.of(context).size.height,
-                  ) *
-                  0.8,
-              child: MobileScanner(
-                controller: qrController,
-                onDetect: (result) async {
-                  if (_isBusy) return;
-                  _isBusy = true;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
-                  try {
-                    final barcodeList = result.barcodes;
-                    if (barcodeList.isEmpty) return;
+    return ScannerShell(
+      title: QrStrings.webLoginTitle,
+      subtitle: QrStrings.webLoginBody,
+      onClose: () => router.go('/'),
+      onToggleTorch: () async {
+        await qrController.toggleTorch();
+      },
+      viewport: SizedBox.square(
+        dimension:
+            min(
+              MediaQuery.of(context).size.width,
+              MediaQuery.of(context).size.height,
+            ) *
+            0.8,
+        child: MobileScanner(
+          controller: qrController,
+          fit: BoxFit.cover,
+          onDetect: (result) async {
+            if (_isBusy) return;
+            _isBusy = true;
 
-                    final url = barcodeList.first.rawValue;
-                    if (url == null || !mounted) return;
+            try {
+              final barcodeList = result.barcodes;
+              if (barcodeList.isEmpty) return;
 
-                    final uri = Uri.parse(url);
-                    if (uri.scheme != Config.registrationProtocol ||
-                        uri.host != 'web-login') {
-                      if (!mounted) return;
-                      GoRouter.of(context).go('/');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(QrStrings.errorInvalidWebLoginQr),
-                        ),
-                      );
-                      return;
-                    }
+              final url = barcodeList.first.rawValue;
+              if (url == null || !mounted) return;
 
-                    final token = uri.queryParameters['token'];
-                    if (token == null || token.isEmpty) {
-                      if (!mounted) return;
-                      GoRouter.of(context).go('/');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(QrStrings.errorMissingWebLoginToken),
-                        ),
-                      );
-                      return;
-                    }
+              final uri = Uri.parse(url);
+              if (uri.scheme != Config.registrationProtocol ||
+                  uri.host != 'web-login') {
+                router.go('/');
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(QrStrings.errorInvalidWebLoginQr),
+                  ),
+                );
+                return;
+              }
 
-                    final userId = await SessionStore.getUserId();
-                    if (userId == null || userId.isEmpty) {
-                      if (!mounted) return;
-                      GoRouter.of(context).go('/');
-                      return;
-                    }
+              final token = uri.queryParameters['token'];
+              if (token == null || token.isEmpty) {
+                router.go('/');
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(QrStrings.errorMissingWebLoginToken),
+                  ),
+                );
+                return;
+              }
 
-                    if (!mounted) return;
-                    GoRouter.of(context).go(
-                      '/authenticate?user_id=${Uri.encodeComponent(userId)}&web_login_token=${Uri.encodeComponent(token)}',
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-                    GoRouter.of(context).go('/');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(QrStrings.errorUnexpectedFailure),
-                      ),
-                    );
-                  } finally {
-                    _isBusy = false;
-                  }
-                },
-              ),
-            ),
-          ),
+              final userId = await SessionStore.getUserId();
+              if (userId == null || userId.isEmpty) {
+                if (!mounted) return;
+                router.go('/');
+                return;
+              }
+
+              if (!mounted) return;
+              router.go(
+                '/authenticate?user_id=${Uri.encodeComponent(userId)}&web_login_token=${Uri.encodeComponent(token)}',
+              );
+            } catch (e) {
+              if (!mounted) return;
+              router.go('/');
+              messenger.showSnackBar(
+                const SnackBar(content: Text(QrStrings.errorUnexpectedFailure)),
+              );
+            } finally {
+              _isBusy = false;
+            }
+          },
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.flashlight_on),
-        onPressed: () async {
-          await qrController.toggleTorch();
-        },
       ),
     );
   }

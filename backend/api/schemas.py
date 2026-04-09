@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from enum import Enum
 
 from api.contracts.device import DeviceBindingFlow, DevicePayloadVersion
@@ -31,6 +31,7 @@ class UserBase(BaseModel):
     school_id: str | None = None
     program: str | None = None
     year_level: int | None = None
+    enrollment_year: int | None = None
 
 
 class UserCreate(UserBase):
@@ -48,6 +49,7 @@ class UserUpdate(BaseModel):
     school_id: str | None = None
     program: str | None = None
     year_level: int | None = None
+    enrollment_year: int | None = None
 
 
 class UserResponse(UserBase):
@@ -65,6 +67,7 @@ class UserStudentResponse(UserBase):
     in_class: bool
     records: int
     flagged: int
+    low_assurance: int = 0
     enrollments: int
     registered: bool
 
@@ -188,12 +191,14 @@ class ClassCreate(ClassBase):
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     teacher_id: str
+    semester_id: str | None = None
 
 
 class ClassUpdate(BaseModel):
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     teacher_id: str | None = None
+    semester_id: str | None = None
     course_code: str | None = None
     course_name: str | None = None
     schedule: list[Schedule] | None = None
@@ -206,6 +211,7 @@ class ClassResponse(ClassBase):
 
     id: str
     teacher_id: str
+    semester_id: str | None = None
 
 
 # Class enrollments
@@ -213,6 +219,7 @@ class ClassEnrollmentBase(BaseModel):
     class_id: str
     student_id: str
     expires_at: datetime | None = None
+    enrolled_at: datetime | None = None
 
 
 class ClassEnrollmentCreate(ClassEnrollmentBase):
@@ -481,6 +488,42 @@ class LogoutOptionsBase(BaseModel):
 
     user_id: str
     session_token: str
+
+
+# Semesters
+class SemesterBase(BaseModel):
+    name: str
+    start_date: date
+    end_date: date
+    is_active: bool = False
+
+    @model_validator(mode="after")
+    def validate_date_range(self):
+        if self.end_date <= self.start_date:
+            raise ValueError("end_date must be later than start_date")
+        return self
+
+
+class SemesterCreate(SemesterBase):
+    model_config = ConfigDict(extra="forbid")
+
+    pass
+
+
+class SemesterUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    is_active: bool | None = None
+
+
+class SemesterResponse(SemesterBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
 
 
 # Web login (QR-scanned login flow)

@@ -18,6 +18,7 @@ export type UserDto = {
 	school_id: string | null;
 	program: string | null;
 	year_level: number | null;
+	enrollment_year: number | null;
 	registered: boolean;
 };
 
@@ -31,8 +32,10 @@ export type UserExtendedDto = {
 	email: string;
 	program: string | null;
 	year_level: number | null;
+	enrollment_year: number | null;
 	records: number;
 	flagged: number;
+	low_assurance: number;
 	enrollments: number;
 	registered: boolean;
 };
@@ -40,6 +43,7 @@ export type UserExtendedDto = {
 export type ClassDto = {
 	id: string;
 	teacher_id: string | null;
+	semester_id: string | null;
 	course_code: string;
 	course_name: string;
 	schedule: {
@@ -112,6 +116,7 @@ export type ClassEnrollmentDto = {
 	class_id: string;
 	student_id: string;
 	expires_at: string | null;
+	enrolled_at: string | null;
 };
 
 export type AuditEventDto = {
@@ -276,6 +281,7 @@ export function createUser(data: {
 	school_id?: string | null;
 	program?: string | null;
 	year_level?: number | null;
+	enrollment_year?: number | null;
 }) {
 	return request<UserDto>(ApiPaths.users, {
 		method: "POST",
@@ -359,6 +365,7 @@ export function getClass(classId: string) {
 
 export function createClass(data: {
 	teacher_id: string;
+	semester_id?: string | null;
 	course_code: string;
 	course_name: string;
 	schedule: { days: string[]; start_time: string; end_time: string }[];
@@ -887,4 +894,60 @@ export function deleteEventRule(eventId: string, ruleId: string) {
 	return request<void>(ApiPaths.eventRule(eventId, ruleId), {
 		method: "DELETE",
 	});
+}
+
+// Semesters
+
+export type SemesterDto = {
+	id: string;
+	name: string;
+	start_date: string;
+	end_date: string;
+	is_active: boolean;
+	created_at: string;
+};
+
+export function getSemesters() {
+	return request<SemesterDto[]>(ApiPaths.semesters);
+}
+
+export function getActiveSemester() {
+	return request<SemesterDto>(ApiPaths.activeSemester);
+}
+
+export function getSemester(semesterId: string) {
+	return request<SemesterDto>(ApiPaths.semester(semesterId));
+}
+
+export function createSemester(data: {
+	name: string;
+	start_date: string;
+	end_date: string;
+	is_active?: boolean;
+}) {
+	return request<SemesterDto>(ApiPaths.semesters, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function updateSemester(
+	semesterId: string,
+	data: {
+		name?: string;
+		start_date?: string;
+		end_date?: string;
+		is_active?: boolean;
+	},
+) {
+	return request<SemesterDto>(ApiPaths.semester(semesterId), {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
+export function deleteSemester(semesterId: string) {
+	return request<void>(ApiPaths.semester(semesterId), { method: "DELETE" });
 }

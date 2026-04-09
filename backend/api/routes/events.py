@@ -11,8 +11,9 @@ from api.schemas import (
     EventUpdate,
     OrgRole,
 )
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from api.strings import Messages
+from api.strings import AuditEvents, Messages
 from database.connection import get_db
 from database.models import Event, EventAttendeeRule, Organization, User
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -64,6 +65,13 @@ def create_event(
         created_at=datetime.now(timezone.utc),
     )
     db.add(event)
+    log_audit_event(
+        AuditEvents.EVENT_CREATED,
+        current_user.id,
+        event.id,
+        {"name": event.name, "org_id": org_id},
+        db,
+    )
     db.commit()
     db.refresh(event)
     return event
@@ -142,6 +150,13 @@ def update_event(
     _require_event_creator(db, current_user, event.org_id)
     for key, value in event_data.model_dump(exclude_unset=True).items():
         setattr(event, key, value)
+    log_audit_event(
+        AuditEvents.EVENT_UPDATED,
+        current_user.id,
+        event_id,
+        {"fields": list(event_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     db.refresh(event)
     return event
@@ -161,6 +176,13 @@ def delete_event(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.EVENT_NOT_FOUND
         )
     _require_event_creator(db, current_user, event.org_id)
+    log_audit_event(
+        AuditEvents.EVENT_DELETED,
+        current_user.id,
+        event_id,
+        {"name": event.name, "org_id": event.org_id},
+        db,
+    )
     db.delete(event)
     db.commit()
     return Response(status_code=204)
@@ -215,6 +237,13 @@ def create_event_rule(
         rule_group=data.rule_group,
     )
     db.add(rule)
+    log_audit_event(
+        AuditEvents.EVENT_RULE_CREATED,
+        current_user.id,
+        rule.id,
+        {"event_id": event_id, "rule_type": data.rule_type},
+        db,
+    )
     db.commit()
     db.refresh(rule)
     return rule
@@ -247,6 +276,13 @@ def delete_event_rule(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.EVENT_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.EVENT_RULE_DELETED,
+        current_user.id,
+        rule_id,
+        {"event_id": event_id, "rule_type": rule.rule_type},
+        db,
+    )
     db.delete(rule)
     db.commit()
     return Response(status_code=204)

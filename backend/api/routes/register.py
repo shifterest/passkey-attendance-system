@@ -227,8 +227,6 @@ def register_verify(
             registered_at=datetime.now(timezone.utc),
         )
         db.add(new_credential)
-        db.commit()
-        db.refresh(new_credential)
         if settings.android_key_attestation_required:
             assert key_security_level is not None
             log_audit_event(
@@ -243,6 +241,8 @@ def register_verify(
                 ).model_dump(),
                 db,
             )
+        db.commit()
+        db.refresh(new_credential)
         if settings.android_key_attestation_required and is_legacy_root:
             logger.warning(
                 Logs.LEGACY_ATTESTATION_ROOT_ACCEPTED.format(

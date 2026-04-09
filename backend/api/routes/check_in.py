@@ -629,6 +629,13 @@ def check_in_verify(
             sync_pending=False,
         )
         db.add(new_record)
+        log_audit_event(
+            AuditEvents.CHECK_IN_SUCCESS,
+            current_user.id,
+            new_record.id,
+            {"session_id": response_data.session_id, "assurance_band": assurance_band},
+            db,
+        )
         db.commit()
         db.refresh(new_record)
         logger.info(

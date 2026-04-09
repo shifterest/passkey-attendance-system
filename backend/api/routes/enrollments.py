@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime, timezone
 
 from api.schemas import (
     ClassEnrollmentCreate,
@@ -106,7 +107,7 @@ def get_enrollment_by_class_and_student(
 def create_enrollment(
     enrollment_data: ClassEnrollmentCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     class_ = db.query(Class).filter(Class.id == enrollment_data.class_id).first()
     student = db.query(User).filter(User.id == enrollment_data.student_id).first()
@@ -143,8 +144,19 @@ def create_enrollment(
         class_id=enrollment_data.class_id,
         student_id=enrollment_data.student_id,
         expires_at=enrollment_data.expires_at,
+        enrolled_at=enrollment_data.enrolled_at or datetime.now(timezone.utc),
     )
     db.add(new_enrollment)
+    log_audit_event(
+        AuditEvents.ENROLLMENT_CREATED,
+        current_user.id,
+        new_enrollment.id,
+        {
+            "student_id": enrollment_data.student_id,
+            "class_id": enrollment_data.class_id,
+        },
+        db,
+    )
     db.commit()
     db.refresh(new_enrollment)
     logger.info(
@@ -173,6 +185,13 @@ def update_enrollment(
         )
     for key, value in updated_data.model_dump(exclude_unset=True).items():
         setattr(enrollment, key, value)
+    log_audit_event(
+        AuditEvents.ENROLLMENT_UPDATED,
+        _.id,
+        enrollment_id,
+        {"fields": list(updated_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     logger.info(Logs.ENROLLMENT_EDITED.format(enrollment_id=enrollment.id))
     return enrollment
@@ -193,8 +212,6 @@ def delete_enrollment(
         )
     old_student_id = enrollment.student_id
     old_class_id = enrollment.class_id
-    db.delete(enrollment)
-    db.commit()
     log_audit_event(
         event_type=AuditEvents.ENROLLMENT_DELETED,
         actor_id=current_user.id,
@@ -207,4 +224,6 @@ def delete_enrollment(
         ).model_dump(),
         db=db,
     )
+    db.delete(enrollment)
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

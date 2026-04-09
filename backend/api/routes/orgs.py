@@ -13,8 +13,9 @@ from api.schemas import (
     OrgMembershipRuleResponse,
     OrgRole,
 )
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from api.strings import Messages
+from api.strings import AuditEvents, Messages
 from database.connection import get_db
 from database.models import (
     Organization,
@@ -64,6 +65,13 @@ def create_org(
         created_at=datetime.now(timezone.utc),
     )
     db.add(org)
+    log_audit_event(
+        AuditEvents.ORG_CREATED,
+        current_user.id,
+        org.id,
+        {"name": org.name},
+        db,
+    )
     db.commit()
     db.refresh(org)
     return org
@@ -112,6 +120,13 @@ def update_org(
     org = _require_org_role(db, current_user, org_id, [OrgRole.ADMIN.value])
     for key, value in org_data.model_dump(exclude_unset=True).items():
         setattr(org, key, value)
+    log_audit_event(
+        AuditEvents.ORG_UPDATED,
+        current_user.id,
+        org_id,
+        {"fields": list(org_data.model_dump(exclude_unset=True).keys())},
+        db,
+    )
     db.commit()
     db.refresh(org)
     return org
@@ -128,6 +143,13 @@ def delete_org(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.ORG_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.ORG_DELETED,
+        current_user.id,
+        org_id,
+        {"name": org.name},
+        db,
+    )
     db.delete(org)
     db.commit()
     return Response(status_code=204)
@@ -183,6 +205,13 @@ def grant_membership(
         granted_by=current_user.id,
     )
     db.add(membership)
+    log_audit_event(
+        AuditEvents.ORG_MEMBERSHIP_GRANTED,
+        current_user.id,
+        membership.id,
+        {"org_id": org_id, "user_id": data.user_id, "role": data.org_role},
+        db,
+    )
     db.commit()
     db.refresh(membership)
     return membership
@@ -207,6 +236,13 @@ def revoke_membership(
         granted_by=current_user.id,
     )
     db.add(membership)
+    log_audit_event(
+        AuditEvents.ORG_MEMBERSHIP_REVOKED,
+        current_user.id,
+        membership.id,
+        {"org_id": org_id, "user_id": user_id},
+        db,
+    )
     db.commit()
     return Response(status_code=204)
 
@@ -245,6 +281,13 @@ def create_rule(
         rule_group=data.rule_group,
     )
     db.add(rule)
+    log_audit_event(
+        AuditEvents.ORG_RULE_CREATED,
+        current_user.id,
+        rule.id,
+        {"org_id": org_id, "rule_type": data.rule_type},
+        db,
+    )
     db.commit()
     db.refresh(rule)
     return rule
@@ -272,6 +315,13 @@ def delete_rule(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.ORG_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.ORG_RULE_DELETED,
+        current_user.id,
+        rule_id,
+        {"org_id": org_id, "rule_type": rule.rule_type},
+        db,
+    )
     db.delete(rule)
     db.commit()
     return Response(status_code=204)

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from database.connection import Base
@@ -15,6 +15,7 @@ class User(Base):
     school_id: Mapped[str | None] = mapped_column(None)
     program: Mapped[str | None] = mapped_column(None)
     year_level: Mapped[int | None] = mapped_column(None)
+    enrollment_year: Mapped[int | None] = mapped_column(None)
     credentials: Mapped[list["Credential"]] = relationship(back_populates="user")
     classes: Mapped[list["Class"]] = relationship(
         back_populates="teacher", foreign_keys="[Class.teacher_id]"
@@ -63,12 +64,16 @@ class Class(Base):
     __tablename__ = "classes"
     id: Mapped[str] = mapped_column(primary_key=True)
     teacher_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    semester_id: Mapped[str | None] = mapped_column(
+        ForeignKey("semesters.id"), default=None
+    )
     course_code: Mapped[str]
     course_name: Mapped[str]
     schedule: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     standard_assurance_threshold: Mapped[int] = mapped_column(default=5)
     high_assurance_threshold: Mapped[int] = mapped_column(default=9)
     teacher: Mapped["User"] = relationship(back_populates="classes")
+    semester: Mapped["Semester | None"] = relationship(back_populates="classes")
     policies: Mapped[list["ClassPolicy"]] = relationship(
         back_populates="class_", foreign_keys="[ClassPolicy.class_id]"
     )
@@ -80,12 +85,24 @@ class Class(Base):
     )
 
 
+class Semester(Base):
+    __tablename__ = "semesters"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    start_date: Mapped[date]
+    end_date: Mapped[date]
+    is_active: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime]
+    classes: Mapped[list["Class"]] = relationship(back_populates="semester")
+
+
 class ClassEnrollment(Base):
     __tablename__ = "class_enrollments"
     id: Mapped[str] = mapped_column(primary_key=True)
     class_id: Mapped[str] = mapped_column(ForeignKey("classes.id"))
     student_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     expires_at: Mapped[datetime | None] = mapped_column(None)
+    enrolled_at: Mapped[datetime | None] = mapped_column(None)
     enrolled_class: Mapped["Class"] = relationship(back_populates="enrollments")
     student: Mapped["User"] = relationship(back_populates="enrollments")
 

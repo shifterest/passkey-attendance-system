@@ -8,8 +8,9 @@ from api.schemas import (
     Schedule,
     UserRole,
 )
+from api.services.audit_service import log_audit_event
 from api.services.session_service import require_role
-from api.strings import Logs, Messages
+from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
 from database.models import Class, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -56,7 +57,7 @@ def get_class(
 def create_class(
     class_data: ClassCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     teacher = db.query(User).filter(User.id == class_data.teacher_id).first()
     if teacher is None:
@@ -72,6 +73,7 @@ def create_class(
     new_class = Class(
         id=str(uuid.uuid4()),
         teacher_id=class_data.teacher_id,
+        semester_id=class_data.semester_id,
         course_code=class_data.course_code,
         course_name=class_data.course_name,
         schedule=_serialize_schedule(class_data.schedule),
@@ -79,6 +81,13 @@ def create_class(
         high_assurance_threshold=class_data.high_assurance_threshold,
     )
     db.add(new_class)
+    log_audit_event(
+        AuditEvents.CLASS_CREATED,
+        current_user.id,
+        new_class.id,
+        {"course_code": class_data.course_code, "course_name": class_data.course_name},
+        db,
+    )
     db.commit()
     db.refresh(new_class)
     logger.info(
@@ -107,6 +116,17 @@ def update_class(
         )
     for key, value in updated_data.model_dump(mode="json", exclude_unset=True).items():
         setattr(class_, key, value)
+    log_audit_event(
+        AuditEvents.CLASS_UPDATED,
+        current_user.id,
+        class_id,
+        {
+            "fields": list(
+                updated_data.model_dump(mode="json", exclude_unset=True).keys()
+            )
+        },
+        db,
+    )
     db.commit()
     logger.info(
         Logs.CLASS_EDITED.format(
@@ -120,13 +140,20 @@ def update_class(
 def delete_class(
     class_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
+    current_user: User = Depends(require_role("admin", "operator")),
 ):
     class_ = db.query(Class).filter(Class.id == class_id).first()
     if class_ is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.CLASS_NOT_FOUND
         )
+    log_audit_event(
+        AuditEvents.CLASS_DELETED,
+        current_user.id,
+        class_id,
+        {"course_code": class_.course_code, "course_name": class_.course_name},
+        db,
+    )
     db.delete(class_)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
