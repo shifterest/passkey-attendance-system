@@ -4,6 +4,7 @@ import 'package:passkey_attendance_system/services/api_client.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/theme/app_theme.dart';
+import 'package:passkey_attendance_system/widgets/student_account_action_button.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key, this.embedded = false});
@@ -77,6 +78,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
           SliverAppBar(
             pinned: true,
             expandedHeight: 112,
+            actions: const [StudentAccountActionButton()],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsetsDirectional.only(
                 start: 20,

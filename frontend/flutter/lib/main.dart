@@ -8,6 +8,7 @@ import 'package:passkey_attendance_system/screens/check_in_result_screen.dart';
 import 'package:passkey_attendance_system/screens/offline_check_in_screen.dart';
 import 'package:passkey_attendance_system/screens/registration_screen.dart';
 import 'package:passkey_attendance_system/screens/qr_scanner_screen.dart';
+import 'package:passkey_attendance_system/screens/settings_screen.dart';
 import 'package:passkey_attendance_system/screens/web_login_scanner_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_dashboard_screen.dart';
 import 'package:passkey_attendance_system/screens/teacher_home_screen.dart';
@@ -91,6 +92,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/history',
       builder: (context, state) => const AttendanceHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
       path: '/teacher',

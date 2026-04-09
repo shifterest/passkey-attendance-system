@@ -92,27 +92,51 @@ final class HomeStrings {
   static const String appBarTitle = 'Attendance';
   static const String dashboardTitle = 'Dashboard';
   static const String dashboardTab = 'Dashboard';
+  static const String checkInTab = 'Check-in';
   static const String historyTab = 'History';
-  static const String offlineTab = 'Offline';
   static const String backToLogin = 'Back to Login';
   static const String signedIn = 'Signed in';
   static const String readyTitle = 'Ready to check in';
-  static const String readyBody =
-      'Use your passkey when your attendance window opens.';
-  static const String quickActions = 'Quick actions';
+  static const String noOngoingSession = 'No ongoing check-in session';
+  static const String currentClassLabel = 'Current target';
   static const String integrityTitle = 'Integrity';
   static const String integrityHealthy =
       'Play Integrity vouched and device binding active.';
   static const String integrityNeedsRefresh =
       'Your Play Integrity vouch expires soon. Refresh device integrity soon.';
   static const String recentStatus = 'Most recent result';
+  static const String bluetoothTitle = 'Bluetooth';
+  static const String gpsTitle = 'Location';
+  static const String nfcTitle = 'NFC';
+  static const String deviceTitle = 'Device';
   static const String scoreLabel = 'Score';
-  static const String checkInNow = 'Check In Now';
-  static const String checkInOffline = 'Check In Offline';
-  static const String viewHistory = 'Attendance History';
+  static const String checkInNow = 'Check in now';
+  static const String bleSupported = 'BLE supported';
+  static const String bleUnsupported = 'BLE not supported';
+  static const String bluetoothOn = 'Bluetooth is on';
+  static const String bluetoothOff = 'Bluetooth is off';
+  static const String gpsServicesOn = 'Location services on';
+  static const String gpsServicesOff = 'Location services off';
+  static const String gpsPermissionGranted = 'Permission granted';
+  static const String gpsPermissionDenied = 'Permission not granted';
+  static const String nfcAvailable = 'NFC available';
+  static const String nfcUnavailable = 'NFC unavailable';
+  static const String nfcUnsupported = 'NFC not supported';
+  static const String deviceRegistered = 'Registered student device';
+  static const String openCheckInTab =
+      'Open the Check-in tab to start a normal or offline flow.';
   static const String lastCheckIn = 'Last check-in';
   static const String piVouchExpiring =
       'Your Play Integrity vouch expires soon. Please re-verify your device integrity.';
+  static const String settingsTitle = 'Settings';
+  static const String accountSheetTitle = 'Student account';
+  static const String accountSheetBody =
+      'Manage account shortcuts, settings, and sign out.';
+  static const String settingsAction = 'Settings';
+  static const String signOutAction = 'Sign out';
+  static const String accountLabel = 'Account';
+  static const String deviceIdLabel = 'Device ID';
+  static const String studentRoleLabel = 'Student';
   static String userId(String id) => 'User ID: $id';
 }
 
@@ -180,6 +204,8 @@ final class OfflineStrings {
   static const String errorMissingUserId = 'Missing user ID';
   static const String errorGeneratingPayload =
       'Failed to generate offline payload';
+  static const String tabDescription =
+      'Generate a short-lived QR payload when the normal online flow is unavailable.';
   static const String teacherSessionTitle = 'Offline Session';
   static const String selectClass = 'Select a class';
   static const String noClassesCached = 'No cached classes available';
@@ -197,6 +223,18 @@ final class OfflineStrings {
   static const String syncing = 'Syncing...';
   static const String syncSuccess = 'Records synced';
   static const String errorSyncing = 'Failed to sync offline records';
+}
+
+final class CheckInStrings {
+  static const String title = 'Check-in';
+  static const String normalTab = 'Normal';
+  static const String offlineTab = 'Offline';
+  static const String normalTitle = 'Normal check-in';
+  static const String normalBody =
+      'Use your passkey with proximity checks for the standard attendance flow.';
+  static const String normalDisabled =
+      'Normal check-in is available once you have an ongoing scheduled class.';
+  static const String normalButton = 'Start normal check-in';
 }
 
 final class HistoryStrings {

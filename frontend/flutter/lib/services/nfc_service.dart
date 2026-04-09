@@ -8,10 +8,15 @@ import 'package:nfc_manager/nfc_manager.dart';
 class NfcService {
   static bool get isSupported => !kIsWeb && Platform.isAndroid;
 
+  static Future<bool> isAvailable() async {
+    if (!isSupported) return false;
+    return NfcManager.instance.isAvailable();
+  }
+
   static Future<String?> readToken() async {
     if (!isSupported) return null;
 
-    final bool available = await NfcManager.instance.isAvailable();
+    final bool available = await isAvailable();
     if (!available) return null;
 
     final completer = Completer<String?>();

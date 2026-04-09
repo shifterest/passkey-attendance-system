@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:passkey_attendance_system/screens/attendance_history_screen.dart';
+import 'package:passkey_attendance_system/screens/check_in_hub_screen.dart';
 import 'package:passkey_attendance_system/screens/home_screen.dart';
-import 'package:passkey_attendance_system/screens/offline_check_in_screen.dart';
 import 'package:passkey_attendance_system/strings.dart';
 
 class StudentShell extends StatefulWidget {
@@ -31,16 +31,9 @@ class _StudentShellState extends State<StudentShell> {
 
   Widget _buildSelectedTab() {
     return switch (_selectedIndex) {
-      1 => const AttendanceHistoryScreen(embedded: true),
-      2 => OfflineCheckInScreen(
-        embedded: true,
-        onReturnToDashboard: () => _selectTab(0),
-      ),
-      _ => HomeScreen(
-        embedded: true,
-        onOpenHistory: () => _selectTab(1),
-        onOpenOffline: () => _selectTab(2),
-      ),
+      1 => const CheckInHubScreen(embedded: true),
+      2 => const AttendanceHistoryScreen(embedded: true),
+      _ => HomeScreen(embedded: true, onOpenCheckIn: () => _selectTab(1)),
     };
   }
 
@@ -64,14 +57,14 @@ class _StudentShellState extends State<StudentShell> {
             label: HomeStrings.dashboardTab,
           ),
           NavigationDestination(
+            icon: Icon(Icons.how_to_reg_outlined),
+            selectedIcon: Icon(Icons.how_to_reg_rounded),
+            label: HomeStrings.checkInTab,
+          ),
+          NavigationDestination(
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history_rounded),
             label: HomeStrings.historyTab,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.wifi_off_outlined),
-            selectedIcon: Icon(Icons.wifi_off_rounded),
-            label: HomeStrings.offlineTab,
           ),
         ],
       ),

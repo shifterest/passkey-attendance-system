@@ -41,7 +41,8 @@ export default function SettingsPage() {
 		}
 	}, []);
 
-	function handlePageSizeChange(value: string) {
+	function handlePageSizeChange(value: string | null) {
+		if (value === null) return;
 		setPageSize(value);
 		localStorage.setItem(PAGE_SIZE_KEY, value);
 	}

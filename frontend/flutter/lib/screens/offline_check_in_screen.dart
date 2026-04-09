@@ -15,10 +15,12 @@ class OfflineCheckInScreen extends StatefulWidget {
     super.key,
     this.embedded = false,
     this.onReturnToDashboard,
+    this.showHeader = true,
   });
 
   final bool embedded;
   final VoidCallback? onReturnToDashboard;
+  final bool showHeader;
 
   @override
   State<OfflineCheckInScreen> createState() => _OfflineCheckInScreenState();
@@ -142,6 +144,23 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final body = Padding(
+      padding: const EdgeInsets.all(24),
+      child: _scanning
+          ? _buildScanning()
+          : _sessionId != null
+          ? _buildSessionFound()
+          : _buildScanFailed(),
+    );
+
+    if (!widget.showHeader) {
+      return SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        child: body,
+      );
+    }
+
     final content = CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
@@ -161,17 +180,7 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
             ),
           ),
         ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: _scanning
-                ? _buildScanning()
-                : _sessionId != null
-                ? _buildSessionFound()
-                : _buildScanFailed(),
-          ),
-        ),
+        SliverFillRemaining(hasScrollBody: false, child: body),
       ],
     );
 

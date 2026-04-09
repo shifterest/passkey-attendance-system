@@ -63,6 +63,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 type PolicyScope = "system" | "teacher" | "class";
 
@@ -185,12 +193,12 @@ function CreatePolicyDialog({
 	onCreated,
 }: {
 	classes: ClassDto[];
-	trigger: React.ReactNode;
+	trigger: React.ReactElement;
 	onCreated: () => void;
 }) {
 	const [open, setOpen] = React.useState(false);
 	const [scope, setScope] = React.useState<"system" | "class">("class");
-	const [classId, setClassId] = React.useState<string>("");
+	const [classId, setClassId] = React.useState("");
 	const [values, setValues] = React.useState({
 		standard_assurance_threshold: 5,
 		high_assurance_threshold: 9,
@@ -247,7 +255,12 @@ function CreatePolicyDialog({
 					{scope === "class" && (
 						<Field>
 							<FieldLabel>Class</FieldLabel>
-							<Select value={classId} onValueChange={setClassId}>
+							<Select
+								value={classId}
+								onValueChange={(v) => {
+									if (v !== null) setClassId(v);
+								}}
+							>
 								<SelectTrigger>
 									<SelectValue placeholder="Select a class" />
 								</SelectTrigger>
@@ -287,7 +300,7 @@ function EditPolicyDialog({
 	onUpdated,
 }: {
 	policy: ClassPolicyDto;
-	trigger: React.ReactNode;
+	trigger: React.ReactElement;
 	onUpdated: () => void;
 }) {
 	const [open, setOpen] = React.useState(false);
@@ -355,7 +368,7 @@ function DeletePolicyDialog({
 }: {
 	policy: ClassPolicyDto;
 	scopeLabel: string;
-	trigger: React.ReactNode;
+	trigger: React.ReactElement;
 	onDeleted: () => void;
 }) {
 	const [open, setOpen] = React.useState(false);

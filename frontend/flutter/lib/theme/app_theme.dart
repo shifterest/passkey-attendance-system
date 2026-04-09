@@ -67,11 +67,6 @@ class AppTheme {
         color: colorScheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        labelTextStyle: WidgetStatePropertyAll(
-          variable(textTheme.labelMedium, weight: 560, width: 108),
-        ),
-      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surfaceContainerHigh,
@@ -124,29 +119,23 @@ class AppTheme {
   }
 
   static TextStyle sliverTitle(TextTheme textTheme, ColorScheme colorScheme) {
-    return variable(
-      textTheme.titleLarge,
-      weight: 700,
-      width: 124,
+    return (textTheme.titleLarge ?? const TextStyle()).copyWith(
       color: colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
     );
   }
 
   static TextStyle heroMetric(TextTheme textTheme, ColorScheme colorScheme) {
-    return variable(
-      textTheme.displaySmall,
-      weight: 700,
-      width: 142,
+    return (textTheme.headlineSmall ?? const TextStyle()).copyWith(
       color: colorScheme.onSurface,
+      fontWeight: FontWeight.w700,
     );
   }
 
   static TextStyle sectionLabel(TextTheme textTheme, ColorScheme colorScheme) {
-    return variable(
-      textTheme.labelLarge,
-      weight: 620,
-      width: 112,
+    return (textTheme.labelLarge ?? const TextStyle()).copyWith(
       color: colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
       letterSpacing: 0.2,
     );
   }
