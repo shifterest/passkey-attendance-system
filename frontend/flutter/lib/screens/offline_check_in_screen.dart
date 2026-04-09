@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/offline_payload_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
-import 'package:passkey_attendance_system/theme/app_theme.dart';
+import 'package:passkey_attendance_system/widgets/collapsing_sliver_title.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 
 class OfflineCheckInScreen extends StatefulWidget {
@@ -143,7 +143,6 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final body = Padding(
       padding: const EdgeInsets.all(24),
       child: _scanning
@@ -154,10 +153,20 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
     );
 
     if (!widget.showHeader) {
-      return SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        child: body,
+      final textStyle =
+          Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Colors.white) ??
+          const TextStyle(color: Colors.white);
+      return ColoredBox(
+        color: Colors.black,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          child: IconTheme(
+            data: const IconThemeData(color: Colors.white),
+            child: DefaultTextStyle(style: textStyle, child: body),
+          ),
+        ),
       );
     }
 
@@ -174,9 +183,8 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
               start: 20,
               bottom: 14,
             ),
-            title: Text(
-              OfflineStrings.studentTitle,
-              style: AppTheme.sliverTitle(theme.textTheme, theme.colorScheme),
+            title: const CollapsingSliverTitle(
+              text: OfflineStrings.studentTitle,
             ),
           ),
         ),

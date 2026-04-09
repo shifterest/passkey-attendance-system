@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	IconCalendar,
 	IconCalendarEvent,
 	IconChalkboard,
 	IconChalkboardTeacher,
@@ -37,6 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		students: IconUserEdit,
 		teachers: IconChalkboardTeacher,
 		admins: IconTool,
+		semesters: IconCalendar,
 		classes: IconChalkboard,
 		enrollments: IconClipboard,
 		records: IconClipboard,

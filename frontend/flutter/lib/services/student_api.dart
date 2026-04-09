@@ -24,4 +24,20 @@ class StudentApi {
     }
     throw Exception('Invalid response from server');
   }
+
+  static Future<List<Map<String, dynamic>>> getStudentRecords(
+    String userId,
+  ) async {
+    final client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    final response = await client.get(
+      '/records/by-user/$userId',
+      {},
+      extraHeaders: headers,
+    );
+    if (response is List) {
+      return List<Map<String, dynamic>>.from(response);
+    }
+    throw Exception('Invalid response from server');
+  }
 }

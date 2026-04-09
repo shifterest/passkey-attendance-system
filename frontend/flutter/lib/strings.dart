@@ -54,6 +54,9 @@ final class AuthStrings {
       'Missing session token in login response';
   static const String errorMissingSessionExpiry =
       'Missing session expiry in login response';
+  static const String retry = 'Retry';
+  static const String returnToLogin = 'Return to login';
+  static const String returnToDashboard = 'Return to dashboard';
 }
 
 final class RegistrationStrings {
@@ -98,33 +101,43 @@ final class HomeStrings {
   static const String signedIn = 'Signed in';
   static const String readyTitle = 'Ready to check in';
   static const String noOngoingSession = 'No ongoing check-in session';
+  static const String attestationPassed = 'Android key attestation passed';
+  static const String attestationUnavailable =
+      'Android key attestation unavailable';
   static const String currentClassLabel = 'Current target';
   static const String integrityTitle = 'Integrity';
-  static const String integrityHealthy =
-      'Play Integrity vouched and device binding active.';
-  static const String integrityNeedsRefresh =
-      'Your Play Integrity vouch expires soon. Refresh device integrity soon.';
-  static const String recentStatus = 'Most recent result';
-  static const String bluetoothTitle = 'Bluetooth';
-  static const String gpsTitle = 'Location';
-  static const String nfcTitle = 'NFC';
-  static const String deviceTitle = 'Device';
+  static const String integrityHealthy = 'Play Integrity vouched';
+  static const String integrityNeedsRefresh = 'Play Integrity needs refresh';
+  static const String recentStatus = 'Recent check-ins';
+  static const String proximityTitle = 'Proximity';
+  static const String identityTitle = 'Identity';
   static const String scoreLabel = 'Score';
   static const String checkInNow = 'Check in now';
-  static const String bleSupported = 'BLE supported';
-  static const String bleUnsupported = 'BLE not supported';
-  static const String bluetoothOn = 'Bluetooth is on';
+  static const String bleSupported = 'Bluetooth is on, with BLE support';
+  static const String bleUnsupported = 'BLE is not supported on this device';
+  static const String bluetoothOn = 'Bluetooth is on, with BLE support';
   static const String bluetoothOff = 'Bluetooth is off';
   static const String gpsServicesOn = 'Location services on';
   static const String gpsServicesOff = 'Location services off';
-  static const String gpsPermissionGranted = 'Permission granted';
-  static const String gpsPermissionDenied = 'Permission not granted';
+  static const String gpsPermissionGranted = 'Location permission granted';
+  static const String gpsPermissionDenied =
+      'Location services on, permission not granted';
   static const String nfcAvailable = 'NFC available';
-  static const String nfcUnavailable = 'NFC unavailable';
-  static const String nfcUnsupported = 'NFC not supported';
-  static const String deviceRegistered = 'Registered student device';
-  static const String openCheckInTab =
-      'Open the Check-in tab to start a normal or offline flow.';
+  static const String nfcUnavailable = 'NFC off';
+  static const String nfcUnsupported = 'NFC not supported on this device';
+  static const String deviceBindingActive = 'Device binding active';
+  static const String registrationNeeded = 'Device registration needed';
+  static const String recentHistoryEmpty = 'No recent check-ins yet';
+  static const String sessionLabel = 'Session';
+  static const String turnOn = 'Turn on';
+  static const String grant = 'Grant';
+  static const String moreInfo = 'More info';
+  static const String bleInfoTitle = 'BLE limitation';
+  static const String bleInfoBody =
+      'This device cannot collect Bluetooth Low Energy proximity, so online check-in will have reduced proximity evidence.';
+  static const String nfcInfoTitle = 'NFC unavailable';
+  static const String nfcInfoBody =
+      'Turn on NFC in system settings if your device supports it. Online check-in can still proceed without NFC when other signals are available.';
   static const String lastCheckIn = 'Last check-in';
   static const String piVouchExpiring =
       'Your Play Integrity vouch expires soon. Please re-verify your device integrity.';
@@ -135,6 +148,7 @@ final class HomeStrings {
   static const String settingsAction = 'Settings';
   static const String signOutAction = 'Sign out';
   static const String accountLabel = 'Account';
+  static const String deviceTitle = 'Device';
   static const String deviceIdLabel = 'Device ID';
   static const String studentRoleLabel = 'Student';
   static String userId(String id) => 'User ID: $id';
@@ -229,12 +243,39 @@ final class CheckInStrings {
   static const String title = 'Check-in';
   static const String normalTab = 'Normal';
   static const String offlineTab = 'Offline';
+  static const String webLoginTab = 'Web login';
   static const String normalTitle = 'Normal check-in';
   static const String normalBody =
       'Use your passkey with proximity checks for the standard attendance flow.';
   static const String normalDisabled =
       'Normal check-in is available once you have an ongoing scheduled class.';
   static const String normalButton = 'Start normal check-in';
+  static const String webLoginTitle = 'Web login';
+  static const String webLoginBody =
+      'Scan a web login QR from a browser to sign in there using this phone.';
+  static const String webLoginButton = 'Scan web login QR';
+  static const String stageIdleTitle = 'No ongoing check-in session';
+  static const String stageIdleBody =
+      'When a teacher opens attendance, the shape will wake up here.';
+  static const String stageReadyTitle = 'Looking for teacher signal';
+  static const String stageReadyBody =
+      'Your current class is live. Move closer until the teacher signal locks in.';
+  static const String stageDetectedTitle = 'Teacher signal detected';
+  static const String stageDetectedBody =
+      'Tap the shape to start a passkey check-in with the current proximity signal.';
+  static const String stageSuccessTitle = 'Check-in recorded';
+  static const String stageSuccessBody =
+      'Your latest result is held here. Tap the shape again if you want another attempt.';
+  static const String signalClose = 'Close range';
+  static const String signalModerate = 'Moderate range';
+  static const String signalFar = 'Far range';
+  static const String signalUnavailable = 'No teacher signal yet';
+  static const String bluetoothOff = 'Turn on Bluetooth';
+  static const String bluetoothOffBody =
+      'Tap the shape to enable Bluetooth for BLE check-in.';
+  static const String bluetoothPermissionTitle = 'Allow Bluetooth access';
+  static const String bluetoothPermissionBody =
+      'Bluetooth permissions are needed before the teacher signal can appear.';
 }
 
 final class HistoryStrings {

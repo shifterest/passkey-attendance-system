@@ -41,61 +41,105 @@ void main() async {
 }
 
 // Routes deep links
+CustomTransitionPage<void> _transitionPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final primary = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      final secondary = CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      final incoming = Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).animate(primary);
+      final outgoing = Tween<Offset>(
+        begin: Offset.zero,
+        end: const Offset(-0.08, 0),
+      ).animate(secondary);
+      return SlideTransition(
+        position: outgoing,
+        child: SlideTransition(position: incoming, child: child),
+      );
+    },
+  );
+}
+
 final _router = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AuthWrapper()),
     GoRoute(
       path: '/scan',
-      builder: (context, state) => const QrScannerScreen(),
+      pageBuilder: (context, state) =>
+          _transitionPage(state, const QrScannerScreen()),
     ),
     GoRoute(
       path: '/web-login-scan',
-      builder: (context, state) => const WebLoginScannerScreen(),
+      pageBuilder: (context, state) =>
+          _transitionPage(state, const WebLoginScannerScreen()),
     ),
     GoRoute(
       path: '/authenticate',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final userId = state.uri.queryParameters['user_id'];
         final login = state.uri.queryParameters['login'] == 'true';
         final webLoginToken = state.uri.queryParameters['web_login_token'];
         if (userId == null || userId.isEmpty) {
-          return const LoginScreen();
+          return _transitionPage(state, const LoginScreen());
         }
-        return AuthenticationScreen(
-          userId: userId,
-          login: login,
-          webLoginToken: webLoginToken,
+        return _transitionPage(
+          state,
+          AuthenticationScreen(
+            userId: userId,
+            login: login,
+            webLoginToken: webLoginToken,
+          ),
         );
       },
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => RegistrationScreen(
-        registrationToken: state.uri.queryParameters['token'] ?? '',
-        userId: state.uri.queryParameters['user_id'] ?? '',
+      pageBuilder: (context, state) => _transitionPage(
+        state,
+        RegistrationScreen(
+          registrationToken: state.uri.queryParameters['token'] ?? '',
+          userId: state.uri.queryParameters['user_id'] ?? '',
+        ),
       ),
     ),
     GoRoute(
       path: '/check-in-result',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final record = state.extra;
         if (record is! Map<String, dynamic>) {
-          return const HomeScreen();
+          return _transitionPage(state, const HomeScreen());
         }
-        return CheckInResultScreen(record: record);
+        return _transitionPage(state, CheckInResultScreen(record: record));
       },
     ),
     GoRoute(
       path: '/offline-check-in',
-      builder: (context, state) => const OfflineCheckInScreen(),
+      pageBuilder: (context, state) =>
+          _transitionPage(state, const OfflineCheckInScreen()),
     ),
     GoRoute(
       path: '/history',
-      builder: (context, state) => const AttendanceHistoryScreen(),
+      pageBuilder: (context, state) =>
+          _transitionPage(state, const AttendanceHistoryScreen()),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
+      pageBuilder: (context, state) =>
+          _transitionPage(state, const SettingsScreen()),
     ),
     GoRoute(
       path: '/teacher',

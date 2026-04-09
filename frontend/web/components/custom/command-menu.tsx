@@ -1,7 +1,7 @@
 "use client";
 
 import { IconSearch } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type ClassDto,
@@ -9,6 +9,7 @@ import {
 	getUsers,
 	type UserDto,
 } from "@/app/lib/api";
+import { getSearchPlaceholder } from "@/app/lib/navigation";
 import { Badge } from "@/components/ui/badge";
 import {
 	Command,
@@ -29,6 +30,7 @@ function userHref(role: string): string {
 }
 
 export function CommandMenu() {
+	const pathname = usePathname();
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -113,15 +115,17 @@ export function CommandMenu() {
 		router.push(href);
 	}
 
+	const buttonLabel = getSearchPlaceholder(pathname);
+
 	return (
 		<>
 			<button
 				type="button"
 				onClick={() => setOpen(true)}
-				className="flex h-8 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 text-sm text-muted-foreground shadow-xs transition-colors hover:bg-accent"
+				className="flex h-9 w-full min-w-0 items-center gap-2 rounded-3xl border border-transparent bg-input/50 px-3 py-1 text-sm text-muted-foreground transition-[color,box-shadow,background-color] outline-none hover:bg-input/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
 			>
 				<IconSearch className="size-4 shrink-0" />
-				<span className="flex-1 text-left">Search...</span>
+				<span className="flex-1 truncate text-left">{buttonLabel}</span>
 				<kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
 					<span className="text-xs">⌘</span>K
 				</kbd>
@@ -134,7 +138,7 @@ export function CommandMenu() {
 			>
 				<Command shouldFilter={false}>
 					<CommandInput
-						placeholder="Search users, classes..."
+						placeholder="Search users and classes..."
 						value={query}
 						onValueChange={handleValueChange}
 					/>

@@ -119,23 +119,33 @@ class AppTheme {
   }
 
   static TextStyle sliverTitle(TextTheme textTheme, ColorScheme colorScheme) {
-    return (textTheme.titleLarge ?? const TextStyle()).copyWith(
+    final base = textTheme.titleLarge;
+    return variable(
+      base,
+      weight: 620,
+      width: 112,
+      size: base?.fontSize,
       color: colorScheme.onSurface,
-      fontWeight: FontWeight.w600,
+      letterSpacing: -0.1,
     );
   }
 
   static TextStyle heroMetric(TextTheme textTheme, ColorScheme colorScheme) {
-    return (textTheme.headlineSmall ?? const TextStyle()).copyWith(
+    return variable(
+      textTheme.headlineSmall,
+      weight: 680,
+      width: 132,
       color: colorScheme.onSurface,
-      fontWeight: FontWeight.w700,
+      letterSpacing: -0.3,
     );
   }
 
   static TextStyle sectionLabel(TextTheme textTheme, ColorScheme colorScheme) {
-    return (textTheme.labelLarge ?? const TextStyle()).copyWith(
+    return variable(
+      textTheme.labelLarge,
+      weight: 620,
+      width: 110,
       color: colorScheme.onSurfaceVariant,
-      fontWeight: FontWeight.w600,
       letterSpacing: 0.2,
     );
   }

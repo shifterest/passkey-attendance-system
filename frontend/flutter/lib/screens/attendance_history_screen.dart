@@ -3,7 +3,7 @@ import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/api_client.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
-import 'package:passkey_attendance_system/theme/app_theme.dart';
+import 'package:passkey_attendance_system/widgets/collapsing_sliver_title.dart';
 import 'package:passkey_attendance_system/widgets/student_account_action_button.dart';
 
 class AttendanceHistoryScreen extends StatefulWidget {
@@ -66,8 +66,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   Widget _buildScrollContent(BuildContext context) {
-    final theme = Theme.of(context);
-
     return RefreshIndicator(
       onRefresh: _fetchRecords,
       child: CustomScrollView(
@@ -84,10 +82,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 start: 20,
                 bottom: 14,
               ),
-              title: Text(
-                HistoryStrings.title,
-                style: AppTheme.sliverTitle(theme.textTheme, theme.colorScheme),
-              ),
+              title: const CollapsingSliverTitle(text: HistoryStrings.title),
             ),
           ),
           if (_loading)

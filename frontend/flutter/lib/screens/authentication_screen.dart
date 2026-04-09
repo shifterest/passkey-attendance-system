@@ -9,11 +9,11 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/nfc_service.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/passkey.dart';
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/services/user_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
-import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AuthenticationScreen extends StatefulWidget {
@@ -71,6 +71,19 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   String _status = '';
   String? _error;
   Map<String, dynamic>? _checkInRecord;
+
+  Future<void> _handleCancellation() async {
+    if (!mounted) return;
+    if (widget.login || widget.webLoginToken != null) {
+      context.go('/');
+      return;
+    }
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
+  }
 
   Future<({List<int> rssiReadings, String? bleToken})>
   _collectBleProximity() async {
@@ -195,33 +208,12 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       } else {
         context.pushReplacement('/check-in-result', extra: _checkInRecord);
       }
+    } on PasskeyAuthCancelledException {
+      await _handleCancellation();
     } catch (e) {
       if (!mounted) return;
 
-      final errorMessage = e.toString().toLowerCase();
-      final isCancellation =
-          errorMessage.contains('cancel') ||
-          errorMessage.contains('abort') ||
-          errorMessage.contains('user refused') ||
-          errorMessage.contains('not allowed') ||
-          errorMessage.contains('notallowederror');
-
-      if (isCancellation) {
-        if (mounted) context.go('/');
-        return;
-      }
-
       setState(() => _error = e.toString());
-
-      if (_error != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await showErrorDialog(
-            context,
-            _error,
-            body: AuthStrings.authErrorBody,
-          );
-        });
-      }
     } finally {
       if (mounted) setState(() => _isAuthenticating = false);
     }
@@ -332,24 +324,80 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return (_isAuthenticating
-        ? Scaffold(
-            body: Center(
+    if (_isAuthenticating) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 8,
+            children: [
+              const CircularProgressIndicator(),
+              Text(
+                _status,
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                spacing: 8,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  CircularProgressIndicator(),
                   Text(
-                    _status,
-                    style: Theme.of(context).textTheme.bodyLarge,
+                    AuthStrings.authErrorBody,
+                    style: Theme.of(context).textTheme.titleMedium,
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _error!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _startAuthentication,
+                    child: const Text(AuthStrings.retry),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () {
+                      if (widget.login || widget.webLoginToken != null) {
+                        context.go('/');
+                        return;
+                      }
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
+                    },
+                    child: Text(
+                      widget.login || widget.webLoginToken != null
+                          ? AuthStrings.returnToLogin
+                          : AuthStrings.returnToDashboard,
+                    ),
                   ),
                 ],
               ),
             ),
-          )
-        : const Scaffold(body: SizedBox.shrink()));
+          ),
+        ),
+      );
+    }
+
+    return const Scaffold(body: SizedBox.shrink());
   }
 }

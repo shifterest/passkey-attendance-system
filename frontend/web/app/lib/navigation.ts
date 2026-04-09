@@ -5,6 +5,7 @@ export type IconItem =
 	| "students"
 	| "teachers"
 	| "admins"
+	| "semesters"
 	| "classes"
 	| "enrollments"
 	| "records"
@@ -49,6 +50,7 @@ export const navigation = {
 				{ title: "Admins", url: "/admins", icon: "admins" },
 			],
 		},
+		{ name: "Semesters", url: "/semesters", icon: "semesters" },
 		{ name: "Classes", url: "/classes", icon: "classes" },
 		{ name: "Enrollments", url: "/enrollments", icon: "enrollments" },
 		{ name: "Records", url: "/records", icon: "records" },
@@ -76,4 +78,21 @@ export function getPageTitle(pathname: string): string {
 	}
 
 	return "Dashboard";
+}
+
+export function getSearchPlaceholder(pathname: string): string {
+	if (pathname.startsWith("/students")) return "Search students...";
+	if (pathname.startsWith("/teachers")) return "Search teachers...";
+	if (pathname.startsWith("/admins")) return "Search admins...";
+	if (pathname.startsWith("/users")) return "Search users...";
+	if (pathname.startsWith("/semesters")) return "Search semesters...";
+	if (pathname.startsWith("/classes/")) return "Search sessions...";
+	if (pathname.startsWith("/classes")) return "Search classes...";
+	if (pathname.startsWith("/enrollments")) return "Search enrollments...";
+	if (pathname.startsWith("/records")) return "Search records...";
+	if (pathname.startsWith("/logs")) return "Search audit logs...";
+	if (pathname.startsWith("/policies")) return "Search policies...";
+	if (pathname.startsWith("/orgs")) return "Search organizations...";
+	if (pathname.startsWith("/events")) return "Search events...";
+	return "Search users, classes, and records...";
 }

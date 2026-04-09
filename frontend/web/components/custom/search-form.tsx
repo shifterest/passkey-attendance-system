@@ -2,6 +2,7 @@
 
 import { IconSearch } from "@tabler/icons-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type ClassDto,
@@ -9,6 +10,7 @@ import {
 	getUsers,
 	type UserDto,
 } from "@/app/lib/api";
+import { getSearchPlaceholder } from "@/app/lib/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +25,12 @@ function userHref(role: string): string {
 
 export function SearchForm({
 	onSearch,
+	placeholder,
 }: {
 	onSearch?: (query: string) => void;
+	placeholder?: string;
 } = {}) {
+	const pathname = usePathname();
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
 	const [users, setUsers] = useState<UserDto[]>([]);
@@ -116,6 +121,7 @@ export function SearchForm({
 	};
 
 	const hasResults = users.length > 0 || classes.length > 0;
+	const resolvedPlaceholder = placeholder ?? getSearchPlaceholder(pathname);
 
 	return (
 		<div ref={containerRef} className="relative">
@@ -125,7 +131,7 @@ export function SearchForm({
 			<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
 			<Input
 				id="search"
-				placeholder="Search users, classes..."
+				placeholder={resolvedPlaceholder}
 				className="pl-8"
 				value={query}
 				onChange={handleChange}

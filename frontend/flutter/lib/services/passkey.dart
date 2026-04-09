@@ -6,6 +6,42 @@ import 'package:passkey_attendance_system/services/secure_store.dart';
 import 'package:passkeys/authenticator.dart';
 import 'package:passkeys/types.dart';
 
+class PasskeyException implements Exception {
+  const PasskeyException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class PasskeyAuthCancelledException extends PasskeyException {
+  const PasskeyAuthCancelledException()
+    : super('Passkey authentication was cancelled.');
+}
+
+class PasskeyRegistrationCancelledException extends PasskeyException {
+  const PasskeyRegistrationCancelledException()
+    : super('Passkey registration was cancelled.');
+}
+
+class PasskeyAuthenticationException extends PasskeyException {
+  const PasskeyAuthenticationException(super.message);
+}
+
+class PasskeyRegistrationException extends PasskeyException {
+  const PasskeyRegistrationException(super.message);
+}
+
+bool _isCancellationError(Object error) {
+  final message = error.toString().toLowerCase();
+  return message.contains('cancel') ||
+      message.contains('abort') ||
+      message.contains('notallowederror') ||
+      message.contains('not allowed') ||
+      message.contains('user refused');
+}
+
 String? _extractChallenge(Map<String, dynamic> optionsJson) {
   final topLevel = optionsJson['challenge'];
   if (topLevel is String) {
@@ -57,9 +93,7 @@ Map<String, dynamic> _sanitizeRegisterOptions(
 
   final authenticatorSelection = sanitized['authenticatorSelection'];
   if (authenticatorSelection is Map) {
-    final selection = Map<String, dynamic>.from(
-      authenticatorSelection as Map<dynamic, dynamic>,
-    );
+    final selection = Map<String, dynamic>.from(authenticatorSelection);
 
     final requireResidentKey = selection['requireResidentKey'];
     if (requireResidentKey is! bool) {
@@ -155,7 +189,10 @@ Future<Map<String, dynamic>> register(
       'credential': credential,
     };
   } catch (e) {
-    throw Exception('Registration error: $e');
+    if (_isCancellationError(e)) {
+      throw const PasskeyRegistrationCancelledException();
+    }
+    throw PasskeyRegistrationException('Registration error: $e');
   }
 }
 
@@ -191,17 +228,20 @@ Future<Map<String, dynamic>> checkIn(
       'session_id': sessionId,
       if (bluetoothRssiReadings.isNotEmpty)
         'bluetooth_rssi_readings': bluetoothRssiReadings,
-      ?'ble_token': bleToken,
-      ?'gps_latitude': gpsLatitude,
-      ?'gps_longitude': gpsLongitude,
-      ?'gps_is_mock': gpsIsMock,
-      ?'nfc_token': nfcToken,
+      'ble_token': ?bleToken,
+      'gps_latitude': ?gpsLatitude,
+      'gps_longitude': ?gpsLongitude,
+      'gps_is_mock': ?gpsIsMock,
+      'nfc_token': ?nfcToken,
       'credential': credential,
       'device_signature': deviceBinding['device_signature'],
       'device_public_key': deviceBinding['device_public_key'],
     };
   } catch (e) {
-    throw Exception('Authentication error: $e');
+    if (_isCancellationError(e)) {
+      throw const PasskeyAuthCancelledException();
+    }
+    throw PasskeyAuthenticationException('Authentication error: $e');
   }
 }
 
@@ -232,6 +272,9 @@ Future<Map<String, dynamic>> login(
       'device_public_key': deviceBinding['device_public_key'],
     };
   } catch (e) {
-    throw Exception('Login error: $e');
+    if (_isCancellationError(e)) {
+      throw const PasskeyAuthCancelledException();
+    }
+    throw PasskeyAuthenticationException('Login error: $e');
   }
 }

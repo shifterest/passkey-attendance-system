@@ -9,26 +9,18 @@ import { SetPageHeader } from "@/components/custom/page-header-context";
 import { useUser } from "@/components/custom/user-context";
 import { Badge } from "@/components/ui/badge";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	Field,
+	FieldContent,
+	FieldDescription,
+	FieldGroup,
+	FieldLabel,
+	FieldSeparator,
+} from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function InfoRow({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
+function InfoValue({ children }: { children: React.ReactNode }) {
 	return (
-		<div className="flex items-center justify-between">
-			<span className="text-sm text-muted-foreground">{label}</span>
-			<span className="text-sm">{children}</span>
-		</div>
+		<div className="w-full text-left md:w-auto md:text-right">{children}</div>
 	);
 }
 
@@ -42,10 +34,38 @@ export default function AccountPage() {
 					title="Account"
 					description="View your account information."
 				/>
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					<Skeleton className="h-44" />
-					<Skeleton className="h-44" />
-					<Skeleton className="h-44" />
+				<div className="mx-auto w-full max-w-4xl">
+					<FieldGroup>
+						<Field orientation="horizontal">
+							<FieldContent>
+								<FieldLabel>Identity</FieldLabel>
+								<FieldDescription>
+									Signed-in profile information.
+								</FieldDescription>
+							</FieldContent>
+							<Skeleton className="h-10 w-full md:w-64" />
+						</Field>
+						<FieldSeparator />
+						<Field orientation="horizontal">
+							<FieldContent>
+								<FieldLabel>Registration</FieldLabel>
+								<FieldDescription>
+									Passkey and device key status.
+								</FieldDescription>
+							</FieldContent>
+							<Skeleton className="h-6 w-28" />
+						</Field>
+						<FieldSeparator />
+						<Field orientation="horizontal">
+							<FieldContent>
+								<FieldLabel>Security</FieldLabel>
+								<FieldDescription>
+									Mobile-managed authentication state.
+								</FieldDescription>
+							</FieldContent>
+							<Skeleton className="h-16 w-full md:w-80" />
+						</Field>
+					</FieldGroup>
 				</div>
 			</div>
 		);
@@ -57,73 +77,134 @@ export default function AccountPage() {
 				title="Account"
 				description="View your account information."
 			/>
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				<Card>
-					<CardHeader>
-						<CardTitle>{user?.full_name}</CardTitle>
-						<CardDescription>{user?.email}</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-3">
-						<InfoRow label="Role">
-							<Badge variant="outline" className="capitalize">
-								{user?.role}
-							</Badge>
-						</InfoRow>
-						{user?.school_id && (
-							<InfoRow label="School ID">
-								<span className="font-mono">{user.school_id}</span>
-							</InfoRow>
-						)}
-						{user?.program && <InfoRow label="Program">{user.program}</InfoRow>}
-						{user?.enrollment_year != null && (
-							<InfoRow label="Enrollment Year">{user.enrollment_year}</InfoRow>
-						)}
-						{user?.year_level != null && (
-							<InfoRow label="Year Level">{user.year_level}</InfoRow>
-						)}
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<div className="flex items-center gap-2">
-							<IconFingerprint className="size-5 text-muted-foreground" />
-							<CardTitle>Registration</CardTitle>
-						</div>
-						<CardDescription>
-							Passkey and device key registration status.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-3">
-						<InfoRow label="Status">
+			<div className="mx-auto w-full max-w-4xl">
+				<FieldGroup>
+					<Field orientation="horizontal">
+						<FieldContent>
+							<FieldLabel>Identity</FieldLabel>
+							<FieldDescription>
+								Primary account identity and role information.
+							</FieldDescription>
+						</FieldContent>
+						<InfoValue>
+							<div className="flex flex-col gap-1 md:items-end">
+								<div className="text-sm font-medium">{user?.full_name}</div>
+								<div className="text-sm text-muted-foreground">
+									{user?.email}
+								</div>
+								<Badge
+									variant="outline"
+									className="w-fit capitalize md:self-end"
+								>
+									{user?.role}
+								</Badge>
+							</div>
+						</InfoValue>
+					</Field>
+					{user?.school_id && (
+						<>
+							<FieldSeparator />
+							<Field orientation="horizontal">
+								<FieldContent>
+									<FieldLabel>School ID</FieldLabel>
+									<FieldDescription>
+										Institution-issued identifier.
+									</FieldDescription>
+								</FieldContent>
+								<InfoValue>
+									<span className="font-mono text-sm">{user.school_id}</span>
+								</InfoValue>
+							</Field>
+						</>
+					)}
+					{user?.program && (
+						<>
+							<FieldSeparator />
+							<Field orientation="horizontal">
+								<FieldContent>
+									<FieldLabel>Program</FieldLabel>
+									<FieldDescription>
+										Academic or organizational program assignment.
+									</FieldDescription>
+								</FieldContent>
+								<InfoValue>
+									<span className="text-sm">{user.program}</span>
+								</InfoValue>
+							</Field>
+						</>
+					)}
+					{user?.enrollment_year != null && (
+						<>
+							<FieldSeparator />
+							<Field orientation="horizontal">
+								<FieldContent>
+									<FieldLabel>Enrollment year</FieldLabel>
+									<FieldDescription>
+										Explicit student enrollment year.
+									</FieldDescription>
+								</FieldContent>
+								<InfoValue>
+									<span className="text-sm">{user.enrollment_year}</span>
+								</InfoValue>
+							</Field>
+						</>
+					)}
+					{user?.year_level != null && (
+						<>
+							<FieldSeparator />
+							<Field orientation="horizontal">
+								<FieldContent>
+									<FieldLabel>Year level</FieldLabel>
+									<FieldDescription>
+										Current year level exposed to admin surfaces.
+									</FieldDescription>
+								</FieldContent>
+								<InfoValue>
+									<span className="text-sm">{user.year_level}</span>
+								</InfoValue>
+							</Field>
+						</>
+					)}
+					<FieldSeparator />
+					<Field orientation="horizontal">
+						<FieldContent>
+							<div className="flex items-center gap-2">
+								<IconFingerprint className="size-4 text-muted-foreground" />
+								<FieldLabel>Registration</FieldLabel>
+							</div>
+							<FieldDescription>
+								Passkey and device key enrollment status.
+							</FieldDescription>
+						</FieldContent>
+						<InfoValue>
 							<Badge variant={user?.registered ? "default" : "outline"}>
 								{user?.registered ? "Registered" : "Not registered"}
 							</Badge>
-						</InfoRow>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<div className="flex items-center gap-2">
-							<IconShieldCheck className="size-5 text-muted-foreground" />
-							<CardTitle>Security</CardTitle>
-						</div>
-						<CardDescription>
-							Authentication is managed through the mobile app.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-3">
-						<div className="flex items-start gap-3 rounded-lg border p-3 text-xs text-muted-foreground">
-							<IconDeviceMobile className="mt-0.5 size-4 shrink-0" />
-							<span>
-								Passkey management, device key rotation, and biometric settings
-								are handled through the attendance app on your registered
-								device.
-							</span>
-						</div>
-					</CardContent>
-				</Card>
+						</InfoValue>
+					</Field>
+					<FieldSeparator />
+					<Field orientation="horizontal">
+						<FieldContent>
+							<div className="flex items-center gap-2">
+								<IconShieldCheck className="size-4 text-muted-foreground" />
+								<FieldLabel>Security</FieldLabel>
+							</div>
+							<FieldDescription>
+								Authentication controls are managed in the mobile client.
+							</FieldDescription>
+						</FieldContent>
+						<InfoValue>
+							<div className="flex max-w-md items-start gap-3 rounded-3xl border px-4 py-3 text-sm text-muted-foreground md:justify-end">
+								<IconDeviceMobile className="mt-0.5 size-4 shrink-0" />
+								<span>
+									Passkey management, device key rotation, and biometric
+									settings are handled through the attendance app on your
+									registered device.
+								</span>
+							</div>
+						</InfoValue>
+					</Field>
+				</FieldGroup>
 			</div>
 		</div>
 	);

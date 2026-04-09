@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/passkey.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/auth_scaffold.dart';
-import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({
@@ -46,20 +46,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (!mounted) return;
 
       context.go('/');
+    } on PasskeyRegistrationCancelledException {
+      if (!mounted) return;
+      context.go('/');
     } catch (e) {
       if (!mounted) return;
 
       setState(() => _error = e.toString());
-
-      if (_error != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          await showErrorDialog(
-            context,
-            _error,
-            body: RegistrationStrings.errorBody,
-          );
-        });
-      }
     } finally {
       if (mounted) setState(() => _isRegistering = false);
     }
