@@ -185,6 +185,9 @@ class AuthWrapper extends StatelessWidget {
         if (role == 'teacher') {
           return const TeacherHomeScreen();
         }
+        if (role == 'admin' || role == 'operator') {
+          return const HomeScreen();
+        }
         return const HomeScreen();
       },
     );

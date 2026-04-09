@@ -1,15 +1,27 @@
 "use client";
 
-import { IconCalendar, IconDotsVertical } from "@tabler/icons-react";
+import {
+	IconCalendar,
+	IconChevronLeft,
+	IconChevronRight,
+	IconChevronsLeft,
+	IconChevronsRight,
+	IconDotsVertical,
+} from "@tabler/icons-react";
 import {
 	type ColumnDef,
+	flexRender,
 	getCoreRowModel,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { ClassDto } from "@/app/lib/api";
-import { DataTable } from "@/components/custom/data-table";
+import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +31,23 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
 function formatSchedule(schedule: ClassDto["schedule"]) {
 	return schedule
@@ -26,8 +55,19 @@ function formatSchedule(schedule: ClassDto["schedule"]) {
 		.join("; ");
 }
 
-export function DataTableClasses({ data }: { data: ClassDto[] }) {
+export function DataTableClasses({ data: initialData }: { data: ClassDto[] }) {
 	const router = useRouter();
+	const [data, setData] = React.useState(initialData);
+	const [sorting, setSorting] = React.useState<SortingState>([]);
+	const [pagination, setPagination] = React.useState({
+		pageIndex: 0,
+		pageSize: 10,
+	});
+	const [globalFilter, setGlobalFilter] = React.useState("");
+
+	React.useEffect(() => {
+		setData(initialData);
+	}, [initialData]);
 
 	const columns = React.useMemo<ColumnDef<ClassDto>[]>(
 		() => [
@@ -106,12 +146,146 @@ export function DataTableClasses({ data }: { data: ClassDto[] }) {
 	const table = useReactTable({
 		data,
 		columns,
+		state: { sorting, pagination, globalFilter },
+		globalFilterFn: (row) => {
+			const q = globalFilter.toLowerCase();
+			return (
+				row.original.course_code.toLowerCase().includes(q) ||
+				row.original.course_name.toLowerCase().includes(q)
+			);
+		},
+		getRowId: (row) => row.id,
+		onSortingChange: setSorting,
+		onPaginationChange: setPagination,
 		getCoreRowModel: getCoreRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
 	});
 
 	return (
-		<div className="px-4 lg:px-6">
-			<DataTable table={table} emptyMessage="No classes found." />
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center justify-between px-4 lg:px-6">
+				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
+			</div>
+			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+				<div className="overflow-hidden rounded-lg border">
+					<Table>
+						<TableHeader className="bg-muted sticky top-0 z-10">
+							{table.getHeaderGroups().map((hg) => (
+								<TableRow key={hg.id}>
+									{hg.headers.map((h) => (
+										<TableHead key={h.id} colSpan={h.colSpan}>
+											{h.isPlaceholder
+												? null
+												: flexRender(h.column.columnDef.header, h.getContext())}
+										</TableHead>
+									))}
+								</TableRow>
+							))}
+						</TableHeader>
+						<TableBody>
+							{table.getRowModel().rows.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow key={row.id}>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow>
+									<TableCell
+										colSpan={columns.length}
+										className="h-24 text-center"
+									>
+										No results.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				<div className="flex items-center justify-between px-4">
+					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+						{table.getFilteredRowModel().rows.length} class(es) total.
+					</div>
+					<div className="flex w-full items-center gap-8 lg:w-fit">
+						<div className="hidden items-center gap-2 lg:flex">
+							<Label htmlFor="rows-per-page" className="text-sm font-medium">
+								Rows per page
+							</Label>
+							<Select
+								value={`${table.getState().pagination.pageSize}`}
+								onValueChange={(v) => table.setPageSize(Number(v))}
+							>
+								<SelectTrigger size="sm" className="w-20" id="rows-per-page">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent side="top">
+									<SelectGroup>
+										{[10, 20, 30, 50].map((s) => (
+											<SelectItem key={s} value={`${s}`}>
+												{s}
+											</SelectItem>
+										))}
+									</SelectGroup>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex w-fit items-center justify-center text-sm font-medium">
+							Page {table.getState().pagination.pageIndex + 1} of{" "}
+							{table.getPageCount()}
+						</div>
+						<div className="ml-auto flex items-center gap-2 lg:ml-0">
+							<Button
+								variant="outline"
+								className="hidden h-8 w-8 p-0 lg:flex"
+								onClick={() => table.setPageIndex(0)}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to first page</span>
+								<IconChevronsLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.previousPage()}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to previous page</span>
+								<IconChevronLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.nextPage()}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to next page</span>
+								<IconChevronRight />
+							</Button>
+							<Button
+								variant="outline"
+								className="hidden size-8 lg:flex"
+								size="icon"
+								onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to last page</span>
+								<IconChevronsRight />
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

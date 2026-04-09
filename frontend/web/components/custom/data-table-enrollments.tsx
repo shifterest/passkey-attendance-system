@@ -165,16 +165,21 @@ export function DataTableEnrollments({
 		[router],
 	);
 
-	const handleCreateBatch = async (classId: string, studentIds: string[]) => {
+	const handleCreateBatch = async (
+		classIds: string[],
+		studentIds: string[],
+	) => {
 		let added = 0;
 		let skipped = 0;
 
-		for (const studentId of studentIds) {
-			try {
-				await createEnrollment({ class_id: classId, student_id: studentId });
-				added += 1;
-			} catch {
-				skipped += 1;
+		for (const classId of classIds) {
+			for (const studentId of studentIds) {
+				try {
+					await createEnrollment({ class_id: classId, student_id: studentId });
+					added += 1;
+				} catch {
+					skipped += 1;
+				}
 			}
 		}
 
@@ -311,15 +316,9 @@ export function DataTableEnrollments({
 				onSubmit={handleCreateBatch}
 			/>
 			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="text-xl font-semibold">Enrollments</h2>
-					<p className="text-sm text-muted-foreground">
-						Manage class assignments for students.
-					</p>
-				</div>
 				<Button type="button" onClick={() => setOpenDialog(true)}>
 					<IconPlus data-icon="inline-start" />
-					Create enrollment
+					Create
 				</Button>
 			</div>
 			{statusMessage && (

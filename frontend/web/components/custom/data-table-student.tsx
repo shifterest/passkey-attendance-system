@@ -106,7 +106,6 @@ export const schema = z.object({
 	registered: z.boolean(),
 });
 
-const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
 const REGISTERED_FILTER_VALUES = [true, false] as const;
 const IN_CLASS_FILTER_VALUES = [true, false] as const;
 
@@ -164,21 +163,6 @@ function columns(
 			// 	return <TableCellViewer item={row.original} />;
 			// },
 			enableHiding: false,
-		},
-		{
-			accessorKey: "role",
-			filterFn: includesSomeFilter,
-			header: "Role",
-			cell: ({ row }) => (
-				<div>
-					<Badge
-						variant="outline"
-						className="text-muted-foreground px-1.5 capitalize"
-					>
-						{row.original.role}
-					</Badge>
-				</div>
-			),
 		},
 		{
 			accessorKey: "ongoing_class",
@@ -303,7 +287,6 @@ function columns(
 
 const getDefaultColumnFilters = (): ColumnFiltersState => {
 	return [
-		{ id: "role", value: [...ROLE_FILTER_VALUES] },
 		{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
 		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
 	];
@@ -561,42 +544,6 @@ export function DataTableStudent({
 							<IconChevronDown data-icon="inline-end" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Role</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("role", "student")}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("role", "student", checked);
-									}}
-								>
-									Students
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("role", "teacher")}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("role", "teacher", checked);
-									}}
-								>
-									Teachers
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("role", "admin")}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("role", "admin", checked);
-									}}
-								>
-									Admins
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("role", "operator")}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("role", "operator", checked);
-									}}
-								>
-									Operators
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
 							<DropdownMenuGroup>
 								<DropdownMenuLabel>Registration</DropdownMenuLabel>
 								<DropdownMenuCheckboxItem

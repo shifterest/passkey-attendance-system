@@ -43,6 +43,7 @@ export function SectionCards({
 			<Card className="@container/card bg-gradient-to-t !from-red-500/5 dark:!from-red-500/10">
 				<CardHeader>
 					<CardDescription>Flagged attendance records today</CardDescription>
+					{/* TODO: Should be something like "Low-assurance attendance records today" */}
 					<CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
 						{flaggedToday}
 					</CardTitle>
@@ -65,6 +66,7 @@ export function SectionCards({
 			<Card className="@container/card bg-gradient-to-t !from-blue-500/5 dark:!from-blue-500/10">
 				<CardHeader>
 					<CardDescription>Total sessions</CardDescription>
+					{/* TODO: Should be something like "Ongoing sessions" */}
 					<CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
 						{totalSessions}
 					</CardTitle>

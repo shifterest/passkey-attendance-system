@@ -1,26 +1,106 @@
 "use client";
 
-import { IconChevronRight, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+	IconChevronLeft,
+	IconChevronRight,
+	IconChevronsLeft,
+	IconChevronsRight,
+	IconDotsVertical,
+	IconPlus,
+	IconTrash,
+} from "@tabler/icons-react";
+import {
+	type ColumnDef,
+	flexRender,
+	getCoreRowModel,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	useReactTable,
+} from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import * as React from "react";
 import type { OrgDto } from "@/app/lib/api";
 import { createOrg, deleteOrg } from "@/app/lib/api";
+import { SearchForm } from "@/components/custom/search-form";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
-export function OrgList({ data }: { data: OrgDto[] }) {
+const columns: ColumnDef<OrgDto>[] = [
+	{
+		accessorKey: "name",
+		header: "Name",
+		cell: ({ row }) => (
+			<Link
+				href={`/orgs/${row.original.id}`}
+				className="font-medium hover:underline"
+			>
+				{row.original.name}
+			</Link>
+		),
+	},
+	{
+		accessorKey: "description",
+		header: "Description",
+		cell: ({ row }) => (
+			<span className="text-sm text-muted-foreground">
+				{row.original.description || "—"}
+			</span>
+		),
+	},
+];
+
+export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 	const router = useRouter();
-	const [showCreate, setShowCreate] = useState(false);
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
-	const [creating, setCreating] = useState(false);
+	const [data, setData] = React.useState(initialData);
+	const [globalFilter, setGlobalFilter] = React.useState("");
+	const [pagination, setPagination] = React.useState({
+		pageIndex: 0,
+		pageSize: 10,
+	});
+	const [createOpen, setCreateOpen] = React.useState(false);
+	const [name, setName] = React.useState("");
+	const [description, setDescription] = React.useState("");
+	const [creating, setCreating] = React.useState(false);
+
+	React.useEffect(() => {
+		setData(initialData);
+	}, [initialData]);
 
 	async function handleCreate() {
 		if (!name.trim() || creating) return;
@@ -32,7 +112,7 @@ export function OrgList({ data }: { data: OrgDto[] }) {
 			});
 			setName("");
 			setDescription("");
-			setShowCreate(false);
+			setCreateOpen(false);
 			router.refresh();
 		} finally {
 			setCreating(false);
@@ -44,83 +124,231 @@ export function OrgList({ data }: { data: OrgDto[] }) {
 		router.refresh();
 	}
 
-	return (
-		<div className="px-4 lg:px-6">
-			<div className="flex items-center justify-between mb-4">
-				<h2 className="text-xl font-semibold">Organizations</h2>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => setShowCreate(!showCreate)}
-				>
-					<IconPlus data-icon="inline-start" />
-					New
-				</Button>
-			</div>
+	const actionsColumn = React.useMemo<ColumnDef<OrgDto>>(
+		() => ({
+			id: "actions",
+			header: "",
+			cell: ({ row }) => (
+				<DropdownMenu>
+					<DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+						<IconDotsVertical />
+						<span className="sr-only">Open menu</span>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								onClick={() => router.push(`/orgs/${row.original.id}`)}
+							>
+								View
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={() => handleDelete(row.original.id)}
+							>
+								<IconTrash data-icon="inline-start" />
+								Delete
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			),
+		}),
+		[router],
+	);
 
-			{showCreate && (
-				<Card className="mb-4">
-					<CardHeader>
-						<div className="flex flex-col gap-2">
-							<Input
-								placeholder="Organization name"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-							/>
-							<Input
-								placeholder="Description (optional)"
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-							/>
+	const allColumns = React.useMemo(
+		() => [...columns, actionsColumn],
+		[actionsColumn],
+	);
+
+	const table = useReactTable({
+		data,
+		columns: allColumns,
+		state: { pagination, globalFilter },
+		globalFilterFn: (row) => {
+			const q = globalFilter.toLowerCase();
+			return (
+				row.original.name.toLowerCase().includes(q) ||
+				(row.original.description ?? "").toLowerCase().includes(q)
+			);
+		},
+		getRowId: (row) => row.id,
+		onPaginationChange: setPagination,
+		getCoreRowModel: getCoreRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+	});
+
+	return (
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center justify-between px-4 lg:px-6">
+				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
+				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+					<DialogTrigger render={<Button size="sm" />}>
+						<IconPlus data-icon="inline-start" />
+						Create
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Create organization</DialogTitle>
+							<DialogDescription>
+								Add a new organization to manage membership-based attendance.
+							</DialogDescription>
+						</DialogHeader>
+						<FieldGroup>
+							<Field>
+								<FieldLabel htmlFor="org-name">Name</FieldLabel>
+								<Input
+									id="org-name"
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									placeholder="Organization name"
+								/>
+							</Field>
+							<Field>
+								<FieldLabel htmlFor="org-desc">
+									Description (optional)
+								</FieldLabel>
+								<Input
+									id="org-desc"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Short description"
+								/>
+							</Field>
+						</FieldGroup>
+						<DialogFooter>
+							<DialogClose render={<Button variant="outline" />}>
+								Cancel
+							</DialogClose>
 							<Button
 								onClick={handleCreate}
 								disabled={creating || !name.trim()}
 							>
-								{creating ? "Creating..." : "Create"}
+								{creating ? "Creating…" : "Create"}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
+			</div>
+			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+				<div className="overflow-hidden rounded-lg border">
+					<Table>
+						<TableHeader className="bg-muted sticky top-0 z-10">
+							{table.getHeaderGroups().map((hg) => (
+								<TableRow key={hg.id}>
+									{hg.headers.map((h) => (
+										<TableHead key={h.id} colSpan={h.colSpan}>
+											{h.isPlaceholder
+												? null
+												: flexRender(h.column.columnDef.header, h.getContext())}
+										</TableHead>
+									))}
+								</TableRow>
+							))}
+						</TableHeader>
+						<TableBody>
+							{table.getRowModel().rows.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow key={row.id}>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow>
+									<TableCell
+										colSpan={allColumns.length}
+										className="h-24 text-center"
+									>
+										No organizations found.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				<div className="flex items-center justify-between px-4">
+					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+						{table.getFilteredRowModel().rows.length} organization(s) total.
+					</div>
+					<div className="flex w-full items-center gap-8 lg:w-fit">
+						<div className="hidden items-center gap-2 lg:flex">
+							<Label htmlFor="rows-per-page" className="text-sm font-medium">
+								Rows per page
+							</Label>
+							<Select
+								value={`${table.getState().pagination.pageSize}`}
+								onValueChange={(v) => table.setPageSize(Number(v))}
+							>
+								<SelectTrigger size="sm" className="w-20" id="rows-per-page">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent side="top">
+									<SelectGroup>
+										{[10, 20, 30, 50].map((s) => (
+											<SelectItem key={s} value={`${s}`}>
+												{s}
+											</SelectItem>
+										))}
+									</SelectGroup>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex w-fit items-center justify-center text-sm font-medium">
+							Page {table.getState().pagination.pageIndex + 1} of{" "}
+							{table.getPageCount()}
+						</div>
+						<div className="ml-auto flex items-center gap-2 lg:ml-0">
+							<Button
+								variant="outline"
+								className="hidden h-8 w-8 p-0 lg:flex"
+								onClick={() => table.setPageIndex(0)}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to first page</span>
+								<IconChevronsLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.previousPage()}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to previous page</span>
+								<IconChevronLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.nextPage()}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to next page</span>
+								<IconChevronRight />
+							</Button>
+							<Button
+								variant="outline"
+								className="hidden size-8 lg:flex"
+								size="icon"
+								onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to last page</span>
+								<IconChevronsRight />
 							</Button>
 						</div>
-					</CardHeader>
-				</Card>
-			)}
-
-			{data.length === 0 ? (
-				<p className="text-muted-foreground text-sm">No organizations yet.</p>
-			) : (
-				<div className="grid gap-2">
-					{data.map((org) => (
-						<Card key={org.id}>
-							<CardHeader className="flex-row items-center justify-between">
-								<div>
-									<CardTitle>
-										<Link href={`/orgs/${org.id}`} className="hover:underline">
-											{org.name}
-										</Link>
-									</CardTitle>
-									{org.description && (
-										<CardDescription>{org.description}</CardDescription>
-									)}
-								</div>
-								<div className="flex items-center gap-2">
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => handleDelete(org.id)}
-									>
-										<IconTrash />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										render={<Link href={`/orgs/${org.id}`} />}
-									>
-										<IconChevronRight />
-									</Button>
-								</div>
-							</CardHeader>
-						</Card>
-					))}
+					</div>
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }

@@ -3,14 +3,19 @@
 import {
 	IconAlertTriangle,
 	IconCheck,
+	IconChevronDown,
 	IconChevronLeft,
 	IconChevronRight,
+	IconChevronsLeft,
+	IconChevronsRight,
+	IconFilter,
 	IconFlag,
 	IconRefresh,
 	IconShield,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
+	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
@@ -20,9 +25,20 @@ import {
 import * as React from "react";
 import type { AttendanceRecordDto } from "@/app/lib/api";
 import { approveRecord } from "@/app/lib/api";
-import { DataTable } from "@/components/custom/data-table";
+import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -31,6 +47,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
 function formatTimestamp(ts: string) {
 	return new Date(ts).toLocaleString();
@@ -188,6 +212,16 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		{ id: "timestamp", desc: true },
 	]);
 	const [approvedIds, setApprovedIds] = React.useState<Set<string>>(new Set());
+	const [globalFilter, setGlobalFilter] = React.useState("");
+	const [statusFilter, setStatusFilter] = React.useState<string[]>([
+		"present",
+		"late",
+		"absent",
+	]);
+	const [pagination, setPagination] = React.useState({
+		pageIndex: 0,
+		pageSize: 20,
+	});
 
 	const approveColumn = React.useMemo<ColumnDef<AttendanceRecordDto>>(
 		() => ({
@@ -226,61 +260,195 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		[approveColumn],
 	);
 
+	const filteredData = React.useMemo(() => {
+		let result = data;
+		if (statusFilter.length < 3) {
+			result = result.filter((r) => statusFilter.includes(r.status));
+		}
+		if (globalFilter) {
+			const q = globalFilter.toLowerCase();
+			result = result.filter(
+				(r) =>
+					r.user_id.toLowerCase().includes(q) ||
+					r.session_id.toLowerCase().includes(q),
+			);
+		}
+		return result;
+	}, [data, statusFilter, globalFilter]);
+
 	const table = useReactTable({
-		data,
+		data: filteredData,
 		columns: allColumns,
-		state: { sorting },
+		state: { sorting, pagination },
 		onSortingChange: setSorting,
+		onPaginationChange: setPagination,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
-		initialState: { pagination: { pageSize: 20 } },
 	});
 
+	const toggleStatus = (value: string, checked: boolean) => {
+		setStatusFilter((prev) => {
+			if (!checked && prev.includes(value) && prev.length === 1) return prev;
+			return checked
+				? Array.from(new Set([...prev, value]))
+				: prev.filter((v) => v !== value);
+		});
+	};
+
 	return (
-		<div className="flex flex-col gap-4 px-4 lg:px-6">
-			<DataTable table={table} emptyMessage="No records found." />
-			<div className="flex items-center justify-between px-2">
-				<span className="text-sm text-muted-foreground">
-					{table.getFilteredRowModel().rows.length} records
-				</span>
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center justify-between px-4 lg:px-6">
+				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<Select
-						value={String(table.getState().pagination.pageSize)}
-						onValueChange={(v) => table.setPageSize(Number(v))}
-					>
-						<SelectTrigger className="h-8 w-24">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								{[10, 20, 50, 100].map((n) => (
-									<SelectItem key={n} value={String(n)}>
-										{n} / page
-									</SelectItem>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
+						>
+							<IconFilter data-icon="inline-start" />
+							Filter
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-48">
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Status</DropdownMenuLabel>
+								{["present", "late", "absent"].map((s) => (
+									<DropdownMenuCheckboxItem
+										key={s}
+										checked={statusFilter.includes(s)}
+										onCheckedChange={(c) => toggleStatus(s, c)}
+									>
+										{s.charAt(0).toUpperCase() + s.slice(1)}
+									</DropdownMenuCheckboxItem>
 								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage()}
-					>
-						<IconChevronLeft />
-					</Button>
-					<span className="text-sm text-muted-foreground">
-						{table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-					</span>
-					<Button
-						variant="outline"
-						size="icon"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-					>
-						<IconChevronRight />
-					</Button>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={() => setStatusFilter(["present", "late", "absent"])}
+							>
+								Reset filters
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+			</div>
+			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+				<div className="overflow-hidden rounded-lg border">
+					<Table>
+						<TableHeader className="bg-muted sticky top-0 z-10">
+							{table.getHeaderGroups().map((hg) => (
+								<TableRow key={hg.id}>
+									{hg.headers.map((h) => (
+										<TableHead key={h.id} colSpan={h.colSpan}>
+											{h.isPlaceholder
+												? null
+												: flexRender(h.column.columnDef.header, h.getContext())}
+										</TableHead>
+									))}
+								</TableRow>
+							))}
+						</TableHeader>
+						<TableBody>
+							{table.getRowModel().rows.length ? (
+								table.getRowModel().rows.map((row) => (
+									<TableRow key={row.id}>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell key={cell.id}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
+											</TableCell>
+										))}
+									</TableRow>
+								))
+							) : (
+								<TableRow>
+									<TableCell
+										colSpan={allColumns.length}
+										className="h-24 text-center"
+									>
+										No results.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
+				<div className="flex items-center justify-between px-4">
+					<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+						{table.getFilteredRowModel().rows.length} record(s) total.
+					</div>
+					<div className="flex w-full items-center gap-8 lg:w-fit">
+						<div className="hidden items-center gap-2 lg:flex">
+							<Label htmlFor="rows-per-page" className="text-sm font-medium">
+								Rows per page
+							</Label>
+							<Select
+								value={`${table.getState().pagination.pageSize}`}
+								onValueChange={(v) => table.setPageSize(Number(v))}
+							>
+								<SelectTrigger size="sm" className="w-20" id="rows-per-page">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent side="top">
+									<SelectGroup>
+										{[10, 20, 50, 100].map((s) => (
+											<SelectItem key={s} value={`${s}`}>
+												{s}
+											</SelectItem>
+										))}
+									</SelectGroup>
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex w-fit items-center justify-center text-sm font-medium">
+							Page {table.getState().pagination.pageIndex + 1} of{" "}
+							{table.getPageCount()}
+						</div>
+						<div className="ml-auto flex items-center gap-2 lg:ml-0">
+							<Button
+								variant="outline"
+								className="hidden h-8 w-8 p-0 lg:flex"
+								onClick={() => table.setPageIndex(0)}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to first page</span>
+								<IconChevronsLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.previousPage()}
+								disabled={!table.getCanPreviousPage()}
+							>
+								<span className="sr-only">Go to previous page</span>
+								<IconChevronLeft />
+							</Button>
+							<Button
+								variant="outline"
+								className="size-8"
+								size="icon"
+								onClick={() => table.nextPage()}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to next page</span>
+								<IconChevronRight />
+							</Button>
+							<Button
+								variant="outline"
+								className="hidden size-8 lg:flex"
+								size="icon"
+								onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+								disabled={!table.getCanNextPage()}
+							>
+								<span className="sr-only">Go to last page</span>
+								<IconChevronsRight />
+							</Button>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

@@ -198,6 +198,19 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     } catch (e) {
       if (!mounted) return;
 
+      final errorMessage = e.toString().toLowerCase();
+      final isCancellation =
+          errorMessage.contains('cancel') ||
+          errorMessage.contains('abort') ||
+          errorMessage.contains('user refused') ||
+          errorMessage.contains('not allowed') ||
+          errorMessage.contains('notallowederror');
+
+      if (isCancellation) {
+        if (mounted) context.go('/');
+        return;
+      }
+
       setState(() => _error = e.toString());
 
       if (_error != null) {
@@ -270,10 +283,22 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     });
 
     if (widget.webLoginToken != null) {
-      await AuthApi.webLoginVerify({
+      final webLoginResponse = await AuthApi.webLoginVerify({
         ...credentialJson,
         'web_login_token': widget.webLoginToken!,
       });
+      final sessionToken = webLoginResponse['session_token'];
+      final expiresIn = webLoginResponse['expires_in'];
+      if (sessionToken is String &&
+          sessionToken.isNotEmpty &&
+          expiresIn is int) {
+        await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
+        try {
+          final userMap = await UserApi().getUser(widget.userId);
+          final role = userMap['role'];
+          if (role is String) await SessionStore.saveRole(role);
+        } catch (_) {}
+      }
       unawaited(submitPlayIntegrityVouch());
     } else if (widget.login) {
       final loginResponse = await AuthApi.loginVerify(credentialJson);

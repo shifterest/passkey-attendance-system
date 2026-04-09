@@ -1,11 +1,22 @@
 "use client";
 
-import { IconSearch } from "@tabler/icons-react";
+import { IconChevronDown, IconFilter, IconSearch } from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	useComboboxAnchor,
+} from "@/components/ui/combobox";
 import {
 	Dialog,
 	DialogContent,
@@ -14,16 +25,19 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
 	Table,
 	TableBody,
@@ -39,7 +53,7 @@ type Props = {
 	classes: ClassDto[];
 	students: UserExtendedDto[];
 	prefilledClassId?: string;
-	onSubmit: (classId: string, studentIds: string[]) => Promise<void>;
+	onSubmit: (classIds: string[], studentIds: string[]) => Promise<void>;
 };
 
 function inferYear(schoolId: string | null): string {
@@ -67,23 +81,33 @@ export function EnrollmentManageDialog({
 	prefilledClassId,
 	onSubmit,
 }: Props) {
-	const [classId, setClassId] = React.useState(prefilledClassId ?? "");
+	const [classIds, setClassIds] = React.useState<string[]>([]);
 	const [query, setQuery] = React.useState("");
-	const [yearFilter, setYearFilter] = React.useState("all");
+	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
 	const [blockSize, setBlockSize] = React.useState(50);
 	const [offset, setOffset] = React.useState(0);
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 	const [submitting, setSubmitting] = React.useState(false);
+	const chipsRef = useComboboxAnchor();
 
 	React.useEffect(() => {
 		if (!open) return;
-		setClassId(prefilledClassId ?? "");
+		setClassIds(prefilledClassId ? [prefilledClassId] : []);
 		setQuery("");
-		setYearFilter("all");
+		setYearFilter([]);
 		setBlockSize(50);
 		setOffset(0);
 		setSelectedIds(new Set());
 	}, [open, prefilledClassId]);
+
+	const classOptions = React.useMemo(
+		() =>
+			classes.map((c) => ({
+				value: c.id,
+				label: `${c.course_code} - ${c.course_name}`,
+			})),
+		[classes],
+	);
 
 	const yearOptions = React.useMemo(() => {
 		const values = new Set<string>();
@@ -98,8 +122,8 @@ export function EnrollmentManageDialog({
 		return students
 			.filter((student) => {
 				if (
-					yearFilter !== "all" &&
-					inferYear(student.school_id) !== yearFilter
+					yearFilter.length > 0 &&
+					!yearFilter.includes(inferYear(student.school_id))
 				) {
 					return false;
 				}
@@ -157,15 +181,20 @@ export function EnrollmentManageDialog({
 		setSelectedIds(new Set(range.map((student) => student.id)));
 	};
 
-	const selectedClass = classes.find((value) => value.id === classId) ?? null;
+	const toggleYearFilter = (year: string, checked: boolean) => {
+		setYearFilter((prev) => {
+			if (checked) return [...new Set([...prev, year])];
+			return prev.filter((y) => y !== year);
+		});
+	};
 
 	const handleSubmit = async () => {
-		if (!classId || selectedIds.size === 0) {
+		if (classIds.length === 0 || selectedIds.size === 0) {
 			return;
 		}
 		setSubmitting(true);
 		try {
-			await onSubmit(classId, Array.from(selectedIds));
+			await onSubmit(classIds, Array.from(selectedIds));
 			onOpenChange(false);
 		} finally {
 			setSubmitting(false);
@@ -178,110 +207,84 @@ export function EnrollmentManageDialog({
 				<DialogHeader>
 					<DialogTitle>Create enrollments</DialogTitle>
 					<DialogDescription>
-						Select a class, filter students, and enroll in batch.
+						Select classes, filter students, and enroll in batch.
 					</DialogDescription>
 				</DialogHeader>
 				<FieldGroup>
 					<Field>
-						<FieldLabel htmlFor="enrollment-class">Class</FieldLabel>
-						<Select
-							value={classId}
-							onValueChange={(value) => setClassId(value ?? "")}
-						>
-							<SelectTrigger id="enrollment-class" className="w-full">
-								<SelectValue placeholder="Select class" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									{classes.map((classValue) => (
-										<SelectItem key={classValue.id} value={classValue.id}>
-											{classValue.course_code} - {classValue.course_name}
-										</SelectItem>
+						<FieldLabel>Classes</FieldLabel>
+						<Combobox multiple value={classIds} onValueChange={setClassIds}>
+							<ComboboxChips ref={chipsRef}>
+								{(chip) => (
+									<ComboboxChip key={chip.value} value={chip.value}>
+										{chip.label}
+									</ComboboxChip>
+								)}
+								<ComboboxChipsInput placeholder="Search classes..." />
+							</ComboboxChips>
+							<ComboboxContent anchor={chipsRef}>
+								<ComboboxList>
+									<ComboboxEmpty>No classes found.</ComboboxEmpty>
+									{classOptions.map((option) => (
+										<ComboboxItem
+											key={option.value}
+											value={option.value}
+											label={option.label}
+										>
+											{option.label}
+										</ComboboxItem>
 									))}
-								</SelectGroup>
-							</SelectContent>
-						</Select>
+								</ComboboxList>
+							</ComboboxContent>
+						</Combobox>
 					</Field>
 					<div className="flex flex-col gap-3 rounded-lg border p-3">
-						<div className="grid gap-3 md:grid-cols-2">
-							<Field>
-								<FieldLabel htmlFor="enrollment-search">
-									Search students
-								</FieldLabel>
-								<div className="relative">
-									<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
-									<Input
-										id="enrollment-search"
-										value={query}
-										onChange={(event) => setQuery(event.currentTarget.value)}
-										placeholder="Name, school ID, or email"
-										className="pl-8"
-									/>
-								</div>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="enrollment-year">Year</FieldLabel>
-								<Select
-									value={yearFilter}
-									onValueChange={(value) => setYearFilter(value ?? "all")}
-								>
-									<SelectTrigger id="enrollment-year" className="w-full">
-										<SelectValue placeholder="All years" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectGroup>
-											<SelectItem value="all">All years</SelectItem>
-											{yearOptions.map((year) => (
-												<SelectItem key={year} value={year}>
-													{year}
-												</SelectItem>
-											))}
-										</SelectGroup>
-									</SelectContent>
-								</Select>
-							</Field>
-						</div>
-						<div className="grid gap-3 md:grid-cols-4">
-							<Field>
-								<FieldLabel htmlFor="block-size">Block size</FieldLabel>
+						<div className="flex items-center gap-2">
+							<div className="relative flex-1">
+								<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
 								<Input
-									id="block-size"
-									type="number"
-									min={1}
-									value={blockSize}
-									onChange={(event) => {
-										setBlockSize(Number(event.currentTarget.value || 1));
-									}}
+									value={query}
+									onChange={(event) => setQuery(event.currentTarget.value)}
+									placeholder="Search by name, school ID, or email"
+									className="pl-8"
 								/>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="block-offset">Offset</FieldLabel>
-								<Input
-									id="block-offset"
-									type="number"
-									min={0}
-									value={offset}
-									onChange={(event) => {
-										setOffset(Number(event.currentTarget.value || 0));
-									}}
-								/>
-							</Field>
-							<div className="md:col-span-2 flex items-end gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => selectRange(0, blockSize)}
-								>
-									Select first {blockSize}
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => selectRange(offset, blockSize)}
-								>
-									Select next {blockSize}
-								</Button>
 							</div>
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={<Button variant="outline" size="sm" />}
+								>
+									<IconFilter data-icon="inline-start" />
+									Year
+									<IconChevronDown data-icon="inline-end" />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-40">
+									<DropdownMenuGroup>
+										<DropdownMenuLabel>Year</DropdownMenuLabel>
+										{yearOptions.map((year) => (
+											<DropdownMenuCheckboxItem
+												key={year}
+												checked={yearFilter.includes(year)}
+												onCheckedChange={(checked) =>
+													toggleYearFilter(year, checked)
+												}
+											>
+												{year}
+											</DropdownMenuCheckboxItem>
+										))}
+									</DropdownMenuGroup>
+									{yearFilter.length > 0 && (
+										<>
+											<DropdownMenuSeparator />
+											<DropdownMenuItem
+												variant="destructive"
+												onClick={() => setYearFilter([])}
+											>
+												Reset filters
+											</DropdownMenuItem>
+										</>
+									)}
+								</DropdownMenuContent>
+							</DropdownMenu>
 						</div>
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-2">
@@ -346,12 +349,60 @@ export function EnrollmentManageDialog({
 								</TableBody>
 							</Table>
 						</div>
+						<div className="flex flex-wrap items-end gap-2 border-t pt-3">
+							<div className="flex items-center gap-2">
+								<Label htmlFor="block-size" className="text-sm">
+									Block
+								</Label>
+								<Input
+									id="block-size"
+									type="number"
+									min={1}
+									value={blockSize}
+									onChange={(event) =>
+										setBlockSize(Number(event.currentTarget.value || 1))
+									}
+									className="w-20"
+								/>
+							</div>
+							<div className="flex items-center gap-2">
+								<Label htmlFor="block-offset" className="text-sm">
+									Offset
+								</Label>
+								<Input
+									id="block-offset"
+									type="number"
+									min={0}
+									value={offset}
+									onChange={(event) =>
+										setOffset(Number(event.currentTarget.value || 0))
+									}
+									className="w-20"
+								/>
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => selectRange(0, blockSize)}
+							>
+								Select first {blockSize}
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => selectRange(offset, blockSize)}
+							>
+								Select from offset
+							</Button>
+						</div>
 					</div>
 				</FieldGroup>
 				<DialogFooter className="items-center justify-between gap-2 sm:justify-between">
 					<div className="text-sm text-muted-foreground">
-						{selectedClass
-							? `${selectedClass.course_code} - ${selectedClass.course_name}`
+						{classIds.length > 0
+							? `${classIds.length} class${classIds.length > 1 ? "es" : ""} selected`
 							: "No class selected"}
 					</div>
 					<div className="flex items-center gap-2">
@@ -365,7 +416,9 @@ export function EnrollmentManageDialog({
 						<Button
 							type="button"
 							onClick={handleSubmit}
-							disabled={!classId || selectedIds.size === 0 || submitting}
+							disabled={
+								classIds.length === 0 || selectedIds.size === 0 || submitting
+							}
 						>
 							Enroll selected
 						</Button>

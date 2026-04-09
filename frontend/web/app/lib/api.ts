@@ -267,6 +267,21 @@ export function unregisterUser(userId: string) {
 	return request(ApiPaths.adminUnregister(userId), { method: "POST" });
 }
 
+export function createUser(data: {
+	role: string;
+	full_name: string;
+	email: string;
+	school_id?: string | null;
+	program?: string | null;
+	year_level?: number | null;
+}) {
+	return request<UserDto>(ApiPaths.users, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+}
+
 export function getTeachers() {
 	return request<TeacherDto[]>(ApiPaths.teachers);
 }
@@ -277,6 +292,21 @@ export function getClasses() {
 
 export function getClass(classId: string) {
 	return request<ClassDto>(ApiPaths.class(classId));
+}
+
+export function createClass(data: {
+	teacher_id: string;
+	course_code: string;
+	course_name: string;
+	schedule: { days: string[]; start_time: string; end_time: string }[];
+	standard_assurance_threshold?: number;
+	high_assurance_threshold?: number;
+}) {
+	return request<ClassDto>(ApiPaths.classes, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
 }
 
 export function getEnrollments() {

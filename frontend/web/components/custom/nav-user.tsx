@@ -6,6 +6,7 @@ import {
 	IconSettings,
 	IconUserCircle,
 } from "@tabler/icons-react";
+import { useRouter } from "next/navigation";
 import { clearBrowserSession, logout } from "@/app/lib/api";
 import { useUser } from "@/components/custom/user-context";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function NavUser() {
 	const { isMobile } = useSidebar();
 	const { user, loading } = useUser();
+	const router = useRouter();
 
 	const handleLogout = async () => {
 		const userId = localStorage.getItem("user_id");
@@ -110,11 +112,11 @@ export function NavUser() {
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem>
+							<DropdownMenuItem onClick={() => router.push("/account")}>
 								<IconUserCircle />
 								Account
 							</DropdownMenuItem>
-							<DropdownMenuItem>
+							<DropdownMenuItem onClick={() => router.push("/settings")}>
 								<IconSettings />
 								Settings
 							</DropdownMenuItem>
