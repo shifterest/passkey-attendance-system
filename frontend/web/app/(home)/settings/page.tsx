@@ -39,9 +39,9 @@ export default function SettingsPage() {
 					{mounted && (
 						<ToggleGroup
 							type="single"
-							value={theme ?? "system"}
+							value={theme ? [theme] : ["system"]}
 							onValueChange={(value) => {
-								if (value) setTheme(value);
+								if (value.length > 0) setTheme(value[0]);
 							}}
 						>
 							<ToggleGroupItem value="light" aria-label="Light theme">
