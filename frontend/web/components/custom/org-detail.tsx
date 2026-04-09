@@ -87,10 +87,12 @@ function MembersSection({
 		useState<OrgMembershipType>("explicit_grant");
 	const [orgRole, setOrgRole] = useState<OrgRole>("member");
 	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	async function handleAdd() {
 		if (!userId.trim() || busy) return;
 		setBusy(true);
+		setError(null);
 		try {
 			await grantMembership(orgId, {
 				user_id: userId.trim(),
@@ -100,14 +102,20 @@ function MembersSection({
 			setUserId("");
 			setShowAdd(false);
 			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to add member");
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	async function handleRevoke(uid: string) {
-		await revokeMembership(orgId, uid);
-		router.refresh();
+		try {
+			await revokeMembership(orgId, uid);
+			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to revoke member");
+		}
 	}
 
 	return (
@@ -173,6 +181,11 @@ function MembersSection({
 									</SelectContent>
 								</Select>
 							</div>
+							{error && (
+								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+									{error}
+								</div>
+							)}
 							<Button onClick={handleAdd} disabled={busy || !userId.trim()}>
 								{busy ? "Adding..." : "Add Member"}
 							</Button>
@@ -226,6 +239,7 @@ function RulesSection({
 	const [ruleType, setRuleType] = useState<OrgRuleType>("all");
 	const [ruleValue, setRuleValue] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const requiresRuleValue = ruleType !== "all";
 
 	async function handleAdd() {
@@ -233,6 +247,7 @@ function RulesSection({
 		const nextRuleValue = requiresRuleValue ? ruleValue.trim() : "";
 		if (requiresRuleValue && !nextRuleValue) return;
 		setBusy(true);
+		setError(null);
 		try {
 			await createOrgRule(orgId, {
 				rule_type: ruleType,
@@ -242,14 +257,20 @@ function RulesSection({
 			setRuleValue("");
 			setShowAdd(false);
 			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to add rule");
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	async function handleDelete(ruleId: string) {
-		await deleteOrgRule(orgId, ruleId);
-		router.refresh();
+		try {
+			await deleteOrgRule(orgId, ruleId);
+			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to delete rule");
+		}
 	}
 
 	return (
@@ -298,6 +319,11 @@ function RulesSection({
 									value={ruleValue}
 									onChange={(e) => setRuleValue(e.target.value)}
 								/>
+							)}
+							{error && (
+								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+									{error}
+								</div>
 							)}
 							<Button
 								onClick={handleAdd}
@@ -349,10 +375,12 @@ function EventsSection({
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	async function handleCreate() {
 		if (!name.trim() || busy) return;
 		setBusy(true);
+		setError(null);
 		try {
 			await createEvent(orgId, {
 				name: name.trim(),
@@ -362,14 +390,20 @@ function EventsSection({
 			setDescription("");
 			setShowCreate(false);
 			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to create event");
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	async function handleDelete(eventId: string) {
-		await deleteEvent(eventId);
-		router.refresh();
+		try {
+			await deleteEvent(eventId);
+			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to delete event");
+		}
 	}
 
 	return (
@@ -400,6 +434,11 @@ function EventsSection({
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
 							/>
+							{error && (
+								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+									{error}
+								</div>
+							)}
 							<Button onClick={handleCreate} disabled={busy || !name.trim()}>
 								{busy ? "Creating..." : "Create Event"}
 							</Button>

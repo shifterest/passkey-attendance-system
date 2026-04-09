@@ -244,210 +244,197 @@ export function EnrollmentManageDialog({
 							</ComboboxContent>
 						</Combobox>
 					</Field>
-					<div className="flex flex-col gap-3 rounded-lg border p-3">
-						<div className="flex items-center gap-2">
-							<div className="relative flex-1">
-								<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
-								<Input
-									value={query}
-									onChange={(event) => setQuery(event.currentTarget.value)}
-									placeholder="Search by name, school ID, or email"
-									className="pl-8"
-								/>
-							</div>
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={<Button variant="outline" size="sm" />}
-								>
-									<IconFilter data-icon="inline-start" />
-									Year
-									<IconChevronDown data-icon="inline-end" />
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-40">
-									<DropdownMenuGroup>
-										<DropdownMenuLabel>Year</DropdownMenuLabel>
-										{yearOptions.map((year) => (
-											<DropdownMenuCheckboxItem
-												key={year}
-												checked={yearFilter.includes(year)}
-												onCheckedChange={(checked) =>
-													toggleYearFilter(year, checked)
-												}
-											>
-												{year}
-											</DropdownMenuCheckboxItem>
-										))}
-									</DropdownMenuGroup>
-									{yearFilter.length > 0 && (
-										<>
-											<DropdownMenuSeparator />
-											<DropdownMenuItem
-												variant="destructive"
-												onClick={() => setYearFilter([])}
-											>
-												Reset filters
-											</DropdownMenuItem>
-										</>
-									)}
-								</DropdownMenuContent>
-							</DropdownMenu>
+				</FieldGroup>
+				<div className="border-t" />
+				<div className="flex flex-col gap-3">
+					<Label className="text-sm font-medium">Students</Label>
+					<div className="flex items-center gap-2">
+						<div className="relative flex-1">
+							<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
+							<Input
+								value={query}
+								onChange={(event) => setQuery(event.currentTarget.value)}
+								placeholder="Search by name, school ID, or email"
+								className="pl-8"
+							/>
 						</div>
-						<div className="max-h-[360px] overflow-y-auto rounded-md border">
-							<Table>
-								<TableHeader>
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={<Button variant="outline" size="sm" />}
+							>
+								<IconFilter data-icon="inline-start" />
+								Year
+								<IconChevronDown data-icon="inline-end" />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-40">
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>Year</DropdownMenuLabel>
+									{yearOptions.map((year) => (
+										<DropdownMenuCheckboxItem
+											key={year}
+											checked={yearFilter.includes(year)}
+											onCheckedChange={(checked) =>
+												toggleYearFilter(year, checked)
+											}
+										>
+											{year}
+										</DropdownMenuCheckboxItem>
+									))}
+								</DropdownMenuGroup>
+								{yearFilter.length > 0 && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											variant="destructive"
+											onClick={() => setYearFilter([])}
+										>
+											Reset filters
+										</DropdownMenuItem>
+									</>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+					<div className="max-h-[360px] overflow-y-auto rounded-md border">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-10">
+										<Checkbox
+											checked={allVisibleSelected}
+											onCheckedChange={(checked) =>
+												toggleSelectVisible(Boolean(checked))
+											}
+											aria-label="Select visible students"
+										/>
+									</TableHead>
+									<TableHead>Student</TableHead>
+									<TableHead>School ID</TableHead>
+									<TableHead>Year</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{filteredStudents.length === 0 ? (
 									<TableRow>
-										<TableHead className="w-10">
-											<Checkbox
-												checked={allVisibleSelected}
-												onCheckedChange={(checked) =>
-													toggleSelectVisible(Boolean(checked))
-												}
-												aria-label="Select visible students"
-											/>
-										</TableHead>
-										<TableHead>Student</TableHead>
-										<TableHead>School ID</TableHead>
-										<TableHead>Year</TableHead>
+										<TableCell
+											colSpan={4}
+											className="h-20 text-center text-muted-foreground"
+										>
+											No students found.
+										</TableCell>
 									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{filteredStudents.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={4}
-												className="h-20 text-center text-muted-foreground"
-											>
-												No students found.
+								) : (
+									filteredStudents.map((student) => (
+										<TableRow key={student.id}>
+											<TableCell>
+												<Checkbox
+													checked={selectedIds.has(student.id)}
+													onCheckedChange={(checked) =>
+														toggleStudent(student.id, Boolean(checked))
+													}
+													aria-label={`Select ${student.full_name}`}
+												/>
 											</TableCell>
+											<TableCell>{student.full_name}</TableCell>
+											<TableCell className="font-mono text-xs">
+												{student.school_id ?? "-"}
+											</TableCell>
+											<TableCell>{inferYear(student.school_id)}</TableCell>
 										</TableRow>
-									) : (
-										filteredStudents.map((student) => (
-											<TableRow key={student.id}>
-												<TableCell>
-													<Checkbox
-														checked={selectedIds.has(student.id)}
-														onCheckedChange={(checked) =>
-															toggleStudent(student.id, Boolean(checked))
-														}
-														aria-label={`Select ${student.full_name}`}
-													/>
-												</TableCell>
-												<TableCell>{student.full_name}</TableCell>
-												<TableCell className="font-mono text-xs">
-													{student.school_id ?? "-"}
-												</TableCell>
-												<TableCell>{inferYear(student.school_id)}</TableCell>
-											</TableRow>
-										))
-									)}
-								</TableBody>
-							</Table>
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					<div className="flex flex-wrap items-center gap-4">
+						<div className="flex items-center gap-2">
+							<span className="text-xs text-muted-foreground whitespace-nowrap">
+								Block
+							</span>
+							<div className="flex items-center">
+								<input
+									type="number"
+									min={1}
+									max={100}
+									value={blockSize}
+									onChange={(e) =>
+										setBlockSize(clampBlock(Number(e.currentTarget.value) || 1))
+									}
+									className="h-8 w-14 rounded-l-md border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									size="icon"
+									className="h-8 w-8 rounded-none border-l-0"
+									onClick={() => setBlockSize((v) => clampBlock(v - 1))}
+									disabled={blockSize <= 1}
+								>
+									<IconMinus className="size-3" />
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="icon"
+									className="h-8 w-8 rounded-l-none border-l-0"
+									onClick={() => setBlockSize((v) => clampBlock(v + 1))}
+									disabled={blockSize >= 100}
+								>
+									<IconPlus className="size-3" />
+								</Button>
+							</div>
 						</div>
-						<div className="flex flex-wrap items-start gap-4 border-t pt-3">
-							<div className="flex flex-1 flex-col gap-1">
-								<span className="text-sm font-medium">Block size</span>
-								<span className="text-xs text-muted-foreground">
-									Select first N rows
-								</span>
-								<div className="flex items-center">
-									<Button
-										type="button"
-										variant="outline"
-										size="icon"
-										className="h-9 rounded-r-none border-r-0"
-										onClick={() => setBlockSize((v) => clampBlock(v - 1))}
-										disabled={blockSize <= 1}
-									>
-										<IconMinus />
-									</Button>
-									<input
-										type="number"
-										min={1}
-										max={100}
-										value={blockSize}
-										onChange={(e) =>
-											setBlockSize(
-												clampBlock(Number(e.currentTarget.value) || 1),
-											)
-										}
-										className="h-9 w-16 border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										size="icon"
-										className="h-9 rounded-l-none border-l-0"
-										onClick={() => setBlockSize((v) => clampBlock(v + 1))}
-										disabled={blockSize >= 100}
-									>
-										<IconPlus />
-									</Button>
-								</div>
+						<div className="flex items-center gap-2">
+							<span className="text-xs text-muted-foreground whitespace-nowrap">
+								Offset
+							</span>
+							<div className="flex items-center">
+								<input
+									type="number"
+									min={0}
+									step={10}
+									value={offset}
+									onChange={(e) =>
+										setOffset(clampOffset(Number(e.currentTarget.value) || 0))
+									}
+									className="h-8 w-14 rounded-l-md border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
 								<Button
 									type="button"
 									variant="outline"
-									size="sm"
-									className="w-full"
-									onClick={() => selectRange(0, blockSize)}
+									size="icon"
+									className="h-8 w-8 rounded-none border-l-0"
+									onClick={() => setOffset((v) => clampOffset(v - 10))}
+									disabled={offset <= 0}
 								>
-									Select first {blockSize}
+									<IconMinus className="size-3" />
 								</Button>
-							</div>
-							<div className="flex flex-1 flex-col gap-1">
-								<span className="text-sm font-medium">Offset</span>
-								<span className="text-xs text-muted-foreground">
-									Start from row N
-								</span>
-								<div className="flex items-center">
-									<Button
-										type="button"
-										variant="outline"
-										size="icon"
-										className="h-9 rounded-r-none border-r-0"
-										onClick={() => setOffset((v) => clampOffset(v - 10))}
-										disabled={offset <= 0}
-									>
-										<IconMinus />
-									</Button>
-									<input
-										type="number"
-										min={0}
-										step={10}
-										value={offset}
-										onChange={(e) =>
-											setOffset(clampOffset(Number(e.currentTarget.value) || 0))
-										}
-										className="h-9 w-16 border border-input bg-background text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										size="icon"
-										className="h-9 rounded-l-none border-l-0"
-										onClick={() => setOffset((v) => clampOffset(v + 10))}
-									>
-										<IconPlus />
-									</Button>
-								</div>
 								<Button
 									type="button"
 									variant="outline"
-									size="sm"
-									className="w-full"
-									onClick={() => selectRange(offset, blockSize)}
+									size="icon"
+									className="h-8 w-8 rounded-l-none border-l-0"
+									onClick={() => setOffset((v) => clampOffset(v + 10))}
 								>
-									Select from row {offset}
+									<IconPlus className="size-3" />
 								</Button>
 							</div>
-							<div className="flex w-full items-center justify-end gap-2 pt-1">
-								<Badge variant="outline">
-									{filteredStudents.length} visible
-								</Badge>
-								<Badge variant="outline">{selectedIds.size} selected</Badge>
-							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="h-8"
+								onClick={() => selectRange(offset, blockSize)}
+							>
+								Select range
+							</Button>
+						</div>
+						<div className="ml-auto flex items-center gap-2">
+							<Badge variant="outline">{filteredStudents.length} visible</Badge>
+							<Badge variant="outline">{selectedIds.size} selected</Badge>
 						</div>
 					</div>
-				</FieldGroup>
+				</div>
 				<DialogFooter className="items-center justify-between gap-2 sm:justify-between">
 					<div className="text-sm text-muted-foreground">
 						{classIds.length > 0

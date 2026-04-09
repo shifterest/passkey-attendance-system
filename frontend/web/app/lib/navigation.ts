@@ -8,7 +8,8 @@ export type IconItem =
 	| "classes"
 	| "enrollments"
 	| "records"
-	| "orgs";
+	| "orgs"
+	| "events";
 
 export type NavItem = {
 	title: string;
@@ -50,7 +51,10 @@ export const navigation = {
 		{ name: "Classes", url: "/classes", icon: "classes" },
 		{ name: "Enrollments", url: "/enrollments", icon: "enrollments" },
 		{ name: "Records", url: "/records", icon: "records" },
+	] satisfies NavGroup[],
+	organizations: [
 		{ name: "Organizations", url: "/orgs", icon: "orgs" },
+		{ name: "Events", url: "/events", icon: "events" },
 	] satisfies NavGroup[],
 };
 
@@ -60,7 +64,10 @@ export function getPageTitle(pathname: string): string {
 	const infoItem = navigation.information.find((item) => item.url === pathname);
 	if (infoItem) return infoItem.title;
 
-	for (const group of navigation.management) {
+	for (const group of [
+		...navigation.management,
+		...navigation.organizations,
+	] as NavGroup[]) {
 		if (group.url === pathname) return group.name;
 		const subItem = group.items?.find((item) => item.url === pathname);
 		if (subItem) return subItem.title;

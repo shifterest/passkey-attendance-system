@@ -3,7 +3,7 @@
 import { IconFileImport, IconUpload } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { importUsers, type ImportUsersResult } from "@/app/lib/api";
+import { type ImportUsersResult, importUsers } from "@/app/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/sidebar";
 
 export function NavManagement({
+	label,
 	items,
 	iconMap,
 }: {
+	label: string;
 	items: {
 		name: string;
 		url: string;
@@ -33,7 +35,7 @@ export function NavManagement({
 
 	return (
 		<SidebarGroup className="group-data-[collapsible=icon]:hidden">
-			<SidebarGroupLabel>Management</SidebarGroupLabel>
+			<SidebarGroupLabel>{label}</SidebarGroupLabel>
 			<SidebarMenu>
 				{items.map((item) => {
 					const Icon = iconMap[item.icon];

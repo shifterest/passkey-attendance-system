@@ -69,6 +69,16 @@ def create_event(
     return event
 
 
+@router.get("/events", response_model=list[EventResponse])
+def list_all_events(
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "operator")),
+):
+    return db.query(Event).offset(offset).limit(limit).all()
+
+
 @router.get("/orgs/{org_id}/events", response_model=list[EventResponse])
 def list_events(
     org_id: str,

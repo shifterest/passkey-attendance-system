@@ -1,5 +1,6 @@
 import { getAllRecords, getAllSessions } from "@/app/lib/api";
 import { ChartAreaInteractive } from "@/components/custom/chart-area-interactive";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SectionCards } from "@/components/custom/section-cards";
 
 function buildChartData(records: Awaited<ReturnType<typeof getAllRecords>>) {
@@ -38,6 +39,10 @@ export default async function Page() {
 
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+			<SetPageHeader
+				title="Dashboard"
+				description="Overview of attendance activity and sessions."
+			/>
 			<SectionCards
 				recordsToday={recordsToday}
 				flaggedToday={flaggedToday}

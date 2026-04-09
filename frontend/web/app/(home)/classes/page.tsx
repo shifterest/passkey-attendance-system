@@ -2,20 +2,20 @@ import { IconFileImport, IconPlus } from "@tabler/icons-react";
 import { getClasses, getTeachers } from "@/app/lib/api";
 import { CreateClassDialog } from "@/components/custom/create-class-dialog";
 import { DataTableClasses } from "@/components/custom/data-table-classes";
-import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
-import { PageHeader } from "@/components/custom/page-header";
+import { ImportClassesDialog } from "@/components/custom/import-classes-dialog";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import { Button } from "@/components/ui/button";
 
 export default async function Page() {
 	const [classes, teachers] = await Promise.all([getClasses(), getTeachers()]);
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-			<PageHeader
+			<SetPageHeader
 				title="Classes"
 				description="Manage courses, schedules, and assurance thresholds."
 				actions={
-					<>
-						<ImportUsersDialog
+					<div className="flex items-center gap-2">
+						<ImportClassesDialog
 							trigger={
 								<Button variant="outline" size="sm">
 									<IconFileImport data-icon="inline-start" />
@@ -32,7 +32,7 @@ export default async function Page() {
 								</Button>
 							}
 						/>
-					</>
+					</div>
 				}
 			/>
 			<DataTableClasses data={classes} />

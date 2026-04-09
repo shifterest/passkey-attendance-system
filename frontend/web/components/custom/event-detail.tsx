@@ -42,6 +42,7 @@ export function EventDetail({
 	const [ruleType, setRuleType] = useState<EventRuleType>("all");
 	const [ruleValue, setRuleValue] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const requiresRuleValue = ruleType !== "all";
 
 	async function handleAdd() {
@@ -49,6 +50,7 @@ export function EventDetail({
 		const nextRuleValue = requiresRuleValue ? ruleValue.trim() : "";
 		if (requiresRuleValue && !nextRuleValue) return;
 		setBusy(true);
+		setError(null);
 		try {
 			await createEventRule(eventId, {
 				rule_type: ruleType,
@@ -58,14 +60,20 @@ export function EventDetail({
 			setRuleValue("");
 			setShowAdd(false);
 			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to add rule");
 		} finally {
 			setBusy(false);
 		}
 	}
 
 	async function handleDelete(ruleId: string) {
-		await deleteEventRule(eventId, ruleId);
-		router.refresh();
+		try {
+			await deleteEventRule(eventId, ruleId);
+			router.refresh();
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "Failed to delete rule");
+		}
 	}
 
 	return (
@@ -125,6 +133,11 @@ export function EventDetail({
 									value={ruleValue}
 									onChange={(e) => setRuleValue(e.target.value)}
 								/>
+							)}
+							{error && (
+								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+									{error}
+								</div>
 							)}
 							<Button
 								onClick={handleAdd}

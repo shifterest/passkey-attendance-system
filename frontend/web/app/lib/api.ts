@@ -306,6 +306,45 @@ export async function importUsers(
 	});
 }
 
+export async function importClasses(
+	file: File,
+	dryRun = false,
+): Promise<ImportUsersResult> {
+	const formData = new FormData();
+	formData.append("file", file);
+	formData.append("dry_run", String(dryRun));
+	return request<ImportUsersResult>(ApiPaths.adminImportClasses, {
+		method: "POST",
+		body: formData,
+	});
+}
+
+export async function importEnrollments(
+	file: File,
+	dryRun = false,
+): Promise<ImportUsersResult> {
+	const formData = new FormData();
+	formData.append("file", file);
+	formData.append("dry_run", String(dryRun));
+	return request<ImportUsersResult>(ApiPaths.adminImportEnrollments, {
+		method: "POST",
+		body: formData,
+	});
+}
+
+export async function importOrgs(
+	file: File,
+	dryRun = false,
+): Promise<ImportUsersResult> {
+	const formData = new FormData();
+	formData.append("file", file);
+	formData.append("dry_run", String(dryRun));
+	return request<ImportUsersResult>(ApiPaths.adminImportOrgs, {
+		method: "POST",
+		body: formData,
+	});
+}
+
 export function getTeachers() {
 	return request<TeacherDto[]>(ApiPaths.teachers);
 }
@@ -778,6 +817,10 @@ export type EventRuleDto = {
 	rule_value: string | null;
 	rule_group: number | null;
 };
+
+export function getAllEvents() {
+	return request<EventDto[]>(ApiPaths.events);
+}
 
 export function getEvents(orgId: string) {
 	return request<EventDto[]>(ApiPaths.orgEvents(orgId));

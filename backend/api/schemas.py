@@ -693,8 +693,6 @@ class EventBase(BaseModel):
 class EventCreate(EventBase):
     model_config = ConfigDict(extra="forbid")
 
-    org_id: str
-
 
 class EventUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")

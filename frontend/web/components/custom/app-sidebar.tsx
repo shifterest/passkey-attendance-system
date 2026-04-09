@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	IconCalendarEvent,
 	IconChalkboard,
 	IconChalkboardTeacher,
 	IconClipboard,
@@ -18,17 +19,12 @@ import { NavInformation } from "@/components/custom/nav-information";
 import { NavManagement } from "@/components/custom/nav-management";
 import { NavUser } from "@/components/custom/nav-user";
 import { SearchForm } from "@/components/custom/search-form";
-import { useUser } from "@/components/custom/user-context";
 import {
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
 	SidebarHeader,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const iconMap: Record<
@@ -45,43 +41,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		enrollments: IconClipboard,
 		records: IconClipboard,
 		orgs: IconUsersGroup,
+		events: IconCalendarEvent,
 	};
-
-	const { user, loading } = useUser();
-	const role = user?.role ?? null;
 
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>
 			<SidebarHeader>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
-							<div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-								<IconKey />
-							</div>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">
-									Passkey Attendance System
-								</span>
-								{loading ? (
-									<div className="truncate text-xs">
-										<Skeleton className="h-4 w-[50px]" />
-									</div>
-								) : (
-									<span className="truncate text-xs capitalize">{role}</span>
-								)}
-							</div>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				</SidebarMenu>
 				<SearchForm />
 			</SidebarHeader>
 			<SidebarContent>
 				<NavInformation items={navigation.information} iconMap={iconMap} />
-				<NavManagement items={navigation.management} iconMap={iconMap} />
+				<NavManagement
+					label="Management"
+					items={navigation.management}
+					iconMap={iconMap}
+				/>
+				<NavManagement
+					label="Organizations"
+					items={navigation.organizations}
+					iconMap={iconMap}
+				/>
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />

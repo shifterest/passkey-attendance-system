@@ -33,9 +33,9 @@ import {
 } from "@/app/lib/api";
 import { DataTable } from "@/components/custom/data-table";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
-import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
+import { ImportEnrollmentsDialog } from "@/components/custom/import-enrollments-dialog";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
-import { PageHeader } from "@/components/custom/page-header";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -160,14 +160,7 @@ export function DataTableEnrollments({
 				classValue.course_name.toLowerCase().includes(loweredQuery)
 			);
 		});
-	}, [
-		enrollments,
-		classById,
-		studentById,
-		query,
-		classFilter,
-		yearFilter,
-	]);
+	}, [enrollments, classById, studentById, query, classFilter, yearFilter]);
 
 	const handleDelete = React.useCallback(
 		async (enrollmentId: string) => {
@@ -363,12 +356,12 @@ export function DataTableEnrollments({
 				prefilledClassId={searchParams.get("class_id") ?? undefined}
 				onSubmit={handleCreateBatch}
 			/>
-			<PageHeader
+			<SetPageHeader
 				title="Enrollments"
 				description="Manage student-class enrollments."
 				actions={
-					<>
-						<ImportUsersDialog
+					<div className="flex items-center gap-2">
+						<ImportEnrollmentsDialog
 							trigger={
 								<Button variant="outline" size="sm">
 									<IconFileImport data-icon="inline-start" />
@@ -380,7 +373,7 @@ export function DataTableEnrollments({
 							<IconPlus data-icon="inline-start" />
 							Create
 						</Button>
-					</>
+					</div>
 				}
 			/>
 			{statusMessage && (
@@ -454,7 +447,9 @@ export function DataTableEnrollments({
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<DropdownMenu>
-						<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
+						>
 							<IconLayoutColumns data-icon="inline-start" />
 							Columns
 							<IconChevronDown data-icon="inline-end" />
@@ -480,9 +475,7 @@ export function DataTableEnrollments({
 											.replace(/\bid\b/g, "ID")
 											.split(" ")
 											.map((w) =>
-												w === "ID"
-													? w
-													: w.charAt(0).toUpperCase() + w.slice(1),
+												w === "ID" ? w : w.charAt(0).toUpperCase() + w.slice(1),
 											)
 											.join(" ")}
 									</DropdownMenuCheckboxItem>

@@ -1,13 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { getPageTitle } from "@/app/lib/navigation";
+import { usePageHeaderState } from "@/components/custom/page-header-context";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function SiteHeader() {
-	const pathname = usePathname();
-	const pageTitle = getPageTitle(pathname);
+	const { title, description, actions } = usePageHeaderState();
 
 	return (
 		<header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -17,7 +15,19 @@ export function SiteHeader() {
 					orientation="vertical"
 					className="mx-2 h-4 data-vertical:self-auto"
 				/>
-				<h1 className="text-base font-medium">{pageTitle}</h1>
+				<div className="flex items-baseline gap-2 min-w-0">
+					<h1 className="text-base font-medium whitespace-nowrap">{title}</h1>
+					{description && (
+						<span className="text-sm text-muted-foreground truncate hidden md:inline">
+							{description}
+						</span>
+					)}
+				</div>
+				{actions && (
+					<div className="ml-auto flex items-center gap-2 shrink-0">
+						{actions}
+					</div>
+				)}
 			</div>
 		</header>
 	);

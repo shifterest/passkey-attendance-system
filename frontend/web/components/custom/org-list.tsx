@@ -12,7 +12,6 @@ import {
 	IconPlus,
 	IconTrash,
 } from "@tabler/icons-react";
-import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
 import {
 	type ColumnDef,
 	flexRender,
@@ -27,8 +26,9 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { OrgDto } from "@/app/lib/api";
 import { createOrg, deleteOrg } from "@/app/lib/api";
+import { ImportOrgsDialog } from "@/components/custom/import-orgs-dialog";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
-import { PageHeader } from "@/components/custom/page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -223,12 +223,12 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 	return (
 		<div className="flex flex-col gap-4">
 			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-				<PageHeader
+				<SetPageHeader
 					title="Organizations"
 					description="Manage organizations and membership-based attendance."
 					actions={
-						<>
-							<ImportUsersDialog
+						<div className="flex items-center gap-2">
+							<ImportOrgsDialog
 								trigger={
 									<Button variant="outline" size="sm">
 										<IconFileImport data-icon="inline-start" />
@@ -240,7 +240,7 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 								<IconPlus data-icon="inline-start" />
 								Create
 							</DialogTrigger>
-						</>
+						</div>
 					}
 				/>
 				<DialogContent>

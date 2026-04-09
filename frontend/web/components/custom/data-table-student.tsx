@@ -99,6 +99,7 @@ export const schema = z.object({
 	ongoing_class: z.string().nullable(),
 	in_class: z.boolean(),
 	school_id: z.string().nullable(),
+	program: z.string().nullable(),
 	email: z.string(),
 	records: z.number(),
 	flagged: z.number(),
@@ -177,6 +178,11 @@ function columns(
 					{row.original.school_id ?? "—"}
 				</span>
 			),
+		},
+		{
+			accessorKey: "program",
+			header: "Program",
+			cell: ({ row }) => row.original.program ?? "—",
 		},
 		{
 			accessorKey: "registered",
@@ -382,8 +388,7 @@ export function DataTableStudent({
 	const [yearFilter, setYearFilter] = React.useState<string[]>([]);
 
 	const yearOptions = React.useMemo(
-		() =>
-			[...new Set(data.map((r) => inferYear(r.school_id)))].sort(),
+		() => [...new Set(data.map((r) => inferYear(r.school_id)))].sort(),
 		[data],
 	);
 

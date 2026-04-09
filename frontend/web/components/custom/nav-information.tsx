@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
-	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -26,7 +25,6 @@ export function NavInformation({
 
 	return (
 		<SidebarGroup>
-			<SidebarGroupLabel>Information</SidebarGroupLabel>
 			<SidebarGroupContent className="flex flex-col gap-2">
 				<SidebarMenu>
 					{items.map((item) => {

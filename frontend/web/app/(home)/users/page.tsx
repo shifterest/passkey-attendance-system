@@ -3,14 +3,14 @@ import { getUsers } from "@/app/lib/api";
 import { CreateUserDialog } from "@/components/custom/create-user-dialog";
 import { DataTableUsers } from "@/components/custom/data-table-users";
 import { ImportUsersDialog } from "@/components/custom/import-users-dialog";
-import { PageHeader } from "@/components/custom/page-header";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import { Button } from "@/components/ui/button";
 
 export default async function Page() {
 	const users = await getUsers();
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-			<PageHeader
+			<SetPageHeader
 				title="Users"
 				description="View and manage all users in the system."
 				actions={

@@ -32,8 +32,8 @@ interface CreateUserDialogProps {
 }
 
 export function CreateUserDialog({
-	defaultRole = "student",
-	allowedRoles = ["student", "teacher", "admin", "operator"],
+	defaultRole = "",
+	allowedRoles = ["student", "teacher", "admin"],
 	trigger,
 }: CreateUserDialogProps) {
 	const router = useRouter();
@@ -46,6 +46,14 @@ export function CreateUserDialog({
 	const [program, setProgram] = React.useState("");
 	const [yearLevel, setYearLevel] = React.useState("");
 
+	const isStudent = role === "student";
+	const canSubmit =
+		!submitting &&
+		role !== "" &&
+		fullName.trim() !== "" &&
+		email.trim() !== "" &&
+		(!isStudent || (program.trim() !== "" && yearLevel !== ""));
+
 	function reset() {
 		setRole(defaultRole);
 		setFullName("");
@@ -56,7 +64,7 @@ export function CreateUserDialog({
 	}
 
 	async function handleSubmit() {
-		if (!fullName.trim() || !email.trim() || submitting) return;
+		if (!canSubmit) return;
 		setSubmitting(true);
 		try {
 			await createUser({
@@ -110,7 +118,7 @@ export function CreateUserDialog({
 								}}
 							>
 								<SelectTrigger id="create-user-role" className="w-full">
-									<SelectValue />
+									<SelectValue placeholder="Select a role" />
 								</SelectTrigger>
 								<SelectContent>
 									<SelectGroup>
@@ -154,12 +162,10 @@ export function CreateUserDialog({
 							placeholder="20210001"
 						/>
 					</Field>
-					{role === "student" && (
+					{isStudent && (
 						<>
 							<Field>
-								<FieldLabel htmlFor="create-user-program">
-									Program (optional)
-								</FieldLabel>
+								<FieldLabel htmlFor="create-user-program">Program</FieldLabel>
 								<Input
 									id="create-user-program"
 									value={program}
@@ -168,9 +174,7 @@ export function CreateUserDialog({
 								/>
 							</Field>
 							<Field>
-								<FieldLabel htmlFor="create-user-year">
-									Year level (optional)
-								</FieldLabel>
+								<FieldLabel htmlFor="create-user-year">Year level</FieldLabel>
 								<Input
 									id="create-user-year"
 									type="number"
@@ -188,10 +192,7 @@ export function CreateUserDialog({
 					<DialogClose render={<Button variant="outline" />}>
 						Cancel
 					</DialogClose>
-					<Button
-						onClick={handleSubmit}
-						disabled={submitting || !fullName.trim() || !email.trim()}
-					>
+					<Button onClick={handleSubmit} disabled={!canSubmit}>
 						{submitting ? "Creating…" : "Create"}
 					</Button>
 				</DialogFooter>

@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/custom/app-sidebar";
+import { PageHeaderProvider } from "@/components/custom/page-header-context";
 import { SiteHeader } from "@/components/custom/site-header";
 import { UserProvider } from "@/components/custom/user-context";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -20,12 +21,14 @@ export default function DashboardLayout({
 			>
 				<AppSidebar variant="inset" />
 				<SidebarInset>
-					<SiteHeader />
-					<div className="flex flex-1 flex-col">
-						<div className="@container/main flex flex-1 flex-col gap-2">
-							{children}
+					<PageHeaderProvider>
+						<SiteHeader />
+						<div className="flex flex-1 flex-col">
+							<div className="@container/main flex flex-1 flex-col gap-2">
+								{children}
+							</div>
 						</div>
-					</div>
+					</PageHeaderProvider>
 				</SidebarInset>
 			</SidebarProvider>
 		</UserProvider>
