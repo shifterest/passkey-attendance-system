@@ -93,6 +93,15 @@ def process_import(
         if role not in _VALID_ROLES:
             errors.append({"row": i, "reason": f"invalid role: {role}", "data": row})
             continue
+        if role in ("student", "teacher") and not school_id:
+            errors.append(
+                {
+                    "row": i,
+                    "reason": "school_id is required for students and teachers",
+                    "data": row,
+                }
+            )
+            continue
 
         existing = db.query(User).filter(User.email == email).first()
         if existing:

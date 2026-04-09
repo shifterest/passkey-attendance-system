@@ -109,7 +109,16 @@ export function ChartAreaInteractive({ data }: { data: ChartDatum[] }) {
 							size="sm"
 							aria-label="Select a value"
 						>
-							<SelectValue placeholder="Last 3 months" />
+							<SelectValue>
+								{
+									{
+										"90d": "Last 3 months",
+										"30d": "Last 30 days",
+										"7d": "Last 7 days",
+										"1d": "Last 24 hours",
+									}[timeRange]
+								}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent className="rounded-xl">
 							<SelectItem value="90d" className="rounded-lg">

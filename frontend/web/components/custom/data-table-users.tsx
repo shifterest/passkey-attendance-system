@@ -325,7 +325,7 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 								</TableRow>
 							))}
 						</TableHeader>
-						<TableBody>
+						<TableBody className="**:data-[slot=table-cell]:first:w-8">
 							{table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>

@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
+	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
@@ -31,7 +32,6 @@ import {
 	deleteEnrollment,
 	type UserExtendedDto,
 } from "@/app/lib/api";
-import { DataTable } from "@/components/custom/data-table";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
 import { ImportEnrollmentsDialog } from "@/components/custom/import-enrollments-dialog";
 import { SetPageHeader } from "@/components/custom/page-header-context";
@@ -69,6 +69,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 
 function inferYear(schoolId: string | null): string {
 	if (!schoolId) return "Unknown";
@@ -347,7 +355,7 @@ export function DataTableEnrollments({
 	});
 
 	return (
-		<div className="flex flex-col gap-4 px-4 lg:px-6">
+		<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 			<EnrollmentManageDialog
 				open={openDialog}
 				onOpenChange={setOpenDialog}
@@ -484,7 +492,48 @@ export function DataTableEnrollments({
 					</DropdownMenu>
 				</div>
 			</div>
-			<DataTable table={table} emptyMessage="No enrollments found." />
+			<div className="overflow-hidden rounded-lg border">
+				<Table>
+					<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
+						{table.getHeaderGroups().map((hg) => (
+							<TableRow key={hg.id}>
+								{hg.headers.map((h) => (
+									<TableHead key={h.id} colSpan={h.colSpan}>
+										{h.isPlaceholder
+											? null
+											: flexRender(h.column.columnDef.header, h.getContext())}
+									</TableHead>
+								))}
+							</TableRow>
+						))}
+					</TableHeader>
+					<TableBody className="**:data-[slot=table-cell]:first:w-8">
+						{table.getRowModel().rows.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow key={row.id}>
+									{row.getVisibleCells().map((cell) => (
+										<TableCell key={cell.id}>
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext(),
+											)}
+										</TableCell>
+									))}
+								</TableRow>
+							))
+						) : (
+							<TableRow>
+								<TableCell
+									colSpan={columns.length}
+									className="h-24 text-center"
+								>
+									No enrollments found.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+				</Table>
+			</div>
 			<div className="flex items-center justify-between px-4">
 				<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
 					{table.getFilteredSelectedRowModel().rows.length} of{" "}

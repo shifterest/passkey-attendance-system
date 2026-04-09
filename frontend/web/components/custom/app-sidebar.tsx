@@ -6,7 +6,6 @@ import {
 	IconChalkboardTeacher,
 	IconClipboard,
 	IconDashboard,
-	IconKey,
 	IconLogs,
 	IconTool,
 	IconUser,
@@ -15,10 +14,10 @@ import {
 } from "@tabler/icons-react";
 import type * as React from "react";
 import { type IconItem, navigation } from "@/app/lib/navigation";
+import { CommandMenu } from "@/components/custom/command-menu";
 import { NavInformation } from "@/components/custom/nav-information";
 import { NavManagement } from "@/components/custom/nav-management";
 import { NavUser } from "@/components/custom/nav-user";
-import { SearchForm } from "@/components/custom/search-form";
 import {
 	Sidebar,
 	SidebarContent,
@@ -47,7 +46,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>
 			<SidebarHeader>
-				<SearchForm />
+				<CommandMenu />
 			</SidebarHeader>
 			<SidebarContent>
 				<NavInformation items={navigation.information} iconMap={iconMap} />

@@ -50,7 +50,7 @@ def _require_org_role(
     return org
 
 
-@router.post("", response_model=OrganizationResponse)
+@router.post("/", response_model=OrganizationResponse)
 def create_org(
     org_data: OrganizationCreate,
     db: Session = Depends(get_db),
@@ -69,7 +69,7 @@ def create_org(
     return org
 
 
-@router.get("", response_model=list[OrganizationResponse])
+@router.get("/", response_model=list[OrganizationResponse])
 def list_orgs(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),

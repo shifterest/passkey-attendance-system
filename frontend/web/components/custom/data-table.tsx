@@ -19,16 +19,13 @@ export function DataTable<T>({
 }) {
 	const colCount = table.getAllColumns().length;
 	return (
-		<div className="rounded-lg border">
+		<div className="overflow-hidden rounded-lg border">
 			<TableRoot>
-				<TableHeader>
+				<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 					{table.getHeaderGroups().map((hg) => (
 						<TableRow key={hg.id}>
 							{hg.headers.map((h) => (
-								<TableHead
-									key={h.id}
-									className={h.column.id === "select" ? "w-8" : ""}
-								>
+								<TableHead key={h.id}>
 									{h.isPlaceholder
 										? null
 										: flexRender(h.column.columnDef.header, h.getContext())}
@@ -37,7 +34,7 @@ export function DataTable<T>({
 						</TableRow>
 					))}
 				</TableHeader>
-				<TableBody>
+				<TableBody className="**:data-[slot=table-cell]:first:w-8">
 					{table.getRowModel().rows.length ? (
 						table.getRowModel().rows.map((row) => (
 							<TableRow key={row.id}>

@@ -7,6 +7,7 @@ import {
 	IconChevronsLeft,
 	IconChevronsRight,
 	IconLayoutColumns,
+	IconPlus,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -22,18 +23,31 @@ import {
 	type VisibilityState,
 } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { EventDto, OrgDto } from "@/app/lib/api";
+import { createEvent, type EventDto, type OrgDto } from "@/app/lib/api";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -69,6 +83,12 @@ export function DataTableEvents({
 		pageSize: 10,
 	});
 	const [globalFilter, setGlobalFilter] = useState("");
+	const [createOpen, setCreateOpen] = useState(false);
+	const [createName, setCreateName] = useState("");
+	const [createDesc, setCreateDesc] = useState("");
+	const [createOrgId, setCreateOrgId] = useState(orgs[0]?.id ?? "");
+	const [creating, setCreating] = useState(false);
+	const router = useRouter();
 
 	const orgMap = useMemo(() => {
 		const m = new Map<string, OrgDto>();
@@ -196,11 +216,101 @@ export function DataTableEvents({
 		getSortedRowModel: getSortedRowModel(),
 	});
 
+	async function handleCreate() {
+		if (!createName.trim() || !createOrgId || creating) return;
+		setCreating(true);
+		try {
+			await createEvent(createOrgId, {
+				name: createName.trim(),
+				description: createDesc.trim() || undefined,
+			});
+			setCreateName("");
+			setCreateDesc("");
+			setCreateOpen(false);
+			router.refresh();
+		} finally {
+			setCreating(false);
+		}
+	}
+
 	return (
 		<>
 			<SetPageHeader
 				title="Events"
 				description="All events across organizations"
+				actions={
+					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+						<DialogTrigger render={<Button size="sm" />}>
+							<IconPlus data-icon="inline-start" />
+							Create
+						</DialogTrigger>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>Create event</DialogTitle>
+								<DialogDescription>
+									Add a new event to an organization.
+								</DialogDescription>
+							</DialogHeader>
+							<FieldGroup>
+								<Field>
+									<FieldLabel htmlFor="create-event-org">
+										Organization
+									</FieldLabel>
+									<Select
+										value={createOrgId}
+										onValueChange={(v) => {
+											if (v !== null) setCreateOrgId(v);
+										}}
+									>
+										<SelectTrigger id="create-event-org" className="w-full">
+											<SelectValue placeholder="Select an organization" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectGroup>
+												{orgs.map((o) => (
+													<SelectItem key={o.id} value={o.id}>
+														{o.name}
+													</SelectItem>
+												))}
+											</SelectGroup>
+										</SelectContent>
+									</Select>
+								</Field>
+								<Field>
+									<FieldLabel htmlFor="create-event-name">Name</FieldLabel>
+									<Input
+										id="create-event-name"
+										value={createName}
+										onChange={(e) => setCreateName(e.target.value)}
+										placeholder="Weekly Standup"
+									/>
+								</Field>
+								<Field>
+									<FieldLabel htmlFor="create-event-desc">
+										Description (optional)
+									</FieldLabel>
+									<Input
+										id="create-event-desc"
+										value={createDesc}
+										onChange={(e) => setCreateDesc(e.target.value)}
+										placeholder="A short description of the event"
+									/>
+								</Field>
+							</FieldGroup>
+							<DialogFooter>
+								<DialogClose render={<Button variant="outline" />}>
+									Cancel
+								</DialogClose>
+								<Button
+									onClick={handleCreate}
+									disabled={!createName.trim() || !createOrgId || creating}
+								>
+									{creating ? "Creating…" : "Create"}
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+				}
 			/>
 			<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 				<div className="flex items-center justify-between px-4 lg:px-6">
@@ -235,7 +345,7 @@ export function DataTableEvents({
 
 				<div className="overflow-hidden rounded-lg border mx-4 lg:mx-6">
 					<Table>
-						<TableHeader className="bg-muted sticky top-0">
+						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
 									{hg.headers.map((h) => (
@@ -248,7 +358,7 @@ export function DataTableEvents({
 								</TableRow>
 							))}
 						</TableHeader>
-						<TableBody>
+						<TableBody className="**:data-[slot=table-cell]:first:w-8">
 							{table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow

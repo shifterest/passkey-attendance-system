@@ -68,8 +68,6 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
 	bootstrap_completed: "text-purple-600 dark:text-purple-400",
 };
 
-const ALL_EVENT_TYPES = Object.keys(EVENT_TYPE_COLORS);
-
 function renderDetailSummary(event: AuditEventDto) {
 	if (event.event_type === "device_attestation_verified") {
 		const legacy = event.detail.is_legacy_root === true;
@@ -353,7 +351,7 @@ export function DataTableLogs({
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 				<div className="overflow-hidden rounded-lg border">
 					<Table>
-						<TableHeader className="bg-muted sticky top-0 z-10">
+						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
 									{hg.headers.map((h) => (
@@ -366,7 +364,7 @@ export function DataTableLogs({
 								</TableRow>
 							))}
 						</TableHeader>
-						<TableBody>
+						<TableBody className="**:data-[slot=table-cell]:first:w-8">
 							{table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>

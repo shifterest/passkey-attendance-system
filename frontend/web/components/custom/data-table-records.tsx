@@ -408,7 +408,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
 				<div className="overflow-hidden rounded-lg border">
 					<Table>
-						<TableHeader className="bg-muted sticky top-0 z-10">
+						<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
 							{table.getHeaderGroups().map((hg) => (
 								<TableRow key={hg.id}>
 									{hg.headers.map((h) => (
@@ -421,7 +421,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 								</TableRow>
 							))}
 						</TableHeader>
-						<TableBody>
+						<TableBody className="**:data-[slot=table-cell]:first:w-8">
 							{table.getRowModel().rows.length ? (
 								table.getRowModel().rows.map((row) => (
 									<TableRow key={row.id}>

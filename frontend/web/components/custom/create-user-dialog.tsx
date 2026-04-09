@@ -47,11 +47,13 @@ export function CreateUserDialog({
 	const [yearLevel, setYearLevel] = React.useState("");
 
 	const isStudent = role === "student";
+	const requiresSchoolId = role === "student" || role === "teacher";
 	const canSubmit =
 		!submitting &&
 		role !== "" &&
 		fullName.trim() !== "" &&
 		email.trim() !== "" &&
+		(!requiresSchoolId || schoolId.trim() !== "") &&
 		(!isStudent || (program.trim() !== "" && yearLevel !== ""));
 
 	function reset() {
@@ -117,7 +119,10 @@ export function CreateUserDialog({
 									if (v !== null) setRole(v);
 								}}
 							>
-								<SelectTrigger id="create-user-role" className="w-full">
+								<SelectTrigger
+									id="create-user-role"
+									className="w-full capitalize"
+								>
 									<SelectValue placeholder="Select a role" />
 								</SelectTrigger>
 								<SelectContent>
@@ -153,7 +158,7 @@ export function CreateUserDialog({
 					</Field>
 					<Field>
 						<FieldLabel htmlFor="create-user-school-id">
-							School ID (optional)
+							School ID{requiresSchoolId ? "" : " (optional)"}
 						</FieldLabel>
 						<Input
 							id="create-user-school-id"
