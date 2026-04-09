@@ -215,22 +215,19 @@ export function EnrollmentManageDialog({
 						<FieldLabel>Classes</FieldLabel>
 						<Combobox multiple value={classIds} onValueChange={setClassIds}>
 							<ComboboxChips ref={chipsRef}>
-								{(chip) => (
-									<ComboboxChip key={chip.value} value={chip.value}>
-										{chip.label}
-									</ComboboxChip>
-								)}
+								{classIds.map((id) => {
+									const option = classOptions.find((o) => o.value === id);
+									return (
+										<ComboboxChip key={id}>{option?.label ?? id}</ComboboxChip>
+									);
+								})}
 								<ComboboxChipsInput placeholder="Search classes..." />
 							</ComboboxChips>
 							<ComboboxContent anchor={chipsRef}>
 								<ComboboxList>
 									<ComboboxEmpty>No classes found.</ComboboxEmpty>
 									{classOptions.map((option) => (
-										<ComboboxItem
-											key={option.value}
-											value={option.value}
-											label={option.label}
-										>
+										<ComboboxItem key={option.value} value={option.value}>
 											{option.label}
 										</ComboboxItem>
 									))}

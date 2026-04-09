@@ -38,7 +38,6 @@ export default function SettingsPage() {
 				<CardContent>
 					{mounted && (
 						<ToggleGroup
-							type="single"
 							value={theme ? [theme] : ["system"]}
 							onValueChange={(value) => {
 								if (value.length > 0) setTheme(value[0]);
