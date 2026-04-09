@@ -5,7 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const geistMonoHeading = Geist_Mono({subsets:['latin'],variable:'--font-heading'});
+const geistMonoHeading = Geist_Mono({
+	subsets: ["latin"],
+	variable: "--font-heading",
+});
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -30,12 +33,15 @@ export default function RootLayout({
 	return (
 		<html
 			lang="en"
-			className={cn("antialiased", geistSans.variable, geistMono.variable, geistMonoHeading.variable)}
+			className={cn(
+				"antialiased",
+				geistSans.variable,
+				geistMono.variable,
+				geistMonoHeading.variable,
+			)}
 			suppressHydrationWarning
 		>
-			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-			>
+			<body>
 				<ThemeProvider attribute="class" defaultTheme="system" enableSystem>
 					<TooltipProvider>{children}</TooltipProvider>
 				</ThemeProvider>
