@@ -20,6 +20,7 @@ import {
 	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { TransitionLink } from "@/components/custom/navigation-transition";
@@ -307,19 +308,13 @@ export function DataTableEvents({
 					</Dialog>
 				}
 			/>
-			<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-				<div className="flex items-center justify-between px-4 lg:px-6">
-					<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-					<div className="flex items-center gap-2">
-						<DataTableColumnVisibility table={table} />
-					</div>
-				</div>
-
-				<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-					<DataTableBody table={table} columnCount={columns.length} />
-					<DataTablePagination table={table} />
-				</div>
-			</div>
+			<DataTableScaffold
+				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
+				toolbarEnd={<DataTableColumnVisibility table={table} />}
+			>
+				<DataTableBody table={table} columnCount={columns.length} />
+				<DataTablePagination table={table} />
+			</DataTableScaffold>
 		</>
 	);
 }

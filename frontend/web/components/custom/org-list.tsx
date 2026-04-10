@@ -18,6 +18,7 @@ import {
 	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableRowActions,
+	DataTableScaffold,
 } from "@/components/custom/data-table-shared";
 import { ImportOrgsDialog } from "@/components/custom/import-orgs-dialog";
 import {
@@ -257,18 +258,17 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-				<DataTableColumnVisibility table={table} />
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+			<DataTableScaffold
+				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
+				toolbarEnd={<DataTableColumnVisibility table={table} />}
+			>
 				<DataTableBody
 					table={table}
 					columnCount={allColumns.length}
 					emptyMessage="No organizations found."
 				/>
 				<DataTablePagination table={table} />
-			</div>
+			</DataTableScaffold>
 		</div>
 	);
 }

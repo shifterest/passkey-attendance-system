@@ -25,6 +25,7 @@ import {
 	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
@@ -336,7 +337,7 @@ export function DataTableEnrollments({
 	});
 
 	return (
-		<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+		<div className="flex flex-col gap-4">
 			<EnrollmentManageDialog
 				open={openDialog}
 				onOpenChange={setOpenDialog}
@@ -370,67 +371,70 @@ export function DataTableEnrollments({
 					{statusMessage}
 				</div>
 			)}
-			<div className="flex items-center justify-between">
-				<SearchForm onSearch={(q) => setQuery(q)} />
-				<div className="flex items-center gap-2">
-					<DataTableFilterMenu contentClassName="w-56">
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Class</DropdownMenuLabel>
-							{classes.map((classValue) => (
-								<DropdownMenuCheckboxItem
-									key={classValue.id}
-									checked={classFilter.includes(classValue.id)}
-									onCheckedChange={(checked) =>
-										setClassFilter((prev) =>
-											checked
-												? [...prev, classValue.id]
-												: prev.filter((id) => id !== classValue.id),
-										)
-									}
-								>
-									{classValue.course_code}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-							{yearOptions.map((year) => (
-								<DropdownMenuCheckboxItem
-									key={year}
-									checked={yearFilter.includes(year)}
-									onCheckedChange={(checked) =>
-										setYearFilter((prev) =>
-											checked
-												? [...prev, year]
-												: prev.filter((y) => y !== year),
-										)
-									}
-								>
-									{year}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						{(classFilter.length > 0 || yearFilter.length > 0) && (
-							<>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									variant="destructive"
-									onClick={() => {
-										setClassFilter([]);
-										setYearFilter([]);
-									}}
-								>
-									Reset filters
-								</DropdownMenuItem>
-							</>
-						)}
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} />
-				</div>
-			</div>
-			<DataTableBody table={table} columnCount={columns.length} />
-			<DataTablePagination table={table} pageSizeOptions={[10, 20, 30, 50]} />
+			<DataTableScaffold
+				toolbarStart={<SearchForm onSearch={(q) => setQuery(q)} />}
+				toolbarEnd={
+					<>
+						<DataTableFilterMenu contentClassName="w-56">
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Class</DropdownMenuLabel>
+								{classes.map((classValue) => (
+									<DropdownMenuCheckboxItem
+										key={classValue.id}
+										checked={classFilter.includes(classValue.id)}
+										onCheckedChange={(checked) =>
+											setClassFilter((prev) =>
+												checked
+													? [...prev, classValue.id]
+													: prev.filter((id) => id !== classValue.id),
+											)
+										}
+									>
+										{classValue.course_code}
+									</DropdownMenuCheckboxItem>
+								))}
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+								{yearOptions.map((year) => (
+									<DropdownMenuCheckboxItem
+										key={year}
+										checked={yearFilter.includes(year)}
+										onCheckedChange={(checked) =>
+											setYearFilter((prev) =>
+												checked
+													? [...prev, year]
+													: prev.filter((y) => y !== year),
+											)
+										}
+									>
+										{year}
+									</DropdownMenuCheckboxItem>
+								))}
+							</DropdownMenuGroup>
+							{(classFilter.length > 0 || yearFilter.length > 0) && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										variant="destructive"
+										onClick={() => {
+											setClassFilter([]);
+											setYearFilter([]);
+										}}
+									>
+										Reset filters
+									</DropdownMenuItem>
+								</>
+							)}
+						</DataTableFilterMenu>
+						<DataTableColumnVisibility table={table} />
+					</>
+				}
+			>
+				<DataTableBody table={table} columnCount={columns.length} />
+				<DataTablePagination table={table} pageSizeOptions={[10, 20, 30, 50]} />
+			</DataTableScaffold>
 		</div>
 	);
 }

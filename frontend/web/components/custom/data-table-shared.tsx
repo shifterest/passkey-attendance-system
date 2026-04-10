@@ -147,6 +147,43 @@ export function DataTableFilterMenu({
 	);
 }
 
+export function DataTableScaffold({
+	toolbarStart,
+	toolbarEnd,
+	children,
+	className,
+	contentClassName,
+}: {
+	toolbarStart?: ReactNode;
+	toolbarEnd?: ReactNode;
+	children: ReactNode;
+	className?: string;
+	contentClassName?: string;
+}) {
+	const hasToolbar = toolbarStart || toolbarEnd;
+
+	return (
+		<div className={cn("flex flex-col gap-4", className)}>
+			{hasToolbar ? (
+				<div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
+					{toolbarStart ? <div className="min-w-0">{toolbarStart}</div> : null}
+					{toolbarEnd ? (
+						<div className="ml-auto flex items-center gap-2">{toolbarEnd}</div>
+					) : null}
+				</div>
+			) : null}
+			<div
+				className={cn(
+					"relative flex flex-col gap-4 overflow-auto px-4 lg:px-6",
+					contentClassName,
+				)}
+			>
+				{children}
+			</div>
+		</div>
+	);
+}
+
 export function DataTablePagination<TData>({
 	table,
 	pageSizeOptions = [10, 20, 30, 50],
@@ -327,51 +364,48 @@ export function DataTableBody<TData>({
 	return (
 		<Table>
 			<TableHeader className="sticky top-0 z-10 bg-background">
-					{table.getHeaderGroups().map((hg) => (
-						<TableRow key={hg.id}>
-							{hg.headers.map((h) => (
-								<TableHead
-									key={h.id}
-									colSpan={h.colSpan}
-									className={getPinnedHeadClass(h.column.id)}
-								>
-									{h.isPlaceholder ? null : h.column.id === "actions" ? (
-										<span className="sr-only">Actions</span>
-									) : (
-										flexRender(h.column.columnDef.header, h.getContext())
-									)}
-								</TableHead>
-							))}
-						</TableRow>
-					))}
+				{table.getHeaderGroups().map((hg) => (
+					<TableRow key={hg.id}>
+						{hg.headers.map((h) => (
+							<TableHead
+								key={h.id}
+								colSpan={h.colSpan}
+								className={getPinnedHeadClass(h.column.id)}
+							>
+								{h.isPlaceholder ? null : h.column.id === "actions" ? (
+									<span className="sr-only">Actions</span>
+								) : (
+									flexRender(h.column.columnDef.header, h.getContext())
+								)}
+							</TableHead>
+						))}
+					</TableRow>
+				))}
 			</TableHeader>
 			<TableBody>
-					{table.getRowModel().rows.length ? (
-						table.getRowModel().rows.map((row) => (
-							<TableRow
-								key={row.id}
-								data-state={row.getIsSelected() && "selected"}
-							>
-								{row.getVisibleCells().map((cell) => (
-									<TableCell
-										key={cell.id}
-										className={cn(
-											getPinnedCellClass(cell.column.id),
-											cell.column.id === "actions" && "text-right",
-										)}
-									>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</TableCell>
-								))}
-							</TableRow>
-						))
-					) : (
-						<TableRow>
-							<TableCell colSpan={columnCount} className="h-24 text-center">
-								{emptyMessage}
-							</TableCell>
+				{table.getRowModel().rows.length ? (
+					table.getRowModel().rows.map((row) => (
+						<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+							{row.getVisibleCells().map((cell) => (
+								<TableCell
+									key={cell.id}
+									className={cn(
+										getPinnedCellClass(cell.column.id),
+										cell.column.id === "actions" && "text-right",
+									)}
+								>
+									{flexRender(cell.column.columnDef.cell, cell.getContext())}
+								</TableCell>
+							))}
 						</TableRow>
-					)}
+					))
+				) : (
+					<TableRow>
+						<TableCell colSpan={columnCount} className="h-24 text-center">
+							{emptyMessage}
+						</TableCell>
+					</TableRow>
+				)}
 			</TableBody>
 		</Table>
 	);

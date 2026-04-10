@@ -31,6 +31,7 @@ import {
 	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
+	DataTableScaffold,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
@@ -727,41 +728,42 @@ export function DataTablePolicies({
 					/>
 				}
 			/>
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-				<div className="flex items-center gap-2">
-					<DataTableFilterMenu>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Scope</DropdownMenuLabel>
-							{SCOPE_FILTER_VALUES.map((scope) => (
-								<DropdownMenuCheckboxItem
-									key={scope}
-									checked={isChecked("scope", scope)}
-									onCheckedChange={(c) => toggleFilterValue("scope", scope, c)}
-								>
-									{getScopeLabel(scope)}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() =>
-								setColumnFilters([
-									{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
-								])
-							}
-						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} width="w-56" />
-				</div>
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+			<DataTableScaffold
+				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
+				toolbarEnd={
+					<>
+						<DataTableFilterMenu>
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Scope</DropdownMenuLabel>
+								{SCOPE_FILTER_VALUES.map((scope) => (
+									<DropdownMenuCheckboxItem
+										key={scope}
+										checked={isChecked("scope", scope)}
+										onCheckedChange={(c) => toggleFilterValue("scope", scope, c)}
+									>
+										{getScopeLabel(scope)}
+									</DropdownMenuCheckboxItem>
+								))}
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={() =>
+									setColumnFilters([
+										{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
+									])
+								}
+							>
+								Reset filters
+							</DropdownMenuItem>
+						</DataTableFilterMenu>
+						<DataTableColumnVisibility table={table} width="w-56" />
+					</>
+				}
+			>
 				<DataTableBody table={table} columnCount={columns.length} />
 				<DataTablePagination table={table} />
-			</div>
+			</DataTableScaffold>
 		</div>
 	);
 }

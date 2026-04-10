@@ -22,6 +22,7 @@ import {
 	DataTableColumnVisibility,
 	DataTableFilterMenu,
 	DataTablePagination,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
@@ -216,10 +217,10 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 	};
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-				<div className="flex items-center gap-2">
+		<DataTableScaffold
+			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
+			toolbarEnd={
+				<>
 					<DataTableFilterMenu>
 						<DropdownMenuGroup>
 							<DropdownMenuLabel>Role</DropdownMenuLabel>
@@ -242,12 +243,11 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 						</DropdownMenuItem>
 					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
-				</div>
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-				<DataTableBody table={table} columnCount={columns.length} />
-				<DataTablePagination table={table} />
-			</div>
-		</div>
+				</>
+			}
+		>
+			<DataTableBody table={table} columnCount={columns.length} />
+			<DataTablePagination table={table} />
+		</DataTableScaffold>
 	);
 }

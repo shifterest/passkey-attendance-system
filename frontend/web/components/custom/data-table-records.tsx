@@ -25,6 +25,7 @@ import {
 	DataTableColumnVisibility,
 	DataTableFilterMenu,
 	DataTablePagination,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
@@ -414,10 +415,10 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		.filter((record) => isRecordApprovable(record, approvedIds));
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
-				<div className="flex items-center gap-2">
+		<DataTableScaffold
+			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
+			toolbarEnd={
+				<>
 					<DataTableFilterMenu>
 						<DropdownMenuGroup>
 							<DropdownMenuLabel>Status</DropdownMenuLabel>
@@ -475,31 +476,30 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 						</DropdownMenuItem>
 					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
-				</div>
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-				<DataTableBody table={table} columnCount={allColumns.length} />
-				<DataTablePagination
-					table={table}
-					pageSizeOptions={[10, 20, 50, 100]}
-					selectionActions={
-						approvableSelectedRecords.length > 0 ? (
-							<DropdownMenuItem
-								disabled={isBulkApproving}
-								onClick={() =>
-									void approveRecordIds(
-										approvableSelectedRecords.map((record) => record.id),
-									)
-								}
-							>
-								{isBulkApproving
-									? "Approving..."
-									: `Approve ${approvableSelectedRecords.length} low-assurance`}
-							</DropdownMenuItem>
-						) : null
-					}
-				/>
-			</div>
-		</div>
+				</>
+			}
+		>
+			<DataTableBody table={table} columnCount={allColumns.length} />
+			<DataTablePagination
+				table={table}
+				pageSizeOptions={[10, 20, 50, 100]}
+				selectionActions={
+					approvableSelectedRecords.length > 0 ? (
+						<DropdownMenuItem
+							disabled={isBulkApproving}
+							onClick={() =>
+								void approveRecordIds(
+									approvableSelectedRecords.map((record) => record.id),
+								)
+							}
+						>
+							{isBulkApproving
+								? "Approving..."
+								: `Approve ${approvableSelectedRecords.length} low-assurance`}
+						</DropdownMenuItem>
+					) : null
+				}
+			/>
+		</DataTableScaffold>
 	);
 }

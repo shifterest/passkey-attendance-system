@@ -32,6 +32,7 @@ import {
 	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
@@ -553,7 +554,7 @@ export function DataTableStudent({
 		.filter((student) => student.registered);
 
 	return (
-		<div className="flex w-full flex-col justify-start gap-4">
+		<>
 			<RegistrationQrDialog
 				open={open}
 				onOpenChange={setRegistrationQrDialogOpenState}
@@ -569,96 +570,102 @@ export function DataTableStudent({
 						: undefined
 				}
 			/>
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<Label htmlFor="view-selector" className="sr-only">
-					View
-				</Label>
-				<SearchForm onSearch={(query) => setGlobalFilter(query)} />
-				<div className="flex items-center gap-2">
-					<DataTableFilterMenu>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Registration</DropdownMenuLabel>
-							<DropdownMenuCheckboxItem
-								checked={isFilterValueChecked("registered", true)}
-								onCheckedChange={(checked) => {
-									toggleFilterValue("registered", true, checked);
-								}}
-							>
-								Registered
-							</DropdownMenuCheckboxItem>
-							<DropdownMenuCheckboxItem
-								checked={isFilterValueChecked("registered", false)}
-								onCheckedChange={(checked) => {
-									toggleFilterValue("registered", false, checked);
-								}}
-							>
-								Unregistered
-							</DropdownMenuCheckboxItem>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Checked in</DropdownMenuLabel>
-							<DropdownMenuCheckboxItem
-								checked={isFilterValueChecked("in_class", true)}
-								onCheckedChange={(checked) => {
-									toggleFilterValue("in_class", true, checked);
-								}}
-							>
-								Checked in
-							</DropdownMenuCheckboxItem>
-							<DropdownMenuCheckboxItem
-								checked={isFilterValueChecked("in_class", false)}
-								onCheckedChange={(checked) => {
-									toggleFilterValue("in_class", false, checked);
-								}}
-							>
-								Not checked in
-							</DropdownMenuCheckboxItem>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Program</DropdownMenuLabel>
-							{programOptions.map((program) => (
+			<DataTableScaffold
+				className="w-full"
+				toolbarStart={
+					<>
+						<Label htmlFor="view-selector" className="sr-only">
+							View
+						</Label>
+						<SearchForm onSearch={(query) => setGlobalFilter(query)} />
+					</>
+				}
+				toolbarEnd={
+					<>
+						<DataTableFilterMenu>
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Registration</DropdownMenuLabel>
 								<DropdownMenuCheckboxItem
-									key={program}
-									checked={programFilter.includes(program)}
-									onCheckedChange={(checked) =>
-										toggleProgramFilter(program, checked)
-									}
+									checked={isFilterValueChecked("registered", true)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("registered", true, checked);
+									}}
 								>
-									{program}
+									Registered
 								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-							{yearOptions.map((year) => (
 								<DropdownMenuCheckboxItem
-									key={year}
-									checked={yearFilter.includes(year)}
-									onCheckedChange={(checked) => toggleYearFilter(year, checked)}
+									checked={isFilterValueChecked("registered", false)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("registered", false, checked);
+									}}
 								>
-									{year}
+									Unregistered
 								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => {
-								setColumnFilters(getDefaultColumnFilters());
-								setYearFilter([]);
-								setProgramFilter([]);
-							}}
-						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} width="w-32" />
-				</div>
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Checked in</DropdownMenuLabel>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("in_class", true)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("in_class", true, checked);
+									}}
+								>
+									Checked in
+								</DropdownMenuCheckboxItem>
+								<DropdownMenuCheckboxItem
+									checked={isFilterValueChecked("in_class", false)}
+									onCheckedChange={(checked) => {
+										toggleFilterValue("in_class", false, checked);
+									}}
+								>
+									Not checked in
+								</DropdownMenuCheckboxItem>
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Program</DropdownMenuLabel>
+								{programOptions.map((program) => (
+									<DropdownMenuCheckboxItem
+										key={program}
+										checked={programFilter.includes(program)}
+										onCheckedChange={(checked) =>
+											toggleProgramFilter(program, checked)
+										}
+									>
+										{program}
+									</DropdownMenuCheckboxItem>
+								))}
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuGroup>
+								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+								{yearOptions.map((year) => (
+									<DropdownMenuCheckboxItem
+										key={year}
+										checked={yearFilter.includes(year)}
+										onCheckedChange={(checked) => toggleYearFilter(year, checked)}
+									>
+										{year}
+									</DropdownMenuCheckboxItem>
+								))}
+							</DropdownMenuGroup>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={() => {
+									setColumnFilters(getDefaultColumnFilters());
+									setYearFilter([]);
+									setProgramFilter([]);
+								}}
+							>
+								Reset filters
+							</DropdownMenuItem>
+						</DataTableFilterMenu>
+						<DataTableColumnVisibility table={table} width="w-32" />
+					</>
+				}
+			>
 				<DataTableBody
 					table={table}
 					columnCount={
@@ -686,7 +693,7 @@ export function DataTableStudent({
 						) : null
 					}
 				/>
-			</div>
-		</div>
+			</DataTableScaffold>
+		</>
 	);
 }

@@ -12,6 +12,7 @@ import { closeSession } from "@/app/lib/api";
 import {
 	DataTableBody,
 	DataTableRowActions,
+	DataTableScaffold,
 } from "@/components/custom/data-table-shared";
 import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
@@ -127,12 +128,12 @@ export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 	});
 
 	return (
-		<div className="flex flex-col gap-4 px-4 lg:px-6">
+		<DataTableScaffold>
 			<DataTableBody
 				table={table}
 				columnCount={columns.length}
 				emptyMessage="No sessions found."
 			/>
-		</div>
+		</DataTableScaffold>
 	);
 }

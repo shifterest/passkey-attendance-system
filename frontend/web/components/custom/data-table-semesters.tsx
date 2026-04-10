@@ -24,6 +24,7 @@ import {
 	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableRowActions,
+	DataTableScaffold,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
@@ -477,14 +478,13 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 					/>
 				}
 			/>
-			<div className="flex items-center justify-between px-4 lg:px-6">
-				<SearchForm onSearch={(query) => setGlobalFilter(query)} />
-				<DataTableColumnVisibility table={table} />
-			</div>
-			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+			<DataTableScaffold
+				toolbarStart={<SearchForm onSearch={(query) => setGlobalFilter(query)} />}
+				toolbarEnd={<DataTableColumnVisibility table={table} />}
+			>
 				<DataTableBody table={table} columnCount={columns.length} />
 				<DataTablePagination table={table} />
-			</div>
+			</DataTableScaffold>
 		</div>
 	);
 }
