@@ -484,9 +484,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 					pageSizeOptions={[10, 20, 50, 100]}
 					selectionActions={
 						approvableSelectedRecords.length > 0 ? (
-							<Button
-								variant="outline"
-								size="sm"
+							<DropdownMenuItem
 								disabled={isBulkApproving}
 								onClick={() =>
 									void approveRecordIds(
@@ -497,7 +495,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 								{isBulkApproving
 									? "Approving..."
 									: `Approve ${approvableSelectedRecords.length} low-assurance`}
-							</Button>
+							</DropdownMenuItem>
 						) : null
 					}
 				/>

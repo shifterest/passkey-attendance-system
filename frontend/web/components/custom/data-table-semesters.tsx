@@ -357,14 +357,7 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 			{
 				accessorKey: "name",
 				header: ({ column }) => <SortableHeader column={column} label="Name" />,
-				cell: ({ row }) => (
-					<div className="flex flex-col gap-1">
-						<span className="font-medium">{row.original.name}</span>
-						<span className="text-xs text-muted-foreground">
-							{row.original.id.slice(0, 8)}
-						</span>
-					</div>
-				),
+				cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
 			},
 			{
 				id: "status",
@@ -488,8 +481,10 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				<SearchForm onSearch={(query) => setGlobalFilter(query)} />
 				<DataTableColumnVisibility table={table} />
 			</div>
-			<DataTableBody table={table} columnCount={columns.length} />
-			<DataTablePagination table={table} />
+			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+				<DataTableBody table={table} columnCount={columns.length} />
+				<DataTablePagination table={table} />
+			</div>
 		</div>
 	);
 }

@@ -36,7 +36,6 @@ import {
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenuCheckboxItem,
@@ -554,7 +553,7 @@ export function DataTableStudent({
 		.filter((student) => student.registered);
 
 	return (
-		<div className="flex w-full flex-col justify-start gap-6">
+		<div className="flex w-full flex-col justify-start gap-4">
 			<RegistrationQrDialog
 				open={open}
 				onOpenChange={setRegistrationQrDialogOpenState}
@@ -671,9 +670,8 @@ export function DataTableStudent({
 					pageSizeOptions={[10, 20, 30, 40, 50]}
 					selectionActions={
 						selectedRegisteredStudents.length > 0 ? (
-							<Button
-								variant="outline"
-								size="sm"
+							<DropdownMenuItem
+								variant="destructive"
 								disabled={isBulkUnregistering}
 								onClick={() =>
 									void handleUnregisterUsers(
@@ -684,7 +682,7 @@ export function DataTableStudent({
 								{isBulkUnregistering
 									? "Unregistering..."
 									: `Unregister ${selectedRegisteredStudents.length} registered`}
-							</Button>
+							</DropdownMenuItem>
 						) : null
 					}
 				/>

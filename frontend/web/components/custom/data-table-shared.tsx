@@ -24,6 +24,8 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
@@ -165,16 +167,21 @@ export function DataTablePagination<TData>({
 					{selectedRowCount} of {filteredRowCount} row(s) selected.
 				</span>
 				{hasSelection ? (
-					<>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => table.resetRowSelection()}
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="outline" size="sm" />}
 						>
-							Clear selection
-						</Button>
-						{selectionActions}
-					</>
+							Actions
+							<IconChevronDown data-icon="inline-end" />
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							{selectionActions}
+							{selectionActions ? <DropdownMenuSeparator /> : null}
+							<DropdownMenuItem onClick={() => table.resetRowSelection()}>
+								Clear selection
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				) : null}
 			</div>
 			<div className="flex w-full items-center gap-8 lg:w-fit">
@@ -268,8 +275,8 @@ export function DataTableRowActions({
 					render={
 						<Button
 							variant="ghost"
-							size="icon-sm"
-							className="data-open:bg-muted text-muted-foreground"
+							size="icon"
+							className="data-open:bg-muted text-muted-foreground size-8"
 						/>
 					}
 				>
@@ -286,11 +293,11 @@ export function DataTableRowActions({
 
 function getPinnedHeadClass(columnId: string) {
 	if (columnId === "select") {
-		return "sticky left-0 z-30 w-12 min-w-12 max-w-12 border-r bg-muted px-2";
+		return "sticky left-0 z-30 w-12 min-w-12 max-w-12 border-r bg-background px-2";
 	}
 
 	if (columnId === "actions") {
-		return "sticky right-0 z-30 w-14 min-w-14 max-w-14 border-l bg-muted px-2 text-right";
+		return "sticky right-0 z-30 w-14 min-w-14 max-w-14 border-l bg-background px-2 text-right";
 	}
 
 	return "";
@@ -298,11 +305,11 @@ function getPinnedHeadClass(columnId: string) {
 
 function getPinnedCellClass(columnId: string) {
 	if (columnId === "select") {
-		return "sticky left-0 z-20 w-12 min-w-12 max-w-12 border-r bg-background px-2 group-hover/table-row:bg-muted/50 group-data-[state=selected]/table-row:bg-muted";
+		return "sticky left-0 z-20 w-12 min-w-12 max-w-12 border-r bg-background px-2 group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted";
 	}
 
 	if (columnId === "actions") {
-		return "sticky right-0 z-20 w-14 min-w-14 max-w-14 border-l bg-background px-2 group-hover/table-row:bg-muted/50 group-data-[state=selected]/table-row:bg-muted";
+		return "sticky right-0 z-20 w-14 min-w-14 max-w-14 border-l bg-background px-2 group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted";
 	}
 
 	return "";
@@ -318,9 +325,8 @@ export function DataTableBody<TData>({
 	emptyMessage?: string;
 }) {
 	return (
-		<div className="overflow-hidden rounded-lg border">
-			<Table>
-				<TableHeader className="bg-muted sticky top-0 z-10">
+		<Table>
+			<TableHeader className="sticky top-0 z-10 bg-background">
 					{table.getHeaderGroups().map((hg) => (
 						<TableRow key={hg.id}>
 							{hg.headers.map((h) => (
@@ -338,8 +344,8 @@ export function DataTableBody<TData>({
 							))}
 						</TableRow>
 					))}
-				</TableHeader>
-				<TableBody>
+			</TableHeader>
+			<TableBody>
 					{table.getRowModel().rows.length ? (
 						table.getRowModel().rows.map((row) => (
 							<TableRow
@@ -366,8 +372,7 @@ export function DataTableBody<TData>({
 							</TableCell>
 						</TableRow>
 					)}
-				</TableBody>
-			</Table>
-		</div>
+			</TableBody>
+		</Table>
 	);
 }
