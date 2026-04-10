@@ -9,6 +9,7 @@ import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/collapsing_sliver_title.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class OfflineCheckInScreen extends StatefulWidget {
   const OfflineCheckInScreen({
@@ -269,20 +270,16 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
                   ),
                   child: Column(
                     children: [
-                      // QR rendered via mobile_scanner's Barcode or a QR image widget.
-                      // For now, show the data as text for teacher to scan.
                       Text(
                         OfflineStrings.showQrToTeacher,
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        _qrData!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                          fontSize: 10,
-                        ),
-                        maxLines: 6,
+                      const SizedBox(height: 12),
+                      QrImageView(
+                        data: _qrData!,
+                        version: QrVersions.auto,
+                        size: 220,
+                        errorCorrectionLevel: QrErrorCorrectLevel.L,
                       ),
                     ],
                   ),

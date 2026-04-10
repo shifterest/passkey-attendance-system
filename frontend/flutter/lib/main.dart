@@ -294,18 +294,36 @@ class _MainState extends State<Main> {
     if (uri == null) return;
 
     if (uri.scheme != Config.registrationProtocol) return;
-    if (uri.host != 'register') return;
 
-    final token = uri.queryParameters['token'];
-    final userId = uri.queryParameters['user_id'];
-    if (token == null || userId == null) return;
+    if (uri.host == 'register') {
+      final token = uri.queryParameters['token'];
+      final userId = uri.queryParameters['user_id'];
+      if (token == null || userId == null) return;
 
-    try {
-      _router.go(
-        '/register?token=${Uri.encodeComponent(token)}&user_id=${Uri.encodeComponent(userId)}',
-      );
-    } catch (e) {
-      debugPrint('Error navigating to register: $e');
+      try {
+        _router.go(
+          '/register?token=${Uri.encodeComponent(token)}&user_id=${Uri.encodeComponent(userId)}',
+        );
+      } catch (e) {
+        debugPrint('Error navigating to register: $e');
+      }
+      return;
+    }
+
+    if (uri.host == 'web-login') {
+      final token = uri.queryParameters['token'];
+      if (token == null) return;
+      final userId = SessionStore.prefs.getString('userId');
+      if (userId == null) return;
+
+      try {
+        _router.go(
+          '/authenticate?user_id=${Uri.encodeComponent(userId)}&web_login_token=${Uri.encodeComponent(token)}',
+        );
+      } catch (e) {
+        debugPrint('Error navigating to web-login: $e');
+      }
+      return;
     }
   }
 

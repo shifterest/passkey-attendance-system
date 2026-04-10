@@ -31,6 +31,17 @@ class _TeacherOfflineScannerScreenState
   bool _submitting = false;
   bool _scannerActive = true;
 
+  void _showRejectSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
   void _onDetect(BarcodeCapture capture) {
     if (!_scannerActive) return;
 
@@ -45,15 +56,27 @@ class _TeacherOfflineScannerScreenState
         final challenge = data['challenge'] as String?;
         final issuedAtMs = data['issued_at_ms'] as int?;
 
-        if (userId == null || challenge == null || issuedAtMs == null) continue;
+        if (userId == null || challenge == null || issuedAtMs == null) {
+          _showRejectSnack(OfflineStrings.rejectInvalid);
+          continue;
+        }
 
-        if (challenge != widget.nonce) continue;
+        if (challenge != widget.nonce) {
+          _showRejectSnack(OfflineStrings.rejectNonce);
+          continue;
+        }
 
         final issuedAt = DateTime.fromMillisecondsSinceEpoch(issuedAtMs);
         final age = DateTime.now().difference(issuedAt).inSeconds;
-        if (age > 60 || age < -5) continue;
+        if (age > 60 || age < -5) {
+          _showRejectSnack(OfflineStrings.rejectExpired);
+          continue;
+        }
 
-        if (_seenUsers.contains(userId)) continue;
+        if (_seenUsers.contains(userId)) {
+          _showRejectSnack(OfflineStrings.rejectDuplicate);
+          continue;
+        }
 
         _seenUsers.add(userId);
         setState(() => _scannedRecords.add(data));
@@ -64,7 +87,9 @@ class _TeacherOfflineScannerScreenState
             duration: const Duration(seconds: 1),
           ),
         );
-      } catch (_) {}
+      } catch (_) {
+        _showRejectSnack(OfflineStrings.rejectInvalid);
+      }
     }
   }
 

@@ -643,6 +643,15 @@ export function DataTableStudent({
 				onOpenChange={setRegistrationQrDialogOpenState}
 				session={session}
 				fullName={fullName}
+				onExpired={
+					registrationUserId
+						? async () => {
+								const newSession =
+									await getRegistrationSession(registrationUserId);
+								setSession(newSession);
+							}
+						: undefined
+				}
 			/>
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<Label htmlFor="view-selector" className="sr-only">

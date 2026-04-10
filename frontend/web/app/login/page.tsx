@@ -59,8 +59,10 @@ export default function LoginPage() {
 
 	const [webLogin, setWebLogin] = useState<WebLoginInitiateDto | null>(null);
 	const [webLoginError, setWebLoginError] = useState(false);
+	const [webLoginTtl, setWebLoginTtl] = useState<number | null>(null);
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const ttlRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	useEffect(() => {
 		if (localStorage.getItem("session_token")) {
@@ -84,6 +86,23 @@ export default function LoginPage() {
 
 		init();
 	}, [router]);
+
+	useEffect(() => {
+		if (phase !== "pending_registration") return;
+
+		const intervalId = window.setInterval(async () => {
+			try {
+				const status = await getBootstrapStatus();
+				if (status.phase === "completed" || status.phase === "disabled") {
+					setPhase(status.phase);
+				}
+			} catch {
+				// transient; keep polling
+			}
+		}, 3000);
+
+		return () => window.clearInterval(intervalId);
+	}, [phase]);
 
 	useEffect(() => {
 		if (!bootstrapRateLimitSeconds) return;
@@ -148,13 +167,22 @@ export default function LoginPage() {
 		}
 	}, []);
 
+	const clearTtlTimer = useCallback(() => {
+		if (ttlRef.current) {
+			clearInterval(ttlRef.current);
+			ttlRef.current = null;
+		}
+	}, []);
+
 	const startWebLoginRef = useRef<(() => Promise<void>) | null>(null);
 
 	const startWebLogin = useCallback(async () => {
 		setWebLoginError(false);
+		clearTtlTimer();
 		try {
 			const data = await webLoginInitiate();
 			setWebLogin(data);
+			setWebLoginTtl(data.ttl);
 
 			stopPolling();
 			pollRef.current = setInterval(async () => {
@@ -163,12 +191,14 @@ export default function LoginPage() {
 					if (result.status === "completed" && result.session) {
 						stopPolling();
 						clearRefreshTimer();
+						clearTtlTimer();
 						persistBrowserSession(result.session);
 						router.push("/dashboard");
 					}
 					if (result.status === "consumed") {
 						stopPolling();
 						clearRefreshTimer();
+						clearTtlTimer();
 						startWebLoginRef.current?.();
 					}
 				} catch {
@@ -179,12 +209,17 @@ export default function LoginPage() {
 			clearRefreshTimer();
 			refreshTimerRef.current = setTimeout(() => {
 				stopPolling();
+				clearTtlTimer();
 				startWebLoginRef.current?.();
 			}, data.ttl * 1000);
+
+			ttlRef.current = setInterval(() => {
+				setWebLoginTtl((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+			}, 1000);
 		} catch {
 			setWebLoginError(true);
 		}
-	}, [stopPolling, clearRefreshTimer, router]);
+	}, [stopPolling, clearRefreshTimer, clearTtlTimer, router]);
 
 	startWebLoginRef.current = startWebLogin;
 
@@ -195,8 +230,9 @@ export default function LoginPage() {
 		return () => {
 			stopPolling();
 			clearRefreshTimer();
+			clearTtlTimer();
 		};
-	}, [phase, startWebLogin, stopPolling, clearRefreshTimer]);
+	}, [phase, startWebLogin, stopPolling, clearRefreshTimer, clearTtlTimer]);
 
 	if (loading) {
 		return (
@@ -299,18 +335,9 @@ export default function LoginPage() {
 								/>
 								<FieldDescription className="text-center">
 									Scan this QR code with the PAS app to register the operator
-									device and passkey. Once registered, refresh this page to sign
-									in.
-									{/* TODO: Polling for bootstrap registration */}
+									device and passkey. This page will update automatically once
+									registration is complete.
 								</FieldDescription>
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={() => window.location.reload()}
-								>
-									<IconRefresh data-icon="inline-start" />
-									Refresh
-								</Button>
 							</div>
 						)}
 
@@ -341,6 +368,12 @@ export default function LoginPage() {
 										<FieldDescription className="text-center">
 											Open the PAS app, scan this code, and authenticate with
 											your passkey.
+											{webLoginTtl !== null && webLoginTtl > 0 && (
+												<>
+													<br />
+													Refreshes in {webLoginTtl}s
+												</>
+											)}
 										</FieldDescription>
 									</>
 								) : (

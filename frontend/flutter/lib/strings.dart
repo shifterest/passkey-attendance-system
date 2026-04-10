@@ -237,6 +237,10 @@ final class OfflineStrings {
   static const String syncing = 'Syncing...';
   static const String syncSuccess = 'Records synced';
   static const String errorSyncing = 'Failed to sync offline records';
+  static const String rejectNonce = 'Rejected: wrong session nonce';
+  static const String rejectExpired = 'Rejected: QR expired';
+  static const String rejectDuplicate = 'Already scanned';
+  static const String rejectInvalid = 'Rejected: invalid QR data';
 }
 
 final class CheckInStrings {

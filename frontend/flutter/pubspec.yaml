@@ -51,6 +51,7 @@ dependencies:
   nfc_manager: ^3.5.0
   flutter_local_notifications: ^19.0.0
   material_shapes: ^0.0.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
