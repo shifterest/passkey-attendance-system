@@ -11,6 +11,7 @@ import {
 	type ColumnDef,
 	getCoreRowModel,
 	getPaginationRowModel,
+	type RowSelectionState,
 	getSortedRowModel,
 	type SortingState,
 	useReactTable,
@@ -231,7 +232,7 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 ];
 
 export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
-	const [rowSelection, setRowSelection] = React.useState({});
+	const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({});
 	const [sorting, setSorting] = React.useState<SortingState>([

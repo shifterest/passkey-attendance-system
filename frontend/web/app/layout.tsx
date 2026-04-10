@@ -9,6 +9,7 @@ const googleSansFlex = Google_Sans_Flex({
 	subsets: ["latin"],
 	variable: "--font-google-sans-flex",
 	axes: ["wdth"],
+	adjustFontFallback: false,
 });
 
 const geistSans = Geist({

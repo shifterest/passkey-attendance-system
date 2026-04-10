@@ -10,7 +10,7 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import {
 	type ClassDto,
@@ -57,13 +57,14 @@ export function DataTableEnrollments({
 	enrollments: initialEnrollments,
 	classes,
 	students,
+	initialClassId,
 }: {
 	enrollments: ClassEnrollmentDto[];
 	classes: ClassDto[];
 	students: UserExtendedDto[];
+	initialClassId?: string;
 }) {
 	const router = useRouter();
-	const searchParams = useSearchParams();
 	const [enrollments, setEnrollments] = React.useState(initialEnrollments);
 	const [openDialog, setOpenDialog] = React.useState(false);
 	const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
@@ -96,11 +97,11 @@ export function DataTableEnrollments({
 	}, [initialEnrollments]);
 
 	React.useEffect(() => {
-		const classId = searchParams.get("class_id");
+		const classId = initialClassId;
 		if (classId && classById.has(classId)) {
 			setOpenDialog(true);
 		}
-	}, [searchParams, classById]);
+	}, [initialClassId, classById]);
 
 	const yearOptions = React.useMemo(() => {
 		const values = new Set<number>();
@@ -341,7 +342,7 @@ export function DataTableEnrollments({
 				onOpenChange={setOpenDialog}
 				classes={classes}
 				students={students}
-				prefilledClassId={searchParams.get("class_id") ?? undefined}
+				prefilledClassId={initialClassId}
 				onSubmit={handleCreateBatch}
 			/>
 			<SetPageHeader

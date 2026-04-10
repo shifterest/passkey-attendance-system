@@ -1,7 +1,12 @@
 import { getClasses, getEnrollments, getStudents } from "@/app/lib/api";
 import { DataTableEnrollments } from "@/components/custom/data-table-enrollments";
 
-export default async function Page() {
+export default async function Page({
+	searchParams,
+}: {
+	searchParams: Promise<{ class_id?: string }>;
+}) {
+	const resolvedSearchParams = await searchParams;
 	const [enrollments, classes, students] = await Promise.all([
 		getEnrollments(),
 		getClasses(),
@@ -14,6 +19,7 @@ export default async function Page() {
 				enrollments={enrollments}
 				classes={classes}
 				students={students}
+				initialClassId={resolvedSearchParams.class_id}
 			/>
 		</div>
 	);

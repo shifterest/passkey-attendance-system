@@ -2,7 +2,7 @@
 
 import { IconLoader } from "@tabler/icons-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,6 @@ export function NavigationTransitionProvider({
 	children: React.ReactNode;
 }) {
 	const pathname = usePathname();
-	const searchParams = useSearchParams();
 	const [phase, setPhase] = React.useState<NavigationPhase>("idle");
 	const startedRef = React.useRef(false);
 	const routeKeyRef = React.useRef<string | null>(null);
@@ -63,8 +62,9 @@ export function NavigationTransitionProvider({
 	}, [clearTimers]);
 
 	React.useEffect(() => {
-		const searchKey = searchParams.toString();
-		const nextRouteKey = searchKey ? `${pathname}?${searchKey}` : pathname;
+		const searchKey =
+			typeof window === "undefined" ? "" : window.location.search;
+		const nextRouteKey = `${pathname}${searchKey}`;
 
 		if (routeKeyRef.current === nextRouteKey) {
 			return;
@@ -83,7 +83,7 @@ export function NavigationTransitionProvider({
 			setPhase("idle");
 			settleTimeoutRef.current = null;
 		}, SETTLE_DURATION_MS);
-	}, [clearTimers, pathname, searchParams]);
+	}, [clearTimers, pathname]);
 
 	React.useEffect(() => {
 		return () => clearTimers();
@@ -110,8 +110,6 @@ export const TransitionLink = React.forwardRef<
 	React.ComponentProps<typeof Link>
 >(function TransitionLink({ href, onClick, target, ...props }, ref) {
 	const transition = useNavigationTransition();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
 
 	return (
 		<Link
@@ -140,10 +138,7 @@ export const TransitionLink = React.forwardRef<
 					return;
 				}
 
-				const currentQuery = searchParams.toString();
-				const currentRoute = currentQuery
-					? `${pathname}?${currentQuery}`
-					: pathname;
+				const currentRoute = `${window.location.pathname}${window.location.search}`;
 				const nextRoute = `${nextUrl.pathname}${nextUrl.search}`;
 
 				if (nextRoute === currentRoute) {

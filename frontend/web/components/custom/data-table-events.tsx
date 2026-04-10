@@ -204,7 +204,7 @@ export function DataTableEvents({
 		getPaginationRowModel: getPaginationRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 	});
-	const orgOptions = React.useMemo(
+	const orgOptions = useMemo(
 		() => orgs.map((org) => ({ value: org.id, label: org.name })),
 		[orgs],
 	);
