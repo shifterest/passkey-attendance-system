@@ -25,6 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 const DAYS = [
 	{ key: "Sun", label: "S" },
@@ -37,9 +38,19 @@ const DAYS = [
 ];
 
 interface ScheduleBlock {
+	id: string;
 	days: string[];
 	start_time: string;
 	end_time: string;
+}
+
+function createScheduleBlock(): ScheduleBlock {
+	return {
+		id: crypto.randomUUID(),
+		days: [],
+		start_time: "08:00",
+		end_time: "09:00",
+	};
 }
 
 interface CreateClassDialogProps {
@@ -61,15 +72,31 @@ export function CreateClassDialog({
 	const [courseCode, setCourseCode] = React.useState("");
 	const [courseName, setCourseName] = React.useState("");
 	const [schedule, setSchedule] = React.useState<ScheduleBlock[]>([
-		{ days: [], start_time: "08:00", end_time: "09:00" },
+		createScheduleBlock(),
 	]);
+	const teacherOptions = React.useMemo(
+		() =>
+			teachers.map((teacher) => ({
+				value: teacher.id,
+				label: teacher.full_name,
+			})),
+		[teachers],
+	);
+	const semesterOptions = React.useMemo(
+		() =>
+			semesters.map((semester) => ({
+				value: semester.id,
+				label: semester.name,
+			})),
+		[semesters],
+	);
 
 	function reset() {
 		setTeacherId("");
 		setSemesterId("");
 		setCourseCode("");
 		setCourseName("");
-		setSchedule([{ days: [], start_time: "08:00", end_time: "09:00" }]);
+		setSchedule([createScheduleBlock()]);
 	}
 
 	function updateBlock(index: number, patch: Partial<ScheduleBlock>) {
@@ -109,7 +136,11 @@ export function CreateClassDialog({
 				semester_id: semesterId,
 				course_code: courseCode.trim(),
 				course_name: courseName.trim(),
-				schedule: validSchedule,
+				schedule: validSchedule.map(({ days, start_time, end_time }) => ({
+					days,
+					start_time,
+					end_time,
+				})),
 			});
 			reset();
 			setOpen(false);
@@ -149,13 +180,15 @@ export function CreateClassDialog({
 							}}
 						>
 							<SelectTrigger id="create-class-teacher" className="w-full">
-								<SelectValue placeholder="Select a teacher" />
+								<SelectValue placeholder="Select a teacher">
+									{getSelectLabel(teacherId, teacherOptions)}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectGroup>
-									{teachers.map((t) => (
-										<SelectItem key={t.id} value={t.id}>
-											{t.full_name}
+									{teacherOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
 										</SelectItem>
 									))}
 								</SelectGroup>
@@ -171,13 +204,15 @@ export function CreateClassDialog({
 							}}
 						>
 							<SelectTrigger id="create-class-semester" className="w-full">
-								<SelectValue placeholder="Select a semester" />
+								<SelectValue placeholder="Select a semester">
+									{getSelectLabel(semesterId, semesterOptions)}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectGroup>
-									{semesters.map((s) => (
-										<SelectItem key={s.id} value={s.id}>
-											{s.name}
+									{semesterOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
 										</SelectItem>
 									))}
 								</SelectGroup>
@@ -206,7 +241,7 @@ export function CreateClassDialog({
 						<FieldLabel>Schedule</FieldLabel>
 						{schedule.map((block, i) => (
 							<div
-								key={`schedule-block-${i}`}
+								key={block.id}
 								className="flex flex-col gap-2 rounded-lg border p-3"
 							>
 								<div className="flex items-center justify-between">
@@ -269,12 +304,7 @@ export function CreateClassDialog({
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() =>
-								setSchedule((p) => [
-									...p,
-									{ days: [], start_time: "08:00", end_time: "09:00" },
-								])
-							}
+							onClick={() => setSchedule((p) => [...p, createScheduleBlock()])}
 						>
 							<IconPlus data-icon="inline-start" />
 							Add schedule block

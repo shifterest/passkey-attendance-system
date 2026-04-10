@@ -1,4 +1,8 @@
 import { AppSidebar } from "@/components/custom/app-sidebar";
+import {
+	NavigationTransitionContent,
+	NavigationTransitionProvider,
+} from "@/components/custom/navigation-transition";
 import { PageHeaderProvider } from "@/components/custom/page-header-context";
 import { SiteHeader } from "@/components/custom/site-header";
 import { UserProvider } from "@/components/custom/user-context";
@@ -19,17 +23,17 @@ export default function DashboardLayout({
 					} as React.CSSProperties
 				}
 			>
-				<AppSidebar variant="inset" />
-				<SidebarInset>
-					<PageHeaderProvider>
-						<SiteHeader />
-						<div className="flex flex-1 flex-col">
-							<div className="@container/main flex flex-1 flex-col gap-2">
-								{children}
-							</div>
-						</div>
-					</PageHeaderProvider>
-				</SidebarInset>
+				<NavigationTransitionProvider>
+					<AppSidebar variant="inset" />
+					<SidebarInset>
+						<PageHeaderProvider>
+							<SiteHeader />
+							<NavigationTransitionContent className="@container/main">
+								<div className="flex flex-1 flex-col gap-2">{children}</div>
+							</NavigationTransitionContent>
+						</PageHeaderProvider>
+					</SidebarInset>
+				</NavigationTransitionProvider>
 			</SidebarProvider>
 		</UserProvider>
 	);

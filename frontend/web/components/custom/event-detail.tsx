@@ -1,11 +1,11 @@
 "use client";
 
 import { IconArrowLeft, IconPlus, IconTrash } from "@tabler/icons-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { EventRuleDto } from "@/app/lib/api";
 import { createEventRule, deleteEventRule } from "@/app/lib/api";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 const EVENT_RULE_OPTIONS = [
 	{ value: "all", label: "All Users" },
@@ -81,7 +82,7 @@ export function EventDetail({
 			<Button
 				variant="ghost"
 				className="gap-1 pl-0 w-fit"
-				render={<Link href={`/orgs/${orgId}`} />}
+				render={<TransitionLink href={`/orgs/${orgId}`} />}
 			>
 				<IconArrowLeft data-icon="inline-start" />
 				Back to organization
@@ -115,7 +116,9 @@ export function EventDetail({
 								}}
 							>
 								<SelectTrigger>
-									<SelectValue />
+									<SelectValue>
+										{getSelectLabel(ruleType, EVENT_RULE_OPTIONS)}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
 									{EVENT_RULE_OPTIONS.map((option) => (

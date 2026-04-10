@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -32,7 +32,7 @@ export function NavInformation({
 						return (
 							<SidebarMenuItem key={item.title}>
 								<SidebarMenuButton
-									render={<Link href={item.url} />}
+									render={<TransitionLink href={item.url} />}
 									isActive={pathname === item.url}
 								>
 									<Icon />

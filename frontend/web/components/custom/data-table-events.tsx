@@ -13,7 +13,6 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createEvent, type EventDto, type OrgDto } from "@/app/lib/api";
@@ -23,6 +22,7 @@ import {
 	DataTablePagination,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 export function DataTableEvents({
 	events,
@@ -114,12 +115,12 @@ export function DataTableEvents({
 				cell: ({ row }) => {
 					const event = row.original;
 					return (
-						<Link
+						<TransitionLink
 							href={`/orgs/${event.org_id}/events/${event.id}`}
 							className="font-medium hover:underline"
 						>
 							{event.name}
-						</Link>
+						</TransitionLink>
 					);
 				},
 			},
@@ -129,9 +130,12 @@ export function DataTableEvents({
 				cell: ({ row }) => {
 					const org = orgMap.get(row.original.org_id);
 					return org ? (
-						<Link href={`/orgs/${org.id}`} className="hover:underline">
+						<TransitionLink
+							href={`/orgs/${org.id}`}
+							className="hover:underline"
+						>
 							{org.name}
-						</Link>
+						</TransitionLink>
 					) : (
 						<span className="text-muted-foreground">—</span>
 					);
@@ -200,6 +204,10 @@ export function DataTableEvents({
 		getPaginationRowModel: getPaginationRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 	});
+	const orgOptions = React.useMemo(
+		() => orgs.map((org) => ({ value: org.id, label: org.name })),
+		[orgs],
+	);
 
 	async function handleCreate() {
 		if (!createName.trim() || !createOrgId || creating) return;
@@ -248,13 +256,15 @@ export function DataTableEvents({
 										}}
 									>
 										<SelectTrigger id="create-event-org" className="w-full">
-											<SelectValue placeholder="Select an organization" />
+											<SelectValue placeholder="Select an organization">
+												{getSelectLabel(createOrgId, orgOptions)}
+											</SelectValue>
 										</SelectTrigger>
 										<SelectContent>
 											<SelectGroup>
-												{orgs.map((o) => (
-													<SelectItem key={o.id} value={o.id}>
-														{o.name}
+												{orgOptions.map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
 													</SelectItem>
 												))}
 											</SelectGroup>

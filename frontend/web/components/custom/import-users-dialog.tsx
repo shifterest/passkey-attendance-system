@@ -11,7 +11,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 import { ImportDialog } from "./import-dialog";
+
+const IMPORT_FORMAT_OPTIONS = [
+	{
+		value: "generic",
+		label: "Generic (full_name, email, school_id, role)",
+	},
+	{
+		value: "banner",
+		label: "Banner (FIRST_NAME, LAST_NAME, EMAIL_ADDRESS, ID)",
+	},
+] as const;
 
 interface ImportUsersDialogProps {
 	trigger: React.ReactNode;
@@ -36,16 +48,17 @@ export function ImportUsersDialog({ trigger }: ImportUsersDialogProps) {
 						onValueChange={(v) => setFormat(v as "generic" | "banner")}
 					>
 						<SelectTrigger id="import-format" className="w-full">
-							<SelectValue />
+							<SelectValue>
+								{getSelectLabel(format, IMPORT_FORMAT_OPTIONS)}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
 							<SelectGroup>
-								<SelectItem value="generic">
-									Generic (full_name, email, school_id, role)
-								</SelectItem>
-								<SelectItem value="banner">
-									Banner (FIRST_NAME, LAST_NAME, EMAIL_ADDRESS, ID)
-								</SelectItem>
+								{IMPORT_FORMAT_OPTIONS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
 							</SelectGroup>
 						</SelectContent>
 					</Select>

@@ -1,17 +1,12 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconFilter,
-	IconMinus,
-	IconPlus,
-	IconSearch,
-} from "@tabler/icons-react";
+import { IconMinus, IconPlus, IconSearch } from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 
-import { ButtonGroup } from "@/components/ui/button-group";
+import { DataTableFilterMenu } from "@/components/custom/data-table-shared";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Combobox,
@@ -33,14 +28,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
 	Field,
@@ -320,64 +312,55 @@ export function EnrollmentManageDialog({
 									className="pl-8"
 								/>
 							</div>
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={<Button variant="outline" size="sm" />}
-								>
-									<IconFilter data-icon="inline-start" />
-									Filter
-									<IconChevronDown data-icon="inline-end" />
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-48">
-									<DropdownMenuGroup>
-										<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-										{yearOptions.map((year) => (
-											<DropdownMenuCheckboxItem
-												key={year}
-												checked={yearFilter.includes(year)}
-												onCheckedChange={(checked) =>
-													toggleYearFilter(year, checked)
-												}
-											>
-												{year}
-											</DropdownMenuCheckboxItem>
-										))}
-									</DropdownMenuGroup>
-									{programOptions.length > 0 && (
-										<>
-											<DropdownMenuSeparator />
-											<DropdownMenuGroup>
-												<DropdownMenuLabel>Program</DropdownMenuLabel>
-												{programOptions.map((program) => (
-													<DropdownMenuCheckboxItem
-														key={program}
-														checked={programFilter.includes(program)}
-														onCheckedChange={(checked) =>
-															toggleProgramFilter(program, checked)
-														}
-													>
-														{program}
-													</DropdownMenuCheckboxItem>
-												))}
-											</DropdownMenuGroup>
-										</>
-									)}
-									{(yearFilter.length > 0 || programFilter.length > 0) && (
-										<>
-											<DropdownMenuSeparator />
-											<DropdownMenuItem
-												variant="destructive"
-												onClick={() => {
-													setYearFilter([]);
-													setProgramFilter([]);
-												}}
-											>
-												Reset filters
-											</DropdownMenuItem>
-										</>
-									)}
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<DataTableFilterMenu>
+								<DropdownMenuGroup>
+									<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+									{yearOptions.map((year) => (
+										<DropdownMenuCheckboxItem
+											key={year}
+											checked={yearFilter.includes(year)}
+											onCheckedChange={(checked) =>
+												toggleYearFilter(year, checked)
+											}
+										>
+											{year}
+										</DropdownMenuCheckboxItem>
+									))}
+								</DropdownMenuGroup>
+								{programOptions.length > 0 && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuGroup>
+											<DropdownMenuLabel>Program</DropdownMenuLabel>
+											{programOptions.map((program) => (
+												<DropdownMenuCheckboxItem
+													key={program}
+													checked={programFilter.includes(program)}
+													onCheckedChange={(checked) =>
+														toggleProgramFilter(program, checked)
+													}
+												>
+													{program}
+												</DropdownMenuCheckboxItem>
+											))}
+										</DropdownMenuGroup>
+									</>
+								)}
+								{(yearFilter.length > 0 || programFilter.length > 0) && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											variant="destructive"
+											onClick={() => {
+												setYearFilter([]);
+												setProgramFilter([]);
+											}}
+										>
+											Reset filters
+										</DropdownMenuItem>
+									</>
+								)}
+							</DataTableFilterMenu>
 						</div>
 						<div className="max-h-[360px] overflow-y-auto rounded-md border">
 							<Table>

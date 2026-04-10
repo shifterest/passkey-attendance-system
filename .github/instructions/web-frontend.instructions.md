@@ -286,6 +286,8 @@ Renders a search input but is not connected to any table filtering logic. Dead U
 - Use Tabler icons (`@tabler/icons-react`) — do not use Lucide icons anywhere
 - Use Biome for linting/formatting: `pnpm biome check`
 - shadcn components are added via `pnpm dlx shadcn@latest add <component>` — never edit generated shadcn files manually
+- When a `Select` stores machine values or IDs but displays human-friendly labels, do not rely on bare `SelectValue`; render the closed-state label explicitly or use a shared label helper
+- Keep dropdown-style controls visually consistent: reuse shared row-action patterns for table menus, keep destructive items explicit, and avoid one-off trigger sizes unless there is a concrete UX reason
 
 ---
 

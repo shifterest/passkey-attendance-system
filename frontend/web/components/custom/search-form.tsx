@@ -1,7 +1,6 @@
 "use client";
 
 import { IconSearch } from "@tabler/icons-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -11,6 +10,7 @@ import {
 	type UserDto,
 } from "@/app/lib/api";
 import { getSearchPlaceholder } from "@/app/lib/navigation";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -150,7 +150,7 @@ export function SearchForm({
 								Users
 							</p>
 							{users.map((u) => (
-								<Link
+								<TransitionLink
 									key={u.id}
 									href={userHref(u.role)}
 									onClick={() => setOpen(false)}
@@ -160,7 +160,7 @@ export function SearchForm({
 									<Badge variant="outline" className="ml-auto capitalize">
 										{u.role}
 									</Badge>
-								</Link>
+								</TransitionLink>
 							))}
 						</>
 					)}
@@ -173,7 +173,7 @@ export function SearchForm({
 								Classes
 							</p>
 							{classes.map((c) => (
-								<Link
+								<TransitionLink
 									key={c.id}
 									href={`/classes/${c.id}/sessions`}
 									onClick={() => setOpen(false)}
@@ -183,7 +183,7 @@ export function SearchForm({
 									<span className="ml-auto truncate text-xs text-muted-foreground">
 										{c.course_name}
 									</span>
-								</Link>
+								</TransitionLink>
 							))}
 						</>
 					)}

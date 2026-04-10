@@ -1,7 +1,6 @@
 "use client";
 
 import { IconChevronRight, IconPlus, IconTrash } from "@tabler/icons-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { EventDto, OrgMemberDto, OrgRuleDto } from "@/app/lib/api";
@@ -13,6 +12,7 @@ import {
 	grantMembership,
 	revokeMembership,
 } from "@/app/lib/api";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 const ORG_MEMBERSHIP_TYPE_OPTIONS = [
 	{ value: "explicit_grant", label: "Explicit Grant" },
@@ -151,7 +152,12 @@ function MembersSection({
 									}}
 								>
 									<SelectTrigger className="w-40">
-										<SelectValue />
+										<SelectValue>
+											{getSelectLabel(
+												membershipType,
+												ORG_MEMBERSHIP_TYPE_OPTIONS,
+											)}
+										</SelectValue>
 									</SelectTrigger>
 									<SelectContent>
 										{ORG_MEMBERSHIP_TYPE_OPTIONS.map((option) => (
@@ -170,7 +176,9 @@ function MembersSection({
 									}}
 								>
 									<SelectTrigger className="w-40">
-										<SelectValue />
+										<SelectValue>
+											{getSelectLabel(orgRole, ORG_ROLE_OPTIONS)}
+										</SelectValue>
 									</SelectTrigger>
 									<SelectContent>
 										{ORG_ROLE_OPTIONS.map((option) => (
@@ -303,7 +311,9 @@ function RulesSection({
 								}}
 							>
 								<SelectTrigger>
-									<SelectValue />
+									<SelectValue>
+										{getSelectLabel(ruleType, ORG_RULE_OPTIONS)}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
 									{ORG_RULE_OPTIONS.map((option) => (
@@ -456,12 +466,12 @@ function EventsSection({
 							<CardHeader className="flex-row items-center justify-between">
 								<div>
 									<CardTitle>
-										<Link
+										<TransitionLink
 											href={`/orgs/${orgId}/events/${ev.id}`}
 											className="hover:underline"
 										>
 											{ev.name}
-										</Link>
+										</TransitionLink>
 									</CardTitle>
 									{ev.description && (
 										<CardDescription>{ev.description}</CardDescription>
@@ -478,7 +488,9 @@ function EventsSection({
 									<Button
 										variant="ghost"
 										size="icon"
-										render={<Link href={`/orgs/${orgId}/events/${ev.id}`} />}
+										render={
+											<TransitionLink href={`/orgs/${orgId}/events/${ev.id}`} />
+										}
 									>
 										<IconChevronRight />
 									</Button>

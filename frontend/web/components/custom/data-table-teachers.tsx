@@ -1,11 +1,9 @@
 "use client";
 
 import {
-	IconChevronDown,
 	IconCircle,
 	IconCircleCheckFilled,
 	IconCircleXFilled,
-	IconFilter,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
@@ -26,22 +24,19 @@ import type { TeacherDto } from "@/app/lib/api";
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const REGISTERED_FILTER_VALUES = [true, false] as const;
@@ -272,63 +267,54 @@ export function DataTableTeachers({
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
-						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Registration</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isChecked("registered", true)}
-									onCheckedChange={(c) =>
-										toggleFilterValue("registered", true, c)
-									}
-								>
-									Registered
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isChecked("registered", false)}
-									onCheckedChange={(c) =>
-										toggleFilterValue("registered", false, c)
-									}
-								>
-									Unregistered
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Session</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isChecked("has_open_session", true)}
-									onCheckedChange={(c) =>
-										toggleFilterValue("has_open_session", true, c)
-									}
-								>
-									Active
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isChecked("has_open_session", false)}
-									onCheckedChange={(c) =>
-										toggleFilterValue("has_open_session", false, c)
-									}
-								>
-									Inactive
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => setColumnFilters(getDefaultColumnFilters())}
+					<DataTableFilterMenu>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Registration</DropdownMenuLabel>
+							<DropdownMenuCheckboxItem
+								checked={isChecked("registered", true)}
+								onCheckedChange={(c) =>
+									toggleFilterValue("registered", true, c)
+								}
 							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+								Registered
+							</DropdownMenuCheckboxItem>
+							<DropdownMenuCheckboxItem
+								checked={isChecked("registered", false)}
+								onCheckedChange={(c) =>
+									toggleFilterValue("registered", false, c)
+								}
+							>
+								Unregistered
+							</DropdownMenuCheckboxItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Session</DropdownMenuLabel>
+							<DropdownMenuCheckboxItem
+								checked={isChecked("has_open_session", true)}
+								onCheckedChange={(c) =>
+									toggleFilterValue("has_open_session", true, c)
+								}
+							>
+								Active
+							</DropdownMenuCheckboxItem>
+							<DropdownMenuCheckboxItem
+								checked={isChecked("has_open_session", false)}
+								onCheckedChange={(c) =>
+									toggleFilterValue("has_open_session", false, c)
+								}
+							>
+								Inactive
+							</DropdownMenuCheckboxItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => setColumnFilters(getDefaultColumnFilters())}
+						>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>

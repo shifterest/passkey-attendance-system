@@ -7,6 +7,7 @@ import {
 	IconChevronsLeft,
 	IconChevronsRight,
 	IconDotsVertical,
+	IconFilter,
 	IconLayoutColumns,
 	IconSelector,
 	IconSortAscending,
@@ -119,18 +120,62 @@ export function DataTableColumnVisibility<TData>({
 	);
 }
 
+export function DataTableFilterMenu({
+	children,
+	contentClassName = "w-48",
+	label = "Filter",
+	align = "end",
+}: {
+	children: ReactNode;
+	contentClassName?: string;
+	label?: string;
+	align?: "center" | "end" | "start";
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+				<IconFilter data-icon="inline-start" />
+				{label}
+				<IconChevronDown data-icon="inline-end" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align={align} className={contentClassName}>
+				{children}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 export function DataTablePagination<TData>({
 	table,
 	pageSizeOptions = [10, 20, 30, 50],
+	selectionActions,
 }: {
 	table: TanstackTable<TData>;
 	pageSizeOptions?: number[];
+	selectionActions?: ReactNode;
 }) {
+	const selectedRowCount = table.getFilteredSelectedRowModel().rows.length;
+	const filteredRowCount = table.getFilteredRowModel().rows.length;
+	const hasSelection = selectedRowCount > 0;
+
 	return (
-		<div className="flex items-center justify-between px-4">
-			<div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
-				{table.getFilteredSelectedRowModel().rows.length} of{" "}
-				{table.getFilteredRowModel().rows.length} row(s) selected.
+		<div className="flex flex-col gap-3 px-4 lg:flex-row lg:items-center lg:justify-between">
+			<div className="flex flex-wrap items-center gap-2 text-sm">
+				<span className="text-muted-foreground">
+					{selectedRowCount} of {filteredRowCount} row(s) selected.
+				</span>
+				{hasSelection ? (
+					<>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => table.resetRowSelection()}
+						>
+							Clear selection
+						</Button>
+						{selectionActions}
+					</>
+				) : null}
 			</div>
 			<div className="flex w-full items-center gap-8 lg:w-fit">
 				<div className="hidden items-center gap-2 lg:flex">

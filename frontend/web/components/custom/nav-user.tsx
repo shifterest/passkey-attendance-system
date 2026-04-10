@@ -8,6 +8,7 @@ import {
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { clearBrowserSession, logout } from "@/app/lib/api";
+import { useNavigationTransition } from "@/components/custom/navigation-transition";
 import { useUser } from "@/components/custom/user-context";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -32,6 +33,7 @@ export function NavUser() {
 	const { isMobile } = useSidebar();
 	const { user, loading } = useUser();
 	const router = useRouter();
+	const transition = useNavigationTransition();
 
 	const handleLogout = async () => {
 		const userId = localStorage.getItem("user_id");
@@ -112,11 +114,21 @@ export function NavUser() {
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem onClick={() => router.push("/account")}>
+							<DropdownMenuItem
+								onClick={() => {
+									transition?.beginNavigation();
+									router.push("/account");
+								}}
+							>
 								<IconUserCircle />
 								Account
 							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => router.push("/settings")}>
+							<DropdownMenuItem
+								onClick={() => {
+									transition?.beginNavigation();
+									router.push("/settings");
+								}}
+							>
 								<IconSettings />
 								Settings
 							</DropdownMenuItem>

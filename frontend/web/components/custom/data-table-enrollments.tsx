@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconFileImport,
-	IconFilter,
-	IconPlus,
-	IconTrash,
-} from "@tabler/icons-react";
+import { IconFileImport, IconPlus, IconTrash } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -28,6 +22,7 @@ import {
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
 	SortableHeader,
@@ -51,14 +46,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 export function DataTableEnrollments({
@@ -380,68 +372,59 @@ export function DataTableEnrollments({
 			<div className="flex items-center justify-between">
 				<SearchForm onSearch={(q) => setQuery(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
-						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-56">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Class</DropdownMenuLabel>
-								{classes.map((classValue) => (
-									<DropdownMenuCheckboxItem
-										key={classValue.id}
-										checked={classFilter.includes(classValue.id)}
-										onCheckedChange={(checked) =>
-											setClassFilter((prev) =>
-												checked
-													? [...prev, classValue.id]
-													: prev.filter((id) => id !== classValue.id),
-											)
-										}
-									>
-										{classValue.course_code}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-								{yearOptions.map((year) => (
-									<DropdownMenuCheckboxItem
-										key={year}
-										checked={yearFilter.includes(year)}
-										onCheckedChange={(checked) =>
-											setYearFilter((prev) =>
-												checked
-													? [...prev, year]
-													: prev.filter((y) => y !== year),
-											)
-										}
-									>
-										{year}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							{(classFilter.length > 0 || yearFilter.length > 0) && (
-								<>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										variant="destructive"
-										onClick={() => {
-											setClassFilter([]);
-											setYearFilter([]);
-										}}
-									>
-										Reset filters
-									</DropdownMenuItem>
-								</>
-							)}
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<DataTableFilterMenu contentClassName="w-56">
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Class</DropdownMenuLabel>
+							{classes.map((classValue) => (
+								<DropdownMenuCheckboxItem
+									key={classValue.id}
+									checked={classFilter.includes(classValue.id)}
+									onCheckedChange={(checked) =>
+										setClassFilter((prev) =>
+											checked
+												? [...prev, classValue.id]
+												: prev.filter((id) => id !== classValue.id),
+										)
+									}
+								>
+									{classValue.course_code}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+							{yearOptions.map((year) => (
+								<DropdownMenuCheckboxItem
+									key={year}
+									checked={yearFilter.includes(year)}
+									onCheckedChange={(checked) =>
+										setYearFilter((prev) =>
+											checked
+												? [...prev, year]
+												: prev.filter((y) => y !== year),
+										)
+									}
+								>
+									{year}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						{(classFilter.length > 0 || yearFilter.length > 0) && (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									variant="destructive"
+									onClick={() => {
+										setClassFilter([]);
+										setYearFilter([]);
+									}}
+								>
+									Reset filters
+								</DropdownMenuItem>
+							</>
+						)}
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>

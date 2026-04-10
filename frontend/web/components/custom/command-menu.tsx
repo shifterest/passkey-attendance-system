@@ -10,6 +10,7 @@ import {
 	type UserDto,
 } from "@/app/lib/api";
 import { getSearchPlaceholder } from "@/app/lib/navigation";
+import { useNavigationTransition } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
 import {
 	Command,
@@ -32,6 +33,7 @@ function userHref(role: string): string {
 export function CommandMenu() {
 	const pathname = usePathname();
 	const router = useRouter();
+	const transition = useNavigationTransition();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [users, setUsers] = useState<UserDto[]>([]);
@@ -112,6 +114,7 @@ export function CommandMenu() {
 		setQuery("");
 		setUsers([]);
 		setClasses([]);
+		transition?.beginNavigation();
 		router.push(href);
 	}
 

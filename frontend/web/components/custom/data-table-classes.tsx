@@ -21,6 +21,7 @@ import {
 	DataTableRowActions,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
+import { useNavigationTransition } from "@/components/custom/navigation-transition";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,6 +44,7 @@ export function DataTableClasses({
 	teachers?: TeacherDto[];
 }) {
 	const router = useRouter();
+	const transition = useNavigationTransition();
 	const teacherMap = React.useMemo(
 		() => new Map(teachers.map((t) => [t.id, t.full_name])),
 		[teachers],
@@ -150,16 +152,18 @@ export function DataTableClasses({
 					<DataTableRowActions>
 						<DropdownMenuGroup>
 							<DropdownMenuItem
-								onClick={() =>
-									router.push(`/classes/${row.original.id}/sessions`)
-								}
+								onClick={() => {
+									transition?.beginNavigation();
+									router.push(`/classes/${row.original.id}/sessions`);
+								}}
 							>
 								Sessions
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() =>
-									router.push(`/enrollments?class_id=${row.original.id}`)
-								}
+								onClick={() => {
+									transition?.beginNavigation();
+									router.push(`/enrollments?class_id=${row.original.id}`);
+								}}
 							>
 								Manage enrollment
 							</DropdownMenuItem>
@@ -168,7 +172,7 @@ export function DataTableClasses({
 				),
 			},
 		],
-		[router, teacherMap],
+		[router, teacherMap, transition],
 	);
 
 	const table = useReactTable({

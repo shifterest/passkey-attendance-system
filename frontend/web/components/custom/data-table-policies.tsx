@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconFilter,
-	IconPencil,
-	IconPlus,
-	IconTrash,
-} from "@tabler/icons-react";
+import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -34,6 +28,7 @@ import {
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
 } from "@/components/custom/data-table-shared";
@@ -52,14 +47,11 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -71,6 +63,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 type PolicyScope = "system" | "teacher" | "class";
 
@@ -87,6 +80,10 @@ function getScopeLabel(scope: PolicyScope): string {
 }
 
 const SCOPE_FILTER_VALUES: PolicyScope[] = ["system", "teacher", "class"];
+const POLICY_SCOPE_OPTIONS = [
+	{ value: "system", label: "System default" },
+	{ value: "class", label: "Class override" },
+] as const;
 
 const includesSomeFilter: FilterFn<ClassPolicyDto> = (
 	row,
@@ -211,6 +208,14 @@ function CreatePolicyDialog({
 	const handleChange = (field: string, value: number) => {
 		setValues((prev) => ({ ...prev, [field]: value }));
 	};
+	const classOptions = React.useMemo(
+		() =>
+			classes.map((classValue) => ({
+				value: classValue.id,
+				label: `${classValue.course_code} — ${classValue.course_name}`,
+			})),
+		[classes],
+	);
 
 	const handleSubmit = async () => {
 		setSubmitting(true);
@@ -242,12 +247,17 @@ function CreatePolicyDialog({
 							onValueChange={(v) => setScope(v as "system" | "class")}
 						>
 							<SelectTrigger>
-								<SelectValue />
+								<SelectValue>
+									{getSelectLabel(scope, POLICY_SCOPE_OPTIONS)}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectGroup>
-									<SelectItem value="system">System default</SelectItem>
-									<SelectItem value="class">Class override</SelectItem>
+									{POLICY_SCOPE_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
 								</SelectGroup>
 							</SelectContent>
 						</Select>
@@ -262,13 +272,15 @@ function CreatePolicyDialog({
 								}}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a class" />
+									<SelectValue placeholder="Select a class">
+										{getSelectLabel(classId, classOptions)}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
 									<SelectGroup>
-										{classes.map((c) => (
-											<SelectItem key={c.id} value={c.id}>
-												{c.course_code} — {c.course_name}
+										{classOptions.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
 											</SelectItem>
 										))}
 									</SelectGroup>
@@ -718,42 +730,31 @@ export function DataTablePolicies({
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
+					<DataTableFilterMenu>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Scope</DropdownMenuLabel>
+							{SCOPE_FILTER_VALUES.map((scope) => (
+								<DropdownMenuCheckboxItem
+									key={scope}
+									checked={isChecked("scope", scope)}
+									onCheckedChange={(c) => toggleFilterValue("scope", scope, c)}
+								>
+									{getScopeLabel(scope)}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() =>
+								setColumnFilters([
+									{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
+								])
+							}
 						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Scope</DropdownMenuLabel>
-								{SCOPE_FILTER_VALUES.map((scope) => (
-									<DropdownMenuCheckboxItem
-										key={scope}
-										checked={isChecked("scope", scope)}
-										onCheckedChange={(c) =>
-											toggleFilterValue("scope", scope, c)
-										}
-									>
-										{getScopeLabel(scope)}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() =>
-									setColumnFilters([
-										{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
-									])
-								}
-							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} width="w-56" />
 				</div>
 			</div>

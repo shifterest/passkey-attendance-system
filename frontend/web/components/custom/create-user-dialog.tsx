@@ -24,6 +24,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { getSelectLabel } from "@/lib/select-label";
 
 interface CreateUserDialogProps {
 	defaultRole?: string;
@@ -48,6 +49,14 @@ export function CreateUserDialog({
 
 	const isStudent = role === "student";
 	const requiresSchoolId = role === "student" || role === "teacher";
+	const roleOptions = React.useMemo(
+		() =>
+			allowedRoles.map((allowedRole) => ({
+				value: allowedRole,
+				label: allowedRole.charAt(0).toUpperCase() + allowedRole.slice(1),
+			})),
+		[allowedRoles],
+	);
 	const canSubmit =
 		!submitting &&
 		role !== "" &&
@@ -119,17 +128,16 @@ export function CreateUserDialog({
 									if (v !== null) setRole(v);
 								}}
 							>
-								<SelectTrigger
-									id="create-user-role"
-									className="w-full capitalize"
-								>
-									<SelectValue placeholder="Select a role" />
+								<SelectTrigger id="create-user-role" className="w-full">
+									<SelectValue placeholder="Select a role">
+										{getSelectLabel(role, roleOptions)}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
 									<SelectGroup>
-										{allowedRoles.map((r) => (
-											<SelectItem key={r} value={r}>
-												{r.charAt(0).toUpperCase() + r.slice(1)}
+										{roleOptions.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
 											</SelectItem>
 										))}
 									</SelectGroup>

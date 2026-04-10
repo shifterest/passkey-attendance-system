@@ -3,8 +3,6 @@
 import {
 	IconAlertTriangle,
 	IconCheck,
-	IconChevronDown,
-	IconFilter,
 	IconFlag,
 	IconRefresh,
 	IconShield,
@@ -24,6 +22,7 @@ import { approveRecord } from "@/app/lib/api";
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
@@ -32,14 +31,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 function formatTimestamp(ts: string) {
@@ -66,6 +62,18 @@ function assuranceBand(
 	if (score >= effectiveStandardThreshold)
 		return { label: "Standard", cls: "text-muted-foreground" };
 	return { label: "Low", cls: "text-destructive" };
+}
+
+function isRecordApprovable(
+	record: AttendanceRecordDto,
+	approvedIds: Set<string>,
+) {
+	if (record.manually_approved || approvedIds.has(record.id)) {
+		return false;
+	}
+
+	const standardThreshold = record.standard_threshold_recorded ?? 5;
+	return record.assurance_score < standardThreshold;
 }
 
 const MAX_METHODS = 3;
@@ -246,6 +254,54 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		pageIndex: 0,
 		pageSize: 20,
 	});
+	const [isBulkApproving, setIsBulkApproving] = React.useState(false);
+
+	const approveRecordIds = React.useCallback(async (recordIds: string[]) => {
+		if (recordIds.length === 0) {
+			return;
+		}
+
+		setIsBulkApproving(true);
+		setApprovedIds((prev) => {
+			const next = new Set(prev);
+			for (const recordId of recordIds) {
+				next.add(recordId);
+			}
+			return next;
+		});
+
+		const results = await Promise.allSettled(
+			recordIds.map(async (recordId) => {
+				await approveRecord(recordId);
+				return recordId;
+			}),
+		);
+
+		const failedIds = results.flatMap((result, index) =>
+			result.status === "rejected" ? [recordIds[index]] : [],
+		);
+
+		if (failedIds.length > 0) {
+			setApprovedIds((prev) => {
+				const next = new Set(prev);
+				for (const failedId of failedIds) {
+					next.delete(failedId);
+				}
+				return next;
+			});
+		}
+
+		setRowSelection((prev) => {
+			const next = { ...prev };
+			for (const recordId of recordIds) {
+				if (!failedIds.includes(recordId)) {
+					delete next[recordId];
+				}
+			}
+			return next;
+		});
+		setIsBulkApproving(false);
+	}, []);
 
 	const approveColumn = React.useMemo<ColumnDef<AttendanceRecordDto>>(
 		() => ({
@@ -253,24 +309,13 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 			header: "",
 			cell: ({ row }) => {
 				const r = row.original;
-				if (r.manually_approved || approvedIds.has(r.id)) return null;
-				const std = r.standard_threshold_recorded ?? 5;
-				if (r.assurance_score >= std) return null;
+				if (!isRecordApprovable(r, approvedIds)) return null;
 				return (
 					<div className="flex justify-end">
 						<Button
 							size="xs"
 							variant="outline"
-							onClick={() => {
-								setApprovedIds((prev) => new Set(prev).add(r.id));
-								approveRecord(r.id).catch(() =>
-									setApprovedIds((prev) => {
-										const next = new Set(prev);
-										next.delete(r.id);
-										return next;
-									}),
-								);
-							}}
+							onClick={() => void approveRecordIds([r.id])}
 						>
 							Approve
 						</Button>
@@ -278,7 +323,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 				);
 			},
 		}),
-		[approvedIds],
+		[approveRecordIds, approvedIds],
 	);
 
 	const allColumns = React.useMemo(
@@ -325,6 +370,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		data: filteredData,
 		columns: allColumns,
 		state: { sorting, columnVisibility, rowSelection, pagination },
+		getRowId: (row) => row.id,
 		enableRowSelection: true,
 		onRowSelectionChange: setRowSelection,
 		onSortingChange: setSorting,
@@ -361,76 +407,72 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		);
 	};
 
+	const approvableSelectedRecords = table
+		.getFilteredSelectedRowModel()
+		.rows.map((row) => row.original)
+		.filter((record) => isRecordApprovable(record, approvedIds));
+
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
+					<DataTableFilterMenu>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Status</DropdownMenuLabel>
+							{["present", "late", "absent"].map((s) => (
+								<DropdownMenuCheckboxItem
+									key={s}
+									checked={statusFilter.includes(s)}
+									onCheckedChange={(c) => toggleStatus(s, c)}
+								>
+									{s.charAt(0).toUpperCase() + s.slice(1)}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Assurance Band</DropdownMenuLabel>
+							{["high", "standard", "low"].map((b) => (
+								<DropdownMenuCheckboxItem
+									key={b}
+									checked={bandFilter.includes(b)}
+									onCheckedChange={(c) => toggleBand(b, c)}
+								>
+									{b.charAt(0).toUpperCase() + b.slice(1)}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Flags</DropdownMenuLabel>
+							{[
+								{ key: "flagged", label: "Flagged" },
+								{ key: "approved", label: "Manually approved" },
+								{ key: "sync_pending", label: "Sync pending" },
+								{ key: "mock_gps", label: "Mock GPS" },
+							].map(({ key, label }) => (
+								<DropdownMenuCheckboxItem
+									key={key}
+									checked={flagFilter.includes(key)}
+									onCheckedChange={(c) => toggleFlag(key, c)}
+								>
+									{label}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => {
+								setStatusFilter(["present", "late", "absent"]);
+								setBandFilter(["high", "standard", "low"]);
+								setFlagFilter([]);
+							}}
 						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Status</DropdownMenuLabel>
-								{["present", "late", "absent"].map((s) => (
-									<DropdownMenuCheckboxItem
-										key={s}
-										checked={statusFilter.includes(s)}
-										onCheckedChange={(c) => toggleStatus(s, c)}
-									>
-										{s.charAt(0).toUpperCase() + s.slice(1)}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Assurance Band</DropdownMenuLabel>
-								{["high", "standard", "low"].map((b) => (
-									<DropdownMenuCheckboxItem
-										key={b}
-										checked={bandFilter.includes(b)}
-										onCheckedChange={(c) => toggleBand(b, c)}
-									>
-										{b.charAt(0).toUpperCase() + b.slice(1)}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Flags</DropdownMenuLabel>
-								{[
-									{ key: "flagged", label: "Flagged" },
-									{ key: "approved", label: "Manually approved" },
-									{ key: "sync_pending", label: "Sync pending" },
-									{ key: "mock_gps", label: "Mock GPS" },
-								].map(({ key, label }) => (
-									<DropdownMenuCheckboxItem
-										key={key}
-										checked={flagFilter.includes(key)}
-										onCheckedChange={(c) => toggleFlag(key, c)}
-									>
-										{label}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => {
-									setStatusFilter(["present", "late", "absent"]);
-									setBandFilter(["high", "standard", "low"]);
-									setFlagFilter([]);
-								}}
-							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>
@@ -439,6 +481,24 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 				<DataTablePagination
 					table={table}
 					pageSizeOptions={[10, 20, 50, 100]}
+					selectionActions={
+						approvableSelectedRecords.length > 0 ? (
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={isBulkApproving}
+								onClick={() =>
+									void approveRecordIds(
+										approvableSelectedRecords.map((record) => record.id),
+									)
+								}
+							>
+								{isBulkApproving
+									? "Approving..."
+									: `Approve ${approvableSelectedRecords.length} low-assurance`}
+							</Button>
+						) : null
+					}
 				/>
 			</div>
 		</div>

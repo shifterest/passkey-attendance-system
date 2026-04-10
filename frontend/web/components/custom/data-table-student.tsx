@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconCircleCheckFilled,
-	IconCircleXFilled,
-	IconFilter,
-} from "@tabler/icons-react";
+import { IconCircleCheckFilled, IconCircleXFilled } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -34,6 +29,7 @@ import { getRegistrationSession } from "@/app/lib/webauthn";
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	DataTableRowActions,
 	SortableHeader,
@@ -43,14 +39,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
@@ -332,6 +325,7 @@ export function DataTableStudent({
 	const [globalFilter, setGlobalFilter] = useState("");
 	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
 	const [programFilter, setProgramFilter] = React.useState<string[]>([]);
+	const [isBulkUnregistering, setIsBulkUnregistering] = React.useState(false);
 
 	const yearOptions = React.useMemo(
 		() =>
@@ -446,12 +440,30 @@ export function DataTableStudent({
 		};
 	}, [open, registrationUserId, router, setRegistrationQrDialogOpenState]);
 
-	const handleUnregister = React.useCallback(
-		async (userId: string) => {
-			await unregisterUser(userId);
-			router.refresh();
+	const handleUnregisterUsers = React.useCallback(
+		async (userIds: string[]) => {
+			if (userIds.length === 0) {
+				return;
+			}
+
+			setIsBulkUnregistering(true);
+
+			try {
+				await Promise.all(userIds.map((userId) => unregisterUser(userId)));
+				setRowSelection({});
+				router.refresh();
+			} finally {
+				setIsBulkUnregistering(false);
+			}
 		},
 		[router],
+	);
+
+	const handleUnregister = React.useCallback(
+		async (userId: string) => {
+			await handleUnregisterUsers([userId]);
+		},
+		[handleUnregisterUsers],
 	);
 
 	const table = useReactTable({
@@ -536,6 +548,11 @@ export function DataTableStudent({
 		return values.includes(value);
 	};
 
+	const selectedRegisteredStudents = table
+		.getFilteredSelectedRowModel()
+		.rows.map((row) => row.original)
+		.filter((student) => student.registered);
+
 	return (
 		<div className="flex w-full flex-col justify-start gap-6">
 			<RegistrationQrDialog
@@ -559,97 +576,86 @@ export function DataTableStudent({
 				</Label>
 				<SearchForm onSearch={(query) => setGlobalFilter(query)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
-						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Registration</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("registered", true)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("registered", true, checked);
-									}}
-								>
-									Registered
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("registered", false)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("registered", false, checked);
-									}}
-								>
-									Unregistered
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Checked in</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("in_class", true)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("in_class", true, checked);
-									}}
-								>
-									Checked in
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("in_class", false)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("in_class", false, checked);
-									}}
-								>
-									Not checked in
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Program</DropdownMenuLabel>
-								{programOptions.map((program) => (
-									<DropdownMenuCheckboxItem
-										key={program}
-										checked={programFilter.includes(program)}
-										onCheckedChange={(checked) =>
-											toggleProgramFilter(program, checked)
-										}
-									>
-										{program}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-								{yearOptions.map((year) => (
-									<DropdownMenuCheckboxItem
-										key={year}
-										checked={yearFilter.includes(year)}
-										onCheckedChange={(checked) =>
-											toggleYearFilter(year, checked)
-										}
-									>
-										{year}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => {
-									setColumnFilters(getDefaultColumnFilters());
-									setYearFilter([]);
-									setProgramFilter([]);
+					<DataTableFilterMenu>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Registration</DropdownMenuLabel>
+							<DropdownMenuCheckboxItem
+								checked={isFilterValueChecked("registered", true)}
+								onCheckedChange={(checked) => {
+									toggleFilterValue("registered", true, checked);
 								}}
 							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+								Registered
+							</DropdownMenuCheckboxItem>
+							<DropdownMenuCheckboxItem
+								checked={isFilterValueChecked("registered", false)}
+								onCheckedChange={(checked) => {
+									toggleFilterValue("registered", false, checked);
+								}}
+							>
+								Unregistered
+							</DropdownMenuCheckboxItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Checked in</DropdownMenuLabel>
+							<DropdownMenuCheckboxItem
+								checked={isFilterValueChecked("in_class", true)}
+								onCheckedChange={(checked) => {
+									toggleFilterValue("in_class", true, checked);
+								}}
+							>
+								Checked in
+							</DropdownMenuCheckboxItem>
+							<DropdownMenuCheckboxItem
+								checked={isFilterValueChecked("in_class", false)}
+								onCheckedChange={(checked) => {
+									toggleFilterValue("in_class", false, checked);
+								}}
+							>
+								Not checked in
+							</DropdownMenuCheckboxItem>
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Program</DropdownMenuLabel>
+							{programOptions.map((program) => (
+								<DropdownMenuCheckboxItem
+									key={program}
+									checked={programFilter.includes(program)}
+									onCheckedChange={(checked) =>
+										toggleProgramFilter(program, checked)
+									}
+								>
+									{program}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+							{yearOptions.map((year) => (
+								<DropdownMenuCheckboxItem
+									key={year}
+									checked={yearFilter.includes(year)}
+									onCheckedChange={(checked) => toggleYearFilter(year, checked)}
+								>
+									{year}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => {
+								setColumnFilters(getDefaultColumnFilters());
+								setYearFilter([]);
+								setProgramFilter([]);
+							}}
+						>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} width="w-32" />
 				</div>
 			</div>
@@ -663,6 +669,24 @@ export function DataTableStudent({
 				<DataTablePagination
 					table={table}
 					pageSizeOptions={[10, 20, 30, 40, 50]}
+					selectionActions={
+						selectedRegisteredStudents.length > 0 ? (
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={isBulkUnregistering}
+								onClick={() =>
+									void handleUnregisterUsers(
+										selectedRegisteredStudents.map((student) => student.id),
+									)
+								}
+							>
+								{isBulkUnregistering
+									? "Unregistering..."
+									: `Unregister ${selectedRegisteredStudents.length} registered`}
+							</Button>
+						) : null
+					}
 				/>
 			</div>
 		</div>

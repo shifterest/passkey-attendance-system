@@ -1,6 +1,5 @@
 "use client";
 
-import { IconChevronDown, IconFilter } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -20,22 +19,19 @@ import type { AuditEventDto } from "@/app/lib/api";
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -310,39 +306,27 @@ export function DataTableLogs({
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
+					<DataTableFilterMenu contentClassName="w-56 max-h-80 overflow-y-auto">
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Event type</DropdownMenuLabel>
+							{eventTypes.map((t) => (
+								<DropdownMenuCheckboxItem
+									key={t}
+									checked={isChecked(t)}
+									onCheckedChange={(c) => toggleFilterValue(t, c)}
+								>
+									{t}
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => setColumnFilters([])}
 						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent
-							align="end"
-							className="w-56 max-h-80 overflow-y-auto"
-						>
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Event type</DropdownMenuLabel>
-								{eventTypes.map((t) => (
-									<DropdownMenuCheckboxItem
-										key={t}
-										checked={isChecked(t)}
-										onCheckedChange={(c) => toggleFilterValue(t, c)}
-									>
-										{t}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => setColumnFilters([])}
-							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>

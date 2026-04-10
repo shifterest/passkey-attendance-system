@@ -5,7 +5,6 @@ import {
 	getCoreRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { CheckInSessionDto } from "@/app/lib/api";
@@ -14,6 +13,7 @@ import {
 	DataTableBody,
 	DataTableRowActions,
 } from "@/components/custom/data-table-shared";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
 import {
 	DropdownMenuGroup,
@@ -86,7 +86,7 @@ export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 							<DropdownMenuGroup>
 								<DropdownMenuItem
 									render={
-										<Link
+										<TransitionLink
 											href={`/classes/${s.class_id}/sessions/${s.id}/records`}
 										/>
 									}

@@ -1,7 +1,7 @@
 import { IconChevronLeft } from "@tabler/icons-react";
-import Link from "next/link";
 import { getSessionsByClass } from "@/app/lib/api";
 import { DataTableSessions } from "@/components/custom/data-table-sessions";
+import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Button } from "@/components/ui/button";
 
 export default async function Page({
@@ -17,7 +17,7 @@ export default async function Page({
 				<Button
 					variant="ghost"
 					className="gap-1 pl-0"
-					render={<Link href="/classes" />}
+					render={<TransitionLink href="/classes" />}
 				>
 					<IconChevronLeft data-icon="inline-start" />
 					Back to Classes

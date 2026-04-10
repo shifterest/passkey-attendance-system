@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	IconChevronDown,
-	IconCircleCheckFilled,
-	IconCircleXFilled,
-	IconFilter,
-} from "@tabler/icons-react";
+import { IconCircleCheckFilled, IconCircleXFilled } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -25,22 +20,19 @@ import type { UserDto } from "@/app/lib/api";
 import {
 	DataTableBody,
 	DataTableColumnVisibility,
+	DataTableFilterMenu,
 	DataTablePagination,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
 	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
@@ -228,36 +220,27 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			<div className="flex items-center justify-between px-4 lg:px-6">
 				<SearchForm onSearch={(q) => setGlobalFilter(q)} />
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="outline" size="sm" />}
+					<DataTableFilterMenu>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Role</DropdownMenuLabel>
+							{ROLE_FILTER_VALUES.map((role) => (
+								<DropdownMenuCheckboxItem
+									key={role}
+									checked={isChecked("role", role)}
+									onCheckedChange={(c) => toggleFilterValue("role", role, c)}
+								>
+									{role.charAt(0).toUpperCase() + role.slice(1)}s
+								</DropdownMenuCheckboxItem>
+							))}
+						</DropdownMenuGroup>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => setColumnFilters(getDefaultColumnFilters())}
 						>
-							<IconFilter data-icon="inline-start" />
-							Filter
-							<IconChevronDown data-icon="inline-end" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-48">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Role</DropdownMenuLabel>
-								{ROLE_FILTER_VALUES.map((role) => (
-									<DropdownMenuCheckboxItem
-										key={role}
-										checked={isChecked("role", role)}
-										onCheckedChange={(c) => toggleFilterValue("role", role, c)}
-									>
-										{role.charAt(0).toUpperCase() + role.slice(1)}s
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => setColumnFilters(getDefaultColumnFilters())}
-							>
-								Reset filters
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+							Reset filters
+						</DropdownMenuItem>
+					</DataTableFilterMenu>
 					<DataTableColumnVisibility table={table} />
 				</div>
 			</div>
