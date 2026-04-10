@@ -475,21 +475,23 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
           Expanded(
             child: Center(
               child: SizedBox(
-                width: 320,
-                height: 320,
+                width: double.infinity,
+                height: 352,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CheckInSignalShape(
-                      visualState: _visualState,
-                      color: _stageColor,
-                      size: _stageSize,
-                      enabled: canTap,
-                      onTap: () => _handleShapeTap(userId),
+                    Center(
+                      child: CheckInSignalShape(
+                        visualState: _visualState,
+                        color: _stageColor,
+                        size: _stageSize,
+                        enabled: canTap,
+                        onTap: () => _handleShapeTap(userId),
+                      ),
                     ),
                     IgnorePointer(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 36),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -553,6 +555,14 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
 
   Widget _buildBody(BuildContext context) {
     final theme = _immersiveTheme();
+    final titleStyle = AppTheme.variable(
+      theme.textTheme.titleLarge,
+      weight: 660,
+      width: 118,
+      size: (theme.textTheme.titleLarge?.fontSize ?? 22) * 1.18,
+      color: Colors.white,
+      letterSpacing: -0.2,
+    );
 
     return Theme(
       data: theme,
@@ -574,43 +584,56 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
                 ),
               );
             }
-            return DefaultTabController(
-              length: 3,
-              child: NestedScrollView(
-                headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  SliverAppBar(
-                    pinned: true,
-                    backgroundColor: Colors.black,
-                    surfaceTintColor: Colors.transparent,
-                    toolbarHeight: 64,
-                    titleSpacing: 20,
-                    title: Text(
-                      CheckInStrings.title,
-                      style: AppTheme.sliverTitle(
-                        theme.textTheme,
-                        theme.colorScheme,
-                      ).copyWith(color: Colors.white),
-                    ),
-                    actions: const [StudentAccountActionButton()],
-                    bottom: TabBar(
-                      controller: _tabController,
-                      tabs: const [
-                        Tab(text: CheckInStrings.normalTab),
-                        Tab(text: CheckInStrings.offlineTab),
-                        Tab(text: CheckInStrings.webLoginTab),
-                      ],
-                    ),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 72,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 8, 0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    CheckInStrings.title,
+                                    style: titleStyle,
+                                  ),
+                                ),
+                              ),
+                              const StudentAccountActionButton(),
+                            ],
+                          ),
+                        ),
+                      ),
+                      TabBar(
+                        controller: _tabController,
+                        tabs: const [
+                          Tab(text: CheckInStrings.normalTab),
+                          Tab(text: CheckInStrings.offlineTab),
+                          Tab(text: CheckInStrings.webLoginTab),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-                body: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildNormalTab(context, userId),
-                    _buildOfflineTab(context),
-                    const EmbeddedWebLoginScanner(embedded: true),
-                  ],
                 ),
-              ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildNormalTab(context, userId),
+                      _buildOfflineTab(context),
+                      const EmbeddedWebLoginScanner(embedded: true),
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         ),

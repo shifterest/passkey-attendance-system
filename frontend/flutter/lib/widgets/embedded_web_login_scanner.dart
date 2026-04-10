@@ -123,58 +123,74 @@ class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!widget.embedded)
-          Row(
-            children: [
-              IconButton(
-                onPressed: widget.onClose ?? () => context.pop(),
-                style: IconButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: 0.08),
+    final contentPadding = widget.embedded
+        ? const EdgeInsets.fromLTRB(20, 16, 20, 24)
+        : EdgeInsets.zero;
+
+    return Padding(
+      padding: contentPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!widget.embedded)
+            Row(
+              children: [
+                IconButton(
+                  onPressed: widget.onClose ?? () => context.pop(),
+                  style: IconButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                  ),
+                  icon: const Icon(Icons.arrow_back_rounded),
                 ),
-                icon: const Icon(Icons.arrow_back_rounded),
-              ),
-            ],
-          )
-        else
+              ],
+            )
+          else
+            const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          Text(
+            QrStrings.webLoginTitle,
+            textAlign: TextAlign.center,
+            style: AppTheme.variable(
+              theme.textTheme.headlineSmall,
+              weight: 700,
+              width: 136,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 8),
-        const SizedBox(height: 16),
-        Text(
-          QrStrings.webLoginTitle,
-          textAlign: TextAlign.center,
-          style: AppTheme.variable(
-            theme.textTheme.headlineSmall,
-            weight: 700,
-            width: 136,
-            color: Colors.white,
+          Text(
+            QrStrings.webLoginBody,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.78),
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          QrStrings.webLoginBody,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.78),
+          const Spacer(),
+          Center(child: _buildViewport(context)),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 188),
+                child: FilledButton.tonalIcon(
+                  onPressed: () async {
+                    await _controller.toggleTorch();
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 52),
+                    backgroundColor: Colors.white.withValues(alpha: 0.12),
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.flashlight_on_rounded),
+                  label: const Text(QrStrings.torch),
+                ),
+              ),
+            ),
           ),
-        ),
-        const Spacer(),
-        Center(child: _buildViewport(context)),
-        const Spacer(),
-        FilledButton.tonalIcon(
-          onPressed: () async {
-            await _controller.toggleTorch();
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.white.withValues(alpha: 0.12),
-            foregroundColor: Colors.white,
-          ),
-          icon: const Icon(Icons.flashlight_on_rounded),
-          label: const Text(QrStrings.torch),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
