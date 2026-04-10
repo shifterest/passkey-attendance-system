@@ -218,8 +218,36 @@ class ErrorApp extends StatelessWidget {
 }
 
 // Routes between login and home
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  Timer? _expiryTimer;
+
+  @override
+  void dispose() {
+    _expiryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleExpiryCheck() {
+    _expiryTimer?.cancel();
+    final expiryString = SessionStore.prefs.getString('sessionExpiry');
+    if (expiryString == null) return;
+    final expiry = DateTime.parse(expiryString);
+    final remaining = expiry.difference(DateTime.now());
+    if (remaining.isNegative) {
+      SessionStore.clearSession();
+      return;
+    }
+    _expiryTimer = Timer(remaining, () {
+      SessionStore.clearSession();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,8 +263,10 @@ class AuthWrapper extends StatelessWidget {
             );
           }
           if (snapshot.data != true) {
+            _expiryTimer?.cancel();
             return const LoginScreen();
           }
+          _scheduleExpiryCheck();
           final role = SessionStore.getRole();
           if (role == 'teacher') {
             return const TeacherHomeScreen();

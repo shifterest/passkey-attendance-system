@@ -128,6 +128,7 @@ class Messages:
     # Session auth
     AUTH_SESSION_INVALID = "Session is invalid or expired"
     AUTH_FORBIDDEN = "Insufficient permissions"
+    SESSION_CLIENT_TYPE_FORBIDDEN = "This action is not allowed from this client type"
 
     # Login/logout
     LOGIN_SESSION_NOT_FOUND = "Login session not found"

@@ -545,9 +545,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ? HomeStrings.deviceBindingActive
                             : HomeStrings.registrationNeeded,
                       ),
+                      _buildStatusRow(
+                        context: context,
+                        icon: Icons.person_rounded,
+                        text: HomeStrings.userId(userId),
+                      ),
+                      _buildStatusRow(
+                        context: context,
+                        icon: Icons.smartphone_rounded,
+                        text: '${HomeStrings.deviceIdLabel}: $deviceIdLabel',
+                      ),
                       Text(
                         HomeStrings.userId(userId),
-                        style: theme.textTheme.bodyLarge,
+                        style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 6),
                       Text(

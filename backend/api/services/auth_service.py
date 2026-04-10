@@ -1,5 +1,6 @@
 import base64
 import binascii
+import json
 import secrets
 from datetime import datetime, timezone
 from typing import Any
@@ -46,15 +47,20 @@ def create_login_session(session: LoginSession):
         if not redis_session:
             break
         token = secrets.token_urlsafe(32)
+
+    session_value = json.dumps(
+        {"user_id": session.user_id, "client_type": session.client_type}
+    )
     redis_client.set(
         f"login_session_token:{token}",
-        session.user_id,
+        session_value,
         ex=expires_delta,
     )
 
     return LoginSessionBase(
         user_id=session.user_id,
         session_token=token,
+        client_type=session.client_type,
         created_at=created_at,
         expires_at=expires_at,
         expires_in=expires_in,

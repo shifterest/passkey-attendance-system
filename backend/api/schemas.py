@@ -477,6 +477,7 @@ class LoginResponseBase(BaseModel):
 class LoginSessionBase(BaseModel):
     user_id: str
     session_token: str
+    client_type: str = "app"
     created_at: datetime
     expires_at: datetime
     expires_in: int

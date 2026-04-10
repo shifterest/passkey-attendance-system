@@ -185,6 +185,7 @@ class LoginSession(Base):
     __tablename__ = "login_sessions"
     id: Mapped[str] = mapped_column(primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    client_type: Mapped[str] = mapped_column(default="app")
     created_at: Mapped[datetime]
     expires_at: Mapped[datetime]
     last_activity_at: Mapped[datetime | None] = mapped_column(None)

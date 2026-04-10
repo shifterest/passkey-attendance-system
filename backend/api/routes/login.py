@@ -194,6 +194,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         new_session = LoginSession(
             id=str(uuid.uuid4()),
             user_id=user.id,
+            client_type="app",
             created_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc)
             + timedelta(seconds=settings.login_timeout),
@@ -421,6 +422,7 @@ def web_login_verify(
     new_session = LoginSession(
         id=str(uuid.uuid4()),
         user_id=user.id,
+        client_type="web",
         created_at=datetime.now(timezone.utc),
         expires_at=datetime.now(timezone.utc) + timedelta(seconds=login_timeout),
         last_activity_at=None,

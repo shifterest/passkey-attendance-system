@@ -37,7 +37,7 @@ from api.services.auth_service import (
     verify_device_signature,
 )
 from api.services.integrity_service import has_valid_vouch
-from api.services.session_service import require_role
+from api.services.session_service import require_client_type, require_role
 from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
 from database.models import (
@@ -69,6 +69,7 @@ def check_in_options(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("student")),
+    _client_type: str = Depends(require_client_type("app")),
 ):
     if current_user.id != options_data.user_id:
         raise HTTPException(
@@ -233,6 +234,7 @@ def check_in_verify(
     response_data: CheckInResponseBase,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("student")),
+    _client_type: str = Depends(require_client_type("app")),
     x_idempotency_key: str | None = Header(default=None, alias="X-Idempotency-Key"),
 ):
     if current_user.id != response_data.user_id:
