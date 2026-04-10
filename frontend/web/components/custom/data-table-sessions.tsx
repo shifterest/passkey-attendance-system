@@ -6,18 +6,26 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { CheckInSessionDto } from "@/app/lib/api";
 import { closeSession } from "@/app/lib/api";
-import { DataTable } from "@/components/custom/data-table";
+import {
+	DataTableBody,
+	DataTableRowActions,
+} from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+	DropdownMenuGroup,
+	DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 function formatDt(s: string) {
 	return new Date(s).toLocaleString();
 }
 
 export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
+	const router = useRouter();
 	const [closedIds, setClosedIds] = React.useState<Set<string>>(new Set());
 
 	const columns = React.useMemo<ColumnDef<CheckInSessionDto>[]>(
@@ -74,43 +82,42 @@ export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 					const s = row.original;
 					const isClosed = closedIds.has(s.id);
 					return (
-						<div className="flex items-center gap-2">
-							<Button
-								variant="link"
-								size="xs"
-								render={
-									<Link
-										href={`/classes/${s.class_id}/sessions/${s.id}/records`}
-									/>
-								}
-							>
-								View records
-							</Button>
-							{s.status === "open" && !isClosed && (
-								<Button
-									size="sm"
-									variant="outline"
-									className="h-7 text-xs"
-									onClick={() => {
-										setClosedIds((prev) => new Set(prev).add(s.id));
-										closeSession(s.id).catch(() =>
-											setClosedIds((prev) => {
-												const next = new Set(prev);
-												next.delete(s.id);
-												return next;
-											}),
-										);
-									}}
+						<DataTableRowActions>
+							<DropdownMenuGroup>
+								<DropdownMenuItem
+									render={
+										<Link
+											href={`/classes/${s.class_id}/sessions/${s.id}/records`}
+										/>
+									}
 								>
-									Close
-								</Button>
-							)}
-						</div>
+									View records
+								</DropdownMenuItem>
+								{s.status === "open" && !isClosed && (
+									<DropdownMenuItem
+										onClick={() => {
+											setClosedIds((prev) => new Set(prev).add(s.id));
+											closeSession(s.id)
+												.then(() => router.refresh())
+												.catch(() =>
+													setClosedIds((prev) => {
+														const next = new Set(prev);
+														next.delete(s.id);
+														return next;
+													}),
+												);
+										}}
+									>
+										Close session
+									</DropdownMenuItem>
+								)}
+							</DropdownMenuGroup>
+						</DataTableRowActions>
 					);
 				},
 			},
 		],
-		[closedIds],
+		[closedIds, router],
 	);
 
 	const table = useReactTable({
@@ -121,7 +128,11 @@ export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 
 	return (
 		<div className="flex flex-col gap-4 px-4 lg:px-6">
-			<DataTable table={table} emptyMessage="No sessions found." />
+			<DataTableBody
+				table={table}
+				columnCount={columns.length}
+				emptyMessage="No sessions found."
+			/>
 		</div>
 	);
 }

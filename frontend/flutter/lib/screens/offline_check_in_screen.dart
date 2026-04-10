@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/offline_payload_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/bottom_heavy_state.dart';
 import 'package:passkey_attendance_system/widgets/collapsing_sliver_title.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -210,21 +211,21 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
   }
 
   Widget _buildScanFailed() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.bluetooth_disabled, size: 48, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(OfflineStrings.noTeacherFound),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _startBleScan,
-            icon: const Icon(Icons.refresh),
-            label: const Text(OfflineStrings.retryScan),
-          ),
-        ],
+    return BottomHeavyState(
+      title: 'No Teacher Signal',
+      message: OfflineStrings.noTeacherFound,
+      icon: const Icon(
+        Icons.bluetooth_searching_rounded,
+        size: 56,
+        color: Colors.grey,
       ),
+      primaryAction: FilledButton.icon(
+        onPressed: _startBleScan,
+        icon: const Icon(Icons.refresh),
+        label: const Text(OfflineStrings.retryScan),
+      ),
+      safeAreaTop: false,
+      textAlign: TextAlign.center,
     );
   }
 

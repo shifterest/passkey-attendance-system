@@ -6,6 +6,7 @@ import {
 	IconChevronRight,
 	IconChevronsLeft,
 	IconChevronsRight,
+	IconDotsVertical,
 	IconLayoutColumns,
 	IconSelector,
 	IconSortAscending,
@@ -16,6 +17,7 @@ import {
 	flexRender,
 	type Table as TanstackTable,
 } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -40,6 +42,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export function columnIdToLabel(id: string): string {
 	return id
@@ -202,35 +205,110 @@ export function DataTablePagination<TData>({
 	);
 }
 
+export function DataTableRowActions({
+	children,
+	label = "Open menu",
+	contentClassName,
+	align = "end",
+}: {
+	children: ReactNode;
+	label?: string;
+	contentClassName?: string;
+	align?: "center" | "end" | "start";
+}) {
+	return (
+		<div className="flex justify-end">
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="data-open:bg-muted text-muted-foreground"
+						/>
+					}
+				>
+					<IconDotsVertical />
+					<span className="sr-only">{label}</span>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align={align} className={contentClassName}>
+					{children}
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</div>
+	);
+}
+
+function getPinnedHeadClass(columnId: string) {
+	if (columnId === "select") {
+		return "sticky left-0 z-30 w-12 min-w-12 max-w-12 border-r bg-muted px-2";
+	}
+
+	if (columnId === "actions") {
+		return "sticky right-0 z-30 w-14 min-w-14 max-w-14 border-l bg-muted px-2 text-right";
+	}
+
+	return "";
+}
+
+function getPinnedCellClass(columnId: string) {
+	if (columnId === "select") {
+		return "sticky left-0 z-20 w-12 min-w-12 max-w-12 border-r bg-background px-2 group-hover/table-row:bg-muted/50 group-data-[state=selected]/table-row:bg-muted";
+	}
+
+	if (columnId === "actions") {
+		return "sticky right-0 z-20 w-14 min-w-14 max-w-14 border-l bg-background px-2 group-hover/table-row:bg-muted/50 group-data-[state=selected]/table-row:bg-muted";
+	}
+
+	return "";
+}
+
 export function DataTableBody<TData>({
 	table,
 	columnCount,
+	emptyMessage = "No results.",
 }: {
 	table: TanstackTable<TData>;
 	columnCount: number;
+	emptyMessage?: string;
 }) {
 	return (
 		<div className="overflow-hidden rounded-lg border">
 			<Table>
-				<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
+				<TableHeader className="bg-muted sticky top-0 z-10">
 					{table.getHeaderGroups().map((hg) => (
 						<TableRow key={hg.id}>
 							{hg.headers.map((h) => (
-								<TableHead key={h.id} colSpan={h.colSpan}>
-									{h.isPlaceholder
-										? null
-										: flexRender(h.column.columnDef.header, h.getContext())}
+								<TableHead
+									key={h.id}
+									colSpan={h.colSpan}
+									className={getPinnedHeadClass(h.column.id)}
+								>
+									{h.isPlaceholder ? null : h.column.id === "actions" ? (
+										<span className="sr-only">Actions</span>
+									) : (
+										flexRender(h.column.columnDef.header, h.getContext())
+									)}
 								</TableHead>
 							))}
 						</TableRow>
 					))}
 				</TableHeader>
-				<TableBody className="**:data-[slot=table-cell]:first:w-8">
+				<TableBody>
 					{table.getRowModel().rows.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id}>
+							<TableRow
+								key={row.id}
+								data-state={row.getIsSelected() && "selected"}
+							>
 								{row.getVisibleCells().map((cell) => (
-									<TableCell key={cell.id}>
+									<TableCell
+										key={cell.id}
+										className={cn(
+											getPinnedCellClass(cell.column.id),
+											cell.column.id === "actions" && "text-right",
+										)}
+									>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
 									</TableCell>
 								))}
@@ -239,7 +317,7 @@ export function DataTableBody<TData>({
 					) : (
 						<TableRow>
 							<TableCell colSpan={columnCount} className="h-24 text-center">
-								No results.
+								{emptyMessage}
 							</TableCell>
 						</TableRow>
 					)}

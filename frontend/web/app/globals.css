@@ -45,7 +45,7 @@
 	--radius-2xl: calc(var(--radius) + 8px);
 	--radius-3xl: calc(var(--radius) + 12px);
 	--radius-4xl: calc(var(--radius) + 16px);
-	--font-heading: var(--font-sans);
+	--font-heading: var(--font-google-sans-flex);
 }
 
 :root {
@@ -129,5 +129,15 @@
 	}
 	html {
 		@apply font-sans;
+	}
+	.font-heading {
+		font-optical-sizing: auto;
+		font-variation-settings: "wdth" var(--heading-width, 150);
+	}
+	.heading-tight {
+		--heading-width: 125;
+	}
+	.heading-balanced {
+		--heading-width: 138;
 	}
 }

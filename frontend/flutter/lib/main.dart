@@ -23,6 +23,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/session_store.dart';
 import 'theme/app_theme.dart';
+import 'widgets/bottom_heavy_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,28 +49,12 @@ CustomTransitionPage<void> _transitionPage(GoRouterState state, Widget child) {
     reverseTransitionDuration: const Duration(milliseconds: 220),
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final primary = CurvedAnimation(
+      final opacity = CurvedAnimation(
         parent: animation,
         curve: Curves.easeOutCubic,
         reverseCurve: Curves.easeInCubic,
       );
-      final secondary = CurvedAnimation(
-        parent: secondaryAnimation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      final incoming = Tween<Offset>(
-        begin: const Offset(1, 0),
-        end: Offset.zero,
-      ).animate(primary);
-      final outgoing = Tween<Offset>(
-        begin: Offset.zero,
-        end: const Offset(-0.08, 0),
-      ).animate(secondary);
-      return SlideTransition(
-        position: outgoing,
-        child: SlideTransition(position: incoming, child: child),
-      );
+      return FadeTransition(opacity: opacity, child: child);
     },
   );
 }
@@ -190,27 +175,11 @@ class ErrorApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                const Text(
-                  'Initialization Error',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ),
+        body: BottomHeavyState(
+          title: 'Initialization Error',
+          detail: error,
+          icon: const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          textAlign: TextAlign.center,
         ),
       ),
     );

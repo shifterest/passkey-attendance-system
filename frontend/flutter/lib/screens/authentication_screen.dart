@@ -14,6 +14,7 @@ import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/services/user_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/bottom_heavy_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AuthenticationScreen extends StatefulWidget {
@@ -346,54 +347,38 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
 
     if (_error != null) {
       return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    AuthStrings.authErrorBody,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _startAuthentication,
-                    child: const Text(AuthStrings.retry),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () {
-                      if (widget.login || widget.webLoginToken != null) {
-                        context.go('/');
-                        return;
-                      }
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/');
-                      }
-                    },
-                    child: Text(
-                      widget.login || widget.webLoginToken != null
-                          ? AuthStrings.returnToLogin
-                          : AuthStrings.returnToDashboard,
-                    ),
-                  ),
-                ],
-              ),
+        body: BottomHeavyState(
+          title: 'Authentication Error',
+          message: AuthStrings.authErrorBody,
+          detail: _error,
+          icon: Icon(
+            Icons.error_outline_rounded,
+            size: 64,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          primaryAction: FilledButton(
+            onPressed: _startAuthentication,
+            child: const Text(AuthStrings.retry),
+          ),
+          secondaryAction: TextButton(
+            onPressed: () {
+              if (widget.login || widget.webLoginToken != null) {
+                context.go('/');
+                return;
+              }
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+            child: Text(
+              widget.login || widget.webLoginToken != null
+                  ? AuthStrings.returnToLogin
+                  : AuthStrings.returnToDashboard,
             ),
           ),
+          textAlign: TextAlign.center,
         ),
       );
     }

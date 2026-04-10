@@ -2,7 +2,6 @@
 
 import {
 	IconChevronDown,
-	IconDotsVertical,
 	IconFilter,
 	IconPencil,
 	IconPlus,
@@ -36,6 +35,7 @@ import {
 	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableRowActions,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import { SearchForm } from "@/components/custom/search-form";
@@ -588,42 +588,34 @@ export function DataTablePolicies({
 					const scope = getScope(row.original);
 					const scopeLabel = getScopeLabel(scope);
 					return (
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={<Button variant="ghost" size="icon" />}
-							>
-								<IconDotsVertical />
-								<span className="sr-only">Open menu</span>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuGroup>
-									<EditPolicyDialog
-										policy={row.original}
-										trigger={
-											<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-												<IconPencil className="mr-2 size-4" />
-												Edit
-											</DropdownMenuItem>
-										}
-										onUpdated={refresh}
-									/>
-									<DeletePolicyDialog
-										policy={row.original}
-										scopeLabel={scopeLabel}
-										trigger={
-											<DropdownMenuItem
-												variant="destructive"
-												onSelect={(e) => e.preventDefault()}
-											>
-												<IconTrash className="mr-2 size-4" />
-												Delete
-											</DropdownMenuItem>
-										}
-										onDeleted={refresh}
-									/>
-								</DropdownMenuGroup>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<DataTableRowActions>
+							<DropdownMenuGroup>
+								<EditPolicyDialog
+									policy={row.original}
+									trigger={
+										<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+											<IconPencil className="mr-2 size-4" />
+											Edit
+										</DropdownMenuItem>
+									}
+									onUpdated={refresh}
+								/>
+								<DeletePolicyDialog
+									policy={row.original}
+									scopeLabel={scopeLabel}
+									trigger={
+										<DropdownMenuItem
+											variant="destructive"
+											onSelect={(e) => e.preventDefault()}
+										>
+											<IconTrash className="mr-2 size-4" />
+											Delete
+										</DropdownMenuItem>
+									}
+									onDeleted={refresh}
+								/>
+							</DropdownMenuGroup>
+						</DataTableRowActions>
 					);
 				},
 			},

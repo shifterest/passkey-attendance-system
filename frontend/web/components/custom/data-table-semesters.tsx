@@ -12,7 +12,7 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { type ReactElement, useMemo, useState } from "react";
 import {
 	createSemester,
 	deleteSemester,
@@ -23,6 +23,7 @@ import {
 	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableRowActions,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
@@ -39,6 +40,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenuGroup,
+	DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import {
 	Field,
 	FieldContent,
@@ -225,9 +230,11 @@ function CreateSemesterDialog({
 
 function EditSemesterDialog({
 	semester,
+	trigger,
 	onUpdated,
 }: {
 	semester: SemesterDto;
+	trigger: ReactElement;
 	onUpdated: (semester: SemesterDto) => void;
 }) {
 	const [open, setOpen] = useState(false);
@@ -252,10 +259,7 @@ function EditSemesterDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={<Button variant="ghost" size="icon" />}>
-				<IconPencil className="size-4" />
-				<span className="sr-only">Edit semester</span>
-			</DialogTrigger>
+			<DialogTrigger render={trigger} />
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Edit semester</DialogTitle>
@@ -287,9 +291,11 @@ function EditSemesterDialog({
 
 function DeleteSemesterDialog({
 	semester,
+	trigger,
 	onDeleted,
 }: {
 	semester: SemesterDto;
+	trigger: ReactElement;
 	onDeleted: (semesterId: string) => void;
 }) {
 	const [open, setOpen] = useState(false);
@@ -308,10 +314,7 @@ function DeleteSemesterDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={<Button variant="ghost" size="icon" />}>
-				<IconTrash className="size-4" />
-				<span className="sr-only">Delete semester</span>
-			</DialogTrigger>
+			<DialogTrigger render={trigger} />
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Delete semester</DialogTitle>
@@ -400,22 +403,41 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				enableSorting: false,
 				header: "Actions",
 				cell: ({ row }) => (
-					<div className="flex items-center justify-end gap-1">
-						<EditSemesterDialog
-							semester={row.original}
-							onUpdated={(semester) =>
-								setRows((current) => mergeSemesterRows(current, semester))
-							}
-						/>
-						<DeleteSemesterDialog
-							semester={row.original}
-							onDeleted={(semesterId) =>
-								setRows((current) =>
-									current.filter((item) => item.id !== semesterId),
-								)
-							}
-						/>
-					</div>
+					<DataTableRowActions>
+						<DropdownMenuGroup>
+							<EditSemesterDialog
+								semester={row.original}
+								trigger={
+									<DropdownMenuItem
+										onSelect={(event) => event.preventDefault()}
+									>
+										<IconPencil data-icon="inline-start" />
+										Edit semester
+									</DropdownMenuItem>
+								}
+								onUpdated={(semester) =>
+									setRows((current) => mergeSemesterRows(current, semester))
+								}
+							/>
+							<DeleteSemesterDialog
+								semester={row.original}
+								trigger={
+									<DropdownMenuItem
+										variant="destructive"
+										onSelect={(event) => event.preventDefault()}
+									>
+										<IconTrash data-icon="inline-start" />
+										Delete semester
+									</DropdownMenuItem>
+								}
+								onDeleted={(semesterId) =>
+									setRows((current) =>
+										current.filter((item) => item.id !== semesterId),
+									)
+								}
+							/>
+						</DropdownMenuGroup>
+					</DataTableRowActions>
 				),
 			},
 		],

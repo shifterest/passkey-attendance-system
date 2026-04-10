@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/api_client.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
+import 'package:passkey_attendance_system/widgets/bottom_heavy_state.dart';
 import 'package:passkey_attendance_system/widgets/collapsing_sliver_title.dart';
 import 'package:passkey_attendance_system/widgets/student_account_action_button.dart';
 
@@ -93,11 +95,33 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
           else if (_error != null)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(_error!, textAlign: TextAlign.center),
+              child: BottomHeavyState(
+                title: _error == HistoryStrings.notLoggedIn
+                    ? 'Session Required'
+                    : 'Could Not Load History',
+                message: _error == HistoryStrings.notLoggedIn
+                    ? HistoryStrings.notLoggedIn
+                    : HistoryStrings.subtitle,
+                detail: _error == HistoryStrings.notLoggedIn ? null : _error,
+                icon: Icon(
+                  _error == HistoryStrings.notLoggedIn
+                      ? Icons.lock_outline_rounded
+                      : Icons.history_toggle_off_rounded,
+                  size: 56,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
+                primaryAction: FilledButton(
+                  onPressed: _error == HistoryStrings.notLoggedIn
+                      ? () => context.go('/')
+                      : _fetchRecords,
+                  child: Text(
+                    _error == HistoryStrings.notLoggedIn
+                        ? HomeStrings.backToLogin
+                        : AuthStrings.retry,
+                  ),
+                ),
+                safeAreaTop: false,
+                textAlign: TextAlign.center,
               ),
             )
           else if (_records == null || _records!.isEmpty)

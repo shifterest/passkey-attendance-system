@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCalendar, IconDotsVertical } from "@tabler/icons-react";
+import { IconCalendar } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -18,18 +18,15 @@ import {
 	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableRowActions,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 function formatSchedule(schedule: ClassDto["schedule"]) {
@@ -150,32 +147,24 @@ export function DataTableClasses({
 				id: "actions",
 				header: "",
 				cell: ({ row }) => (
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="ghost" size="icon" />}
-						>
-							<IconDotsVertical />
-							<span className="sr-only">Open menu</span>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuGroup>
-								<DropdownMenuItem
-									onClick={() =>
-										router.push(`/classes/${row.original.id}/sessions`)
-									}
-								>
-									Sessions
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() =>
-										router.push(`/enrollments?class_id=${row.original.id}`)
-									}
-								>
-									Manage enrollment
-								</DropdownMenuItem>
-							</DropdownMenuGroup>
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<DataTableRowActions>
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								onClick={() =>
+									router.push(`/classes/${row.original.id}/sessions`)
+								}
+							>
+								Sessions
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() =>
+									router.push(`/enrollments?class_id=${row.original.id}`)
+								}
+							>
+								Manage enrollment
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+					</DataTableRowActions>
 				),
 			},
 		],

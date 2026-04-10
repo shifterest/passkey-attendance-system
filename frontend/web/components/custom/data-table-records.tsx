@@ -249,7 +249,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 
 	const approveColumn = React.useMemo<ColumnDef<AttendanceRecordDto>>(
 		() => ({
-			id: "approve",
+			id: "actions",
 			header: "",
 			cell: ({ row }) => {
 				const r = row.original;
@@ -257,22 +257,24 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 				const std = r.standard_threshold_recorded ?? 5;
 				if (r.assurance_score >= std) return null;
 				return (
-					<Button
-						size="xs"
-						variant="outline"
-						onClick={() => {
-							setApprovedIds((prev) => new Set(prev).add(r.id));
-							approveRecord(r.id).catch(() =>
-								setApprovedIds((prev) => {
-									const next = new Set(prev);
-									next.delete(r.id);
-									return next;
-								}),
-							);
-						}}
-					>
-						Approve
-					</Button>
+					<div className="flex justify-end">
+						<Button
+							size="xs"
+							variant="outline"
+							onClick={() => {
+								setApprovedIds((prev) => new Set(prev).add(r.id));
+								approveRecord(r.id).catch(() =>
+									setApprovedIds((prev) => {
+										const next = new Set(prev);
+										next.delete(r.id);
+										return next;
+									}),
+								);
+							}}
+						>
+							Approve
+						</Button>
+					</div>
 				);
 			},
 		}),

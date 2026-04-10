@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const String fontFamily = 'GoogleSansFlex';
+  static const String headingFontFamily = 'GoogleSansFlex';
   static const Color _seedColor = Color(0xFF3B5B8A);
 
   static ThemeData light() => _build(Brightness.light);
@@ -18,8 +19,7 @@ class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
     );
-    final textTheme = base.textTheme.apply(
-      fontFamily: fontFamily,
+    final textTheme = GoogleFonts.geistTextTheme(base.textTheme).apply(
       bodyColor: colorScheme.onSurface,
       displayColor: colorScheme.onSurface,
     );
@@ -44,7 +44,10 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
-          textStyle: variable(textTheme.labelLarge, weight: 620, width: 112),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -54,12 +57,18 @@ class AppTheme {
             borderRadius: BorderRadius.circular(18),
           ),
           side: BorderSide(color: colorScheme.outlineVariant),
-          textStyle: variable(textTheme.labelLarge, weight: 560, width: 110),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          textStyle: variable(textTheme.labelLarge, weight: 540, width: 110),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.1,
+          ),
         ),
       ),
       cardTheme: CardThemeData(
@@ -95,7 +104,7 @@ class AppTheme {
     double? letterSpacing,
   }) {
     return (base ?? const TextStyle()).copyWith(
-      fontFamily: fontFamily,
+      fontFamily: headingFontFamily,
       fontSize: size,
       color: color,
       letterSpacing: letterSpacing,
@@ -111,7 +120,7 @@ class AppTheme {
     return variable(
       base,
       weight: 700,
-      width: 148,
+      width: 150,
       size: (base?.fontSize ?? 30) * 1.08,
       color: colorScheme.onSurface,
       letterSpacing: -0.6,
@@ -123,7 +132,7 @@ class AppTheme {
     return variable(
       base,
       weight: 620,
-      width: 112,
+      width: 125,
       size: base?.fontSize,
       color: colorScheme.onSurface,
       letterSpacing: -0.1,
@@ -134,7 +143,7 @@ class AppTheme {
     return variable(
       textTheme.headlineSmall,
       weight: 680,
-      width: 132,
+      width: 136,
       color: colorScheme.onSurface,
       letterSpacing: -0.3,
     );
@@ -144,7 +153,7 @@ class AppTheme {
     return variable(
       textTheme.labelLarge,
       weight: 620,
-      width: 110,
+      width: 125,
       color: colorScheme.onSurfaceVariant,
       letterSpacing: 0.2,
     );

@@ -1,36 +1,15 @@
 "use client";
 
 import {
-	closestCenter,
-	DndContext,
-	type DragEndEvent,
-	KeyboardSensor,
-	MouseSensor,
-	TouchSensor,
-	type UniqueIdentifier,
-	useSensor,
-	useSensors,
-} from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-	arrayMove,
-	SortableContext,
-	useSortable,
-	verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
 	IconChevronDown,
 	IconCircleCheckFilled,
 	IconCircleXFilled,
-	IconDotsVertical,
 	IconFilter,
 } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
 	type FilterFn,
-	flexRender,
 	getCoreRowModel,
 	getFacetedRowModel,
 	getFacetedUniqueValues,
@@ -53,8 +32,10 @@ import {
 } from "@/app/lib/api";
 import { getRegistrationSession } from "@/app/lib/webauthn";
 import {
+	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableRowActions,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SearchForm } from "@/components/custom/search-form";
@@ -72,16 +53,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
 
 export const schema = z.object({
@@ -285,50 +256,36 @@ function columns(
 		{
 			id: "actions",
 			cell: ({ row }) => (
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						render={
-							<Button
-								variant="ghost"
-								className="data-open:bg-muted text-muted-foreground flex size-8"
-								size="icon"
-							/>
-						}
-					>
-						<IconDotsVertical />
-						<span className="sr-only">Open menu</span>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-64">
-						{row.original.registered ? (
-							<>
-								<DropdownMenuItem
-									onClick={async () => {
-										setRegistrationQrDialogState(row);
-									}}
-								>
-									Regenerate registration QR
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									onClick={async () => {
-										await onUnregister(row.original.id);
-									}}
-									variant="destructive"
-								>
-									Unregister
-								</DropdownMenuItem>
-							</>
-						) : (
+				<DataTableRowActions contentClassName="w-64">
+					{row.original.registered ? (
+						<>
 							<DropdownMenuItem
 								onClick={async () => {
 									setRegistrationQrDialogState(row);
 								}}
 							>
-								Generate registration QR
+								Regenerate registration QR
 							</DropdownMenuItem>
-						)}
-					</DropdownMenuContent>
-				</DropdownMenu>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={async () => {
+									await onUnregister(row.original.id);
+								}}
+								variant="destructive"
+							>
+								Unregister
+							</DropdownMenuItem>
+						</>
+					) : (
+						<DropdownMenuItem
+							onClick={async () => {
+								setRegistrationQrDialogState(row);
+							}}
+						>
+							Generate registration QR
+						</DropdownMenuItem>
+					)}
+				</DataTableRowActions>
 			),
 		},
 	];
@@ -340,30 +297,6 @@ const getDefaultColumnFilters = (): ColumnFiltersState => {
 		{ id: "in_class", value: [...IN_CLASS_FILTER_VALUES] },
 	];
 };
-
-const UserRow = ({ row }: { row: Row<z.infer<typeof schema>> }) => {
-	const { transform, transition, setNodeRef } = useSortable({
-		id: row.original.id,
-	});
-	return (
-		<TableRow
-			data-state={row.getIsSelected() && "selected"}
-			ref={setNodeRef}
-			className="relative z-0"
-			style={{
-				transform: CSS.Transform.toString(transform),
-				transition: transition,
-			}}
-		>
-			{row.getVisibleCells().map((cell) => (
-				<TableCell key={cell.id}>
-					{flexRender(cell.column.columnDef.cell, cell.getContext())}
-				</TableCell>
-			))}
-		</TableRow>
-	);
-};
-
 export function DataTableStudent({
 	data: initialData,
 }: {
@@ -379,7 +312,7 @@ export function DataTableStudent({
 		null,
 	);
 
-	const [data, setData] = useState(initialData);
+	const data = initialData;
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({
@@ -396,16 +329,6 @@ export function DataTableStudent({
 		pageSize: 10,
 	});
 
-	const sortableId = React.useId();
-	const sensors = useSensors(
-		useSensor(MouseSensor, {}),
-		useSensor(TouchSensor, {}),
-		useSensor(KeyboardSensor, {}),
-	);
-	const dataIds = React.useMemo<UniqueIdentifier[]>(
-		() => data?.map(({ id }) => id) || [],
-		[data],
-	);
 	const [globalFilter, setGlobalFilter] = useState("");
 	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
 	const [programFilter, setProgramFilter] = React.useState<string[]>([]);
@@ -467,10 +390,6 @@ export function DataTableStudent({
 		});
 	};
 
-	React.useEffect(() => {
-		setData(initialData);
-	}, [initialData]);
-
 	const closeRegistrationQrDialog = React.useCallback(() => {
 		setOpen(false);
 		setSession(null);
@@ -526,22 +445,6 @@ export function DataTableStudent({
 			window.clearInterval(intervalId);
 		};
 	}, [open, registrationUserId, router, setRegistrationQrDialogOpenState]);
-
-	const handleDragEnd = React.useCallback((event: DragEndEvent) => {
-		const { active, over } = event;
-		if (!over || active.id === over.id) {
-			return;
-		}
-
-		setData((current) => {
-			const oldIndex = current.findIndex((item) => item.id === active.id);
-			const newIndex = current.findIndex((item) => item.id === over.id);
-			if (oldIndex === -1 || newIndex === -1) {
-				return current;
-			}
-			return arrayMove(current, oldIndex, newIndex);
-		});
-	}, []);
 
 	const handleUnregister = React.useCallback(
 		async (userId: string) => {
@@ -634,10 +537,7 @@ export function DataTableStudent({
 	};
 
 	return (
-		<Tabs
-			defaultValue="outline"
-			className="w-full flex-col justify-start gap-6"
-		>
+		<div className="flex w-full flex-col justify-start gap-6">
 			<RegistrationQrDialog
 				open={open}
 				onOpenChange={setRegistrationQrDialogOpenState}
@@ -753,69 +653,18 @@ export function DataTableStudent({
 					<DataTableColumnVisibility table={table} width="w-32" />
 				</div>
 			</div>
-			<TabsContent
-				value="outline"
-				className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
-			>
-				<div className="overflow-hidden rounded-lg border">
-					<DndContext
-						collisionDetection={closestCenter}
-						modifiers={[restrictToVerticalAxis]}
-						sensors={sensors}
-						id={sortableId}
-						onDragEnd={handleDragEnd}
-					>
-						<Table>
-							<TableHeader className="bg-muted sticky top-0 z-10 **:data-[slot=table-head]:first:w-8">
-								{table.getHeaderGroups().map((headerGroup) => (
-									<TableRow key={headerGroup.id}>
-										{headerGroup.headers.map((header) => {
-											return (
-												<TableHead key={header.id} colSpan={header.colSpan}>
-													{header.isPlaceholder
-														? null
-														: flexRender(
-																header.column.columnDef.header,
-																header.getContext(),
-															)}
-												</TableHead>
-											);
-										})}
-									</TableRow>
-								))}
-							</TableHeader>
-							<TableBody className="**:data-[slot=table-cell]:first:w-8">
-								{table.getRowModel().rows?.length ? (
-									<SortableContext
-										items={dataIds}
-										strategy={verticalListSortingStrategy}
-									>
-										{table.getRowModel().rows.map((row) => (
-											<UserRow key={row.id} row={row} />
-										))}
-									</SortableContext>
-								) : (
-									<TableRow>
-										<TableCell
-											colSpan={
-												columns(setRegistrationQrDialogState, handleUnregister)
-													.length
-											}
-											className="h-24 text-center"
-										>
-											No results.
-										</TableCell>
-									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</DndContext>
-				</div>
+			<div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+				<DataTableBody
+					table={table}
+					columnCount={
+						columns(setRegistrationQrDialogState, handleUnregister).length
+					}
+				/>
 				<DataTablePagination
 					table={table}
 					pageSizeOptions={[10, 20, 30, 40, 50]}
 				/>
-			</TabsContent>
-		</Tabs>
+			</div>
+		</div>
 	);
 }

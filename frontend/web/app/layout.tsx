@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Google_Sans_Flex } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const geistMonoHeading = Geist_Mono({
+const googleSansFlex = Google_Sans_Flex({
 	subsets: ["latin"],
-	variable: "--font-heading",
+	variable: "--font-google-sans-flex",
+	axes: ["wdth"],
 });
 
 const geistSans = Geist({
@@ -37,7 +38,7 @@ export default function RootLayout({
 				"antialiased",
 				geistSans.variable,
 				geistMono.variable,
-				geistMonoHeading.variable,
+				googleSansFlex.variable,
 			)}
 			suppressHydrationWarning
 		>

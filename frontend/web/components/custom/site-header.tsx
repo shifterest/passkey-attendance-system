@@ -16,7 +16,9 @@ export function SiteHeader() {
 					className="mx-2 h-4 data-vertical:self-auto"
 				/>
 				<div className="flex items-baseline gap-2 min-w-0">
-					<h1 className="text-base font-medium whitespace-nowrap">{title}</h1>
+					<h1 className="font-heading heading-tight text-base font-medium whitespace-nowrap">
+						{title}
+					</h1>
 					{description && (
 						<span className="text-sm text-muted-foreground truncate hidden md:inline">
 							{description}

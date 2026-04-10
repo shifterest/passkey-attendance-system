@@ -2,7 +2,6 @@
 
 import {
 	IconChevronDown,
-	IconDotsVertical,
 	IconFileImport,
 	IconFilter,
 	IconPlus,
@@ -30,6 +29,7 @@ import {
 	DataTableBody,
 	DataTableColumnVisibility,
 	DataTablePagination,
+	DataTableRowActions,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
@@ -289,47 +289,39 @@ export function DataTableEnrollments({
 				id: "actions",
 				header: "",
 				cell: ({ row }) => (
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="ghost" size="icon" />}
-						>
-							<IconDotsVertical />
-							<span className="sr-only">Open menu</span>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuGroup>
-								<AlertDialog>
-									<AlertDialogTrigger
-										render={
-											<DropdownMenuItem
-												onSelect={(event) => event.preventDefault()}
-												variant="destructive"
-											/>
-										}
-									>
-										<IconTrash data-icon="inline-start" />
-										Remove enrollment
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>Remove enrollment?</AlertDialogTitle>
-											<AlertDialogDescription>
-												This removes the student from the class roster.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
-											<AlertDialogAction
-												onClick={() => handleDelete(row.original.id)}
-											>
-												Remove
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
-							</DropdownMenuGroup>
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<DataTableRowActions>
+						<DropdownMenuGroup>
+							<AlertDialog>
+								<AlertDialogTrigger
+									render={
+										<DropdownMenuItem
+											onSelect={(event) => event.preventDefault()}
+											variant="destructive"
+										/>
+									}
+								>
+									<IconTrash data-icon="inline-start" />
+									Remove enrollment
+								</AlertDialogTrigger>
+								<AlertDialogContent>
+									<AlertDialogHeader>
+										<AlertDialogTitle>Remove enrollment?</AlertDialogTitle>
+										<AlertDialogDescription>
+											This removes the student from the class roster.
+										</AlertDialogDescription>
+									</AlertDialogHeader>
+									<AlertDialogFooter>
+										<AlertDialogCancel>Cancel</AlertDialogCancel>
+										<AlertDialogAction
+											onClick={() => handleDelete(row.original.id)}
+										>
+											Remove
+										</AlertDialogAction>
+									</AlertDialogFooter>
+								</AlertDialogContent>
+							</AlertDialog>
+						</DropdownMenuGroup>
+					</DataTableRowActions>
 				),
 			},
 		],

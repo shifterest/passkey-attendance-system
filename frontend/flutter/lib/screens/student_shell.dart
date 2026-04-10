@@ -16,19 +16,17 @@ class StudentShell extends StatefulWidget {
 
 class _StudentShellState extends State<StudentShell> {
   late int _selectedIndex;
-  late final PageController _pageController;
+  late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: _selectedIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+    _pages = [
+      HomeScreen(embedded: true, onOpenCheckIn: () => _selectTab(1)),
+      CheckInHubScreen(embedded: true, active: _selectedIndex == 1),
+      const AttendanceHistoryScreen(embedded: true),
+    ];
   }
 
   void _selectTab(int index) {
@@ -36,11 +34,6 @@ class _StudentShellState extends State<StudentShell> {
       return;
     }
     setState(() => _selectedIndex = index);
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   @override
@@ -62,19 +55,26 @@ class _StudentShellState extends State<StudentShell> {
           ),
       child: Scaffold(
         backgroundColor: immersive ? Colors.black : theme.colorScheme.surface,
-        body: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (index) {
-            if (_selectedIndex != index) {
-              setState(() => _selectedIndex = index);
-            }
-          },
-          children: [
-            HomeScreen(embedded: true, onOpenCheckIn: () => _selectTab(1)),
-            CheckInHubScreen(embedded: true, active: _selectedIndex == 1),
-            const AttendanceHistoryScreen(embedded: true),
-          ],
+        body: Stack(
+          fit: StackFit.expand,
+          children: List.generate(_pages.length, (index) {
+            final selected = _selectedIndex == index;
+            return IgnorePointer(
+              ignoring: !selected,
+              child: TickerMode(
+                enabled: selected,
+                child: AnimatedOpacity(
+                  opacity: selected ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: KeyedSubtree(
+                    key: ValueKey(index),
+                    child: _pages[index],
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
         bottomNavigationBar: NavigationBarTheme(
           data: NavigationBarThemeData(
