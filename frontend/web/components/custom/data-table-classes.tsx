@@ -24,6 +24,7 @@ import {
 	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { useNavigationTransition } from "@/components/custom/navigation-transition";
@@ -62,7 +63,7 @@ export function DataTableClasses({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: 10,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -122,7 +123,13 @@ export function DataTableClasses({
 			},
 			{
 				id: "teacher",
-				header: "Teacher",
+				accessorFn: (row) =>
+					row.teacher_id
+						? (teacherMap.get(row.teacher_id) ?? row.teacher_id)
+						: "",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Teacher" />
+				),
 				cell: ({ row }) => (
 					<span className="text-sm">
 						{row.original.teacher_id
@@ -194,10 +201,14 @@ export function DataTableClasses({
 		},
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
+			const teacherName = row.original.teacher_id
+				? (teacherMap.get(row.original.teacher_id) ?? row.original.teacher_id)
+				: "";
 			return (
 				row.original.id.toLowerCase().includes(q) ||
 				row.original.course_code.toLowerCase().includes(q) ||
-				row.original.course_name.toLowerCase().includes(q)
+				row.original.course_name.toLowerCase().includes(q) ||
+				teacherName.toLowerCase().includes(q)
 			);
 		},
 		getRowId: (row) => row.id,

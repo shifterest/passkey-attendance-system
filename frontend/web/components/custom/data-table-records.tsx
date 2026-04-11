@@ -11,8 +11,8 @@ import {
 	type ColumnDef,
 	getCoreRowModel,
 	getPaginationRowModel,
-	type RowSelectionState,
 	getSortedRowModel,
+	type RowSelectionState,
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
@@ -29,18 +29,20 @@ import {
 	DataTableBody,
 	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTablePagination,
-	DataTableScaffold,
 	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
+	DataTablePagination,
+	DataTableScaffold,
 	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+
 function statusVariant(
 	status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -250,7 +252,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 	const [flagFilter, setFlagFilter] = React.useState<string[]>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: 20,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 	const [isBulkApproving, setIsBulkApproving] = React.useState(false);
 
@@ -479,7 +481,6 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 			<DataTableBody table={table} columnCount={allColumns.length} />
 			<DataTablePagination
 				table={table}
-				pageSizeOptions={[10, 20, 50, 100]}
 				selectionActions={
 					approvableSelectedRecords.length > 0 ? (
 						<DropdownMenuItem

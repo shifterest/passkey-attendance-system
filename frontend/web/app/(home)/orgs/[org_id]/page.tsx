@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { getEvents, getOrgMembers, getOrgRules } from "@/app/lib/api";
+import { orgEventsEnabled } from "@/app/lib/features";
 import { OrgDetail } from "@/components/custom/org-detail";
 
 export default async function Page({
@@ -6,6 +8,10 @@ export default async function Page({
 }: {
 	params: Promise<{ org_id: string }>;
 }) {
+	if (!orgEventsEnabled) {
+		notFound();
+	}
+
 	const { org_id } = await params;
 	const [members, rules, events] = await Promise.all([
 		getOrgMembers(org_id),

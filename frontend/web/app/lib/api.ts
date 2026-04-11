@@ -143,24 +143,40 @@ export type LoginSessionDto = {
 	expires_in: number;
 };
 
-function setSessionCookie(sessionToken: string, expiresIn: number) {
-	document.cookie = `session_token=${encodeURIComponent(sessionToken)}; path=/; max-age=${expiresIn}; samesite=lax`;
+async function syncBrowserSessionCookie(
+	method: "POST" | "DELETE",
+	payload?: { sessionToken: string; expiresIn: number },
+) {
+	const response = await fetch("/api/browser-session", {
+		method,
+		headers: payload ? { "Content-Type": "application/json" } : undefined,
+		body: payload ? JSON.stringify(payload) : undefined,
+		cache: "no-store",
+		credentials: "same-origin",
+	});
+
+	if (!response.ok) {
+		throw new Error(`Session cookie sync failed: ${response.status}`);
+	}
 }
 
-export function persistBrowserSession(session: LoginSessionDto) {
+export async function persistBrowserSession(session: LoginSessionDto) {
 	if (typeof window === "undefined") return;
+	await syncBrowserSessionCookie("POST", {
+		sessionToken: session.session_token,
+		expiresIn: session.expires_in,
+	});
 	localStorage.setItem("user_id", session.user_id);
 	localStorage.setItem("session_token", session.session_token);
 	localStorage.setItem("expires_in", String(session.expires_in));
-	setSessionCookie(session.session_token, session.expires_in);
 }
 
-export function clearBrowserSession() {
+export async function clearBrowserSession() {
 	if (typeof window === "undefined") return;
 	localStorage.removeItem("user_id");
 	localStorage.removeItem("session_token");
 	localStorage.removeItem("expires_in");
-	document.cookie = "session_token=; path=/; max-age=0; samesite=lax";
+	await syncBrowserSessionCookie("DELETE");
 }
 
 async function getSessionToken() {
@@ -353,6 +369,10 @@ export async function importOrgs(
 
 export function getTeachers() {
 	return request<TeacherDto[]>(ApiPaths.teachers);
+}
+
+export function getTeacherClasses(teacherId: string) {
+	return request<ClassDto[]>(ApiPaths.teacherClasses(teacherId));
 }
 
 export function getClasses() {

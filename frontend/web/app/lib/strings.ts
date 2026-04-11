@@ -12,6 +12,7 @@ export const ApiPaths = {
 	adminImportEnrollments: "/admin/import-enrollments",
 	adminImportOrgs: "/admin/import-orgs",
 	teachers: "/teachers",
+	teacherClasses: (teacherId: string) => `/teachers/${teacherId}/classes`,
 	classes: "/classes/",
 	class: (classId: string) => `/classes/${classId}`,
 	sessions: "/sessions",

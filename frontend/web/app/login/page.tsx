@@ -192,7 +192,7 @@ export default function LoginPage() {
 						stopPolling();
 						clearRefreshTimer();
 						clearTtlTimer();
-						persistBrowserSession(result.session);
+						await persistBrowserSession(result.session);
 						router.push("/dashboard");
 					}
 					if (result.status === "consumed") {

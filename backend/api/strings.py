@@ -46,6 +46,7 @@ class Messages:
 
     # Organizations
     ORG_NOT_FOUND = "Organization not found"
+    ORG_EVENTS_DISABLED = "Organizations and events are not enabled for this deployment"
     ORG_RULE_ORG_MEMBER_FORBIDDEN = (
         "Rule type 'org_member' is not allowed in organization rules"
     )

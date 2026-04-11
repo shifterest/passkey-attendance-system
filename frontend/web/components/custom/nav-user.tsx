@@ -45,7 +45,11 @@ export function NavUser() {
 				console.error("Failed to logout cleanly", error);
 			}
 		}
-		clearBrowserSession();
+		try {
+			await clearBrowserSession();
+		} catch (error) {
+			console.error("Failed to clear browser session", error);
+		}
 		window.location.href = "/login";
 	};
 

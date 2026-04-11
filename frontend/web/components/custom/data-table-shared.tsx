@@ -32,7 +32,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
 	Select,
 	SelectContent,
@@ -41,6 +40,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
 	Sheet,
 	SheetContent,
@@ -59,7 +59,23 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
+const COLUMN_LABEL_OVERRIDES: Record<string, string> = {
+	registered: "Registered",
+	has_open_session: "Session",
+	ongoing_class: "Session",
+	in_class: "Checked in",
+	low_assurance: "Low assurance",
+	event_type: "Event type",
+};
+
+export const DEFAULT_TABLE_PAGE_SIZE = 20;
+export const DEFAULT_TABLE_PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
+
 export function columnIdToLabel(id: string): string {
+	if (id in COLUMN_LABEL_OVERRIDES) {
+		return COLUMN_LABEL_OVERRIDES[id];
+	}
+
 	return id
 		.replace(/_/g, " ")
 		.replace(/\bid\b/g, "ID")
@@ -323,7 +339,7 @@ export function DataTableToolbar<TData>({
 
 export function DataTablePagination<TData>({
 	table,
-	pageSizeOptions = [10, 20, 30, 50],
+	pageSizeOptions = DEFAULT_TABLE_PAGE_SIZE_OPTIONS,
 	selectionActions,
 }: {
 	table: TanstackTable<TData>;
@@ -467,7 +483,7 @@ export function DataTableRowActions({
 
 function getPinnedHeadClass(columnId: string) {
 	if (columnId === "select") {
-		return "sticky left-0 z-30 w-12 min-w-12 max-w-12 border-r bg-background px-2";
+		return "sticky left-0 z-30 w-12 min-w-12 max-w-12 border-r bg-background px-2 [&>div]:mx-auto [&>div]:w-8 [&>div]:justify-center";
 	}
 
 	if (columnId === "actions") {
@@ -479,11 +495,11 @@ function getPinnedHeadClass(columnId: string) {
 
 function getPinnedCellClass(columnId: string) {
 	if (columnId === "select") {
-		return "sticky left-0 z-20 w-12 min-w-12 max-w-12 border-r bg-background px-2 group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted";
+		return "sticky left-0 z-20 w-12 min-w-12 max-w-12 border-r bg-background px-2 transition-colors group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted [&>div]:mx-auto [&>div]:w-8 [&>div]:justify-center";
 	}
 
 	if (columnId === "actions") {
-		return "sticky right-0 z-20 w-14 min-w-14 max-w-14 border-l bg-background px-2 group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted";
+		return "sticky right-0 z-20 w-14 min-w-14 max-w-14 border-l bg-background px-2 transition-colors group-hover/table-row:bg-muted group-data-[state=selected]/table-row:bg-muted";
 	}
 
 	return "";

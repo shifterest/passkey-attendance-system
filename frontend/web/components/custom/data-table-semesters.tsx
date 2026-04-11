@@ -29,8 +29,13 @@ import {
 	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
+import {
+	FormSheet,
+	FormSheetCancelButton,
+} from "@/components/custom/form-sheet";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -189,24 +194,21 @@ function CreateSemesterDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={<Button size="sm" />}>
-				<IconPlus data-icon="inline-start" />
-				Create
-			</DialogTrigger>
-			<DialogContent className="max-w-2xl">
-				<DialogHeader>
-					<DialogTitle>Create semester</DialogTitle>
-					<DialogDescription>
-						Add an academic term for semester-bound classes and attendance
-						windows.
-					</DialogDescription>
-				</DialogHeader>
-				<SemesterFormFields values={values} onChange={setValues} />
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
+		<FormSheet
+			open={open}
+			onOpenChange={setOpen}
+			trigger={
+				<Button size="sm">
+					<IconPlus data-icon="inline-start" />
+					Create
+				</Button>
+			}
+			title="Create semester"
+			description="Add an academic term for semester-bound classes and attendance windows."
+			contentClassName="sm:max-w-2xl"
+			footer={
+				<>
+					<FormSheetCancelButton />
 					<Button
 						onClick={handleCreate}
 						disabled={
@@ -218,9 +220,11 @@ function CreateSemesterDialog({
 					>
 						{submitting ? "Creating..." : "Create"}
 					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</>
+			}
+		>
+			<SemesterFormFields values={values} onChange={setValues} />
+		</FormSheet>
 	);
 }
 
@@ -254,20 +258,16 @@ function EditSemesterDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger} />
-			<DialogContent className="max-w-2xl">
-				<DialogHeader>
-					<DialogTitle>Edit semester</DialogTitle>
-					<DialogDescription>
-						Update term dates and active status without leaving the table.
-					</DialogDescription>
-				</DialogHeader>
-				<SemesterFormFields values={values} onChange={setValues} />
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
+		<FormSheet
+			open={open}
+			onOpenChange={setOpen}
+			trigger={trigger}
+			title="Edit semester"
+			description="Update term dates and active status without leaving the table."
+			contentClassName="sm:max-w-2xl"
+			footer={
+				<>
+					<FormSheetCancelButton />
 					<Button
 						onClick={handleSave}
 						disabled={
@@ -279,9 +279,11 @@ function EditSemesterDialog({
 					>
 						{submitting ? "Saving..." : "Save"}
 					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</>
+			}
+		>
+			<SemesterFormFields values={values} onChange={setValues} />
+		</FormSheet>
 	);
 }
 
@@ -338,16 +340,14 @@ function DeleteSemesterDialog({
 
 export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 	const [rows, setRows] = useState(data);
-	const [sorting, setSorting] = useState<SortingState>([
-		{ id: "start_date", desc: true },
-	]);
+	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
 		id: false,
 	});
 	const [globalFilter, setGlobalFilter] = useState("");
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
-		pageSize: 10,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 
 	const columns = useMemo<ColumnDef<SemesterDto>[]>(
@@ -406,7 +406,7 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 										onSelect={(event) => event.preventDefault()}
 									>
 										<IconPencil data-icon="inline-start" />
-										Edit semester
+										Edit
 									</DropdownMenuItem>
 								}
 								onUpdated={(semester) =>
@@ -421,7 +421,7 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 										onSelect={(event) => event.preventDefault()}
 									>
 										<IconTrash data-icon="inline-start" />
-										Delete semester
+										Delete
 									</DropdownMenuItem>
 								}
 								onDeleted={(semesterId) =>

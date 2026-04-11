@@ -18,21 +18,22 @@ import {
 import * as React from "react";
 import type { TeacherDto } from "@/app/lib/api";
 import {
-	DataTableBody,
-	DataTableFilterActions,
-	DataTableFilterOption,
-	DataTablePagination,
-	DataTableScaffold,
-	DataTableFilterResetAction,
-	DataTableFilterSection,
-	DataTableFilterSheet,
-	DataTableToolbar,
-	SortableHeader,
-} from "@/components/custom/data-table-shared";
-import {
 	createDatabaseIdColumn,
 	RegistrationStatusBadge,
 } from "@/components/custom/data-table-cells";
+import {
+	DataTableBody,
+	DataTableFilterActions,
+	DataTableFilterOption,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTablePagination,
+	DataTableScaffold,
+	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
+	SortableHeader,
+} from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -100,7 +101,7 @@ const columns: ColumnDef<TeacherDto>[] = [
 		accessorKey: "registered",
 		filterFn: includesSomeFilter,
 		header: ({ column }) => (
-			<SortableHeader column={column} label="Registration" />
+			<SortableHeader column={column} label="Registered" />
 		),
 		cell: ({ row }) => (
 			<RegistrationStatusBadge registered={row.original.registered} />
@@ -184,7 +185,7 @@ export function DataTableTeachers({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: 10,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -283,10 +284,10 @@ export function DataTableTeachers({
 					filters={
 						<DataTableFilterSheet
 							title="Teacher filters"
-							description="Refine the teacher table by registration and current session state."
+							description="Refine the teacher table by registered state and current session state."
 							activeCount={activeFilterCount}
 						>
-							<DataTableFilterSection title="Registration">
+							<DataTableFilterSection title="Registered">
 								<DataTableFilterOption
 									label="Registered"
 									checked={isChecked("registered", true)}

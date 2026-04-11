@@ -59,11 +59,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					items={navigation.management}
 					iconMap={iconMap}
 				/>
-				<NavManagement
-					label="Organizations"
-					items={navigation.organizations}
-					iconMap={iconMap}
-				/>
+				{navigation.organizations.length > 0 ? (
+					<NavManagement
+						label="Organizations"
+						items={navigation.organizations}
+						iconMap={iconMap}
+					/>
+				) : null}
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />

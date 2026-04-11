@@ -34,13 +34,14 @@ import {
 	DataTableBody,
 	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTablePagination,
-	DataTableRowActions,
-	DataTableScaffold,
 	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
+	DataTablePagination,
+	DataTableRowActions,
+	DataTableScaffold,
 	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
@@ -163,7 +164,7 @@ function columns(
 			accessorKey: "registered",
 			filterFn: includesSomeFilter,
 			header: ({ column }) => (
-				<SortableHeader column={column} label="Registration" />
+				<SortableHeader column={column} label="Registered" />
 			),
 			cell: ({ row }) => (
 				<RegistrationStatusBadge
@@ -234,7 +235,7 @@ function columns(
 		{
 			accessorKey: "low_assurance",
 			header: ({ column }) => (
-				<SortableHeader column={column} label="Low Assurance" />
+				<SortableHeader column={column} label="Low assurance" />
 			),
 			cell: ({ row }) => row.original.low_assurance,
 		},
@@ -310,7 +311,7 @@ export function DataTableStudent({
 		React.useState<VisibilityState>({
 			id: false,
 			email: false,
-			year_level: false,
+			enrollment_year: false,
 			low_assurance: false,
 		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -319,7 +320,7 @@ export function DataTableStudent({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: 10,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 
 	const [globalFilter, setGlobalFilter] = useState("");
@@ -603,11 +604,11 @@ export function DataTableStudent({
 						filters={
 							<DataTableFilterSheet
 								title="Student filters"
-								description="Refine the student table by registration, attendance state, program, and enrollment year."
+								description="Refine the student table by registered state, attendance state, program, and enrollment year."
 								contentClassName="sm:max-w-lg"
 								activeCount={activeFilterCount}
 							>
-								<DataTableFilterSection title="Registration">
+								<DataTableFilterSection title="Registered">
 									<DataTableFilterOption
 										label="Registered"
 										checked={isFilterValueChecked("registered", true)}
@@ -639,30 +640,34 @@ export function DataTableStudent({
 										}}
 									/>
 								</DataTableFilterSection>
-								<DataTableFilterSection title="Program">
-									{programOptions.map((program) => (
-										<DataTableFilterOption
-											key={program}
-											label={program}
-											checked={programFilter.includes(program)}
-											onCheckedChange={(checked) =>
-												toggleProgramFilter(program, checked)
-											}
-										/>
-									))}
-								</DataTableFilterSection>
-								<DataTableFilterSection title="Enrollment year">
-									{yearOptions.map((year) => (
-										<DataTableFilterOption
-											key={year}
-											label={String(year)}
-											checked={yearFilter.includes(year)}
-											onCheckedChange={(checked) =>
-												toggleYearFilter(year, checked)
-											}
-										/>
-									))}
-								</DataTableFilterSection>
+								{programOptions.length > 0 ? (
+									<DataTableFilterSection title="Program">
+										{programOptions.map((program) => (
+											<DataTableFilterOption
+												key={program}
+												label={program}
+												checked={programFilter.includes(program)}
+												onCheckedChange={(checked) =>
+													toggleProgramFilter(program, checked)
+												}
+											/>
+										))}
+									</DataTableFilterSection>
+								) : null}
+								{yearOptions.length > 0 ? (
+									<DataTableFilterSection title="Enrollment year">
+										{yearOptions.map((year) => (
+											<DataTableFilterOption
+												key={year}
+												label={String(year)}
+												checked={yearFilter.includes(year)}
+												onCheckedChange={(checked) =>
+													toggleYearFilter(year, checked)
+												}
+											/>
+										))}
+									</DataTableFilterSection>
+								) : null}
 								<DataTableFilterActions>
 									<DataTableFilterResetAction
 										onClick={() => {
@@ -685,7 +690,6 @@ export function DataTableStudent({
 				/>
 				<DataTablePagination
 					table={table}
-					pageSizeOptions={[10, 20, 30, 40, 50]}
 					selectionActions={
 						selectedRegisteredStudents.length > 0 ? (
 							<DropdownMenuItem

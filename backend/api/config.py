@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     bootstrap_enabled: bool = False
     bootstrap_token_ttl_seconds: int = 86400
 
+    # Deferred surfaces
+    org_events_enabled: bool = False
+
     # Network proximity
     school_subnet_cidr: str | None = None
     trusted_proxy: str | None = None

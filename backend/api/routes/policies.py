@@ -32,7 +32,13 @@ def get_all_policies(
     if current_user.role == "teacher":
         return (
             db.query(ClassPolicy)
-            .filter(ClassPolicy.created_by == current_user.id)
+            .filter(
+                (ClassPolicy.created_by == current_user.id)
+                | (
+                    (ClassPolicy.created_by.is_(None))
+                    & (ClassPolicy.class_id.is_(None))
+                )
+            )
             .all()
         )
     return db.query(ClassPolicy).all()

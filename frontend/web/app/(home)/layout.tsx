@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/custom/app-sidebar";
 import {
 	NavigationTransitionContent,
@@ -8,11 +10,16 @@ import { SiteHeader } from "@/components/custom/site-header";
 import { UserProvider } from "@/components/custom/user-context";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const cookieStore = await cookies();
+	if (!cookieStore.get("session_token")?.value) {
+		redirect("/login");
+	}
+
 	return (
 		<UserProvider>
 			<SidebarProvider

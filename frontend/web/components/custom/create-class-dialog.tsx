@@ -4,17 +4,11 @@ import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { createClass, type SemesterDto, type TeacherDto } from "@/app/lib/api";
-import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
+	FormSheet,
+	FormSheetCancelButton,
+} from "@/components/custom/form-sheet";
+import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -151,170 +145,19 @@ export function CreateClassDialog({
 	}
 
 	return (
-		<Dialog
+		<FormSheet
 			open={open}
 			onOpenChange={(v) => {
 				setOpen(v);
 				if (!v) reset();
 			}}
-		>
-			<DialogTrigger
-				render={React.isValidElement(trigger) ? trigger : undefined}
-			>
-				{!React.isValidElement(trigger) && trigger}
-			</DialogTrigger>
-			<DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Create class</DialogTitle>
-					<DialogDescription>
-						Add a new course with schedule and teacher assignment.
-					</DialogDescription>
-				</DialogHeader>
-				<FieldGroup>
-					<Field>
-						<FieldLabel htmlFor="create-class-teacher">Teacher</FieldLabel>
-						<Select
-							value={teacherId}
-							onValueChange={(v) => {
-								if (v !== null) setTeacherId(v);
-							}}
-						>
-							<SelectTrigger id="create-class-teacher" className="w-full">
-								<SelectValue placeholder="Select a teacher">
-									{getSelectLabel(teacherId, teacherOptions)}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									{teacherOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectGroup>
-							</SelectContent>
-						</Select>
-					</Field>
-					<Field>
-						<FieldLabel htmlFor="create-class-semester">Semester</FieldLabel>
-						<Select
-							value={semesterId}
-							onValueChange={(v) => {
-								if (v !== null) setSemesterId(v);
-							}}
-						>
-							<SelectTrigger id="create-class-semester" className="w-full">
-								<SelectValue placeholder="Select a semester">
-									{getSelectLabel(semesterId, semesterOptions)}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									{semesterOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectGroup>
-							</SelectContent>
-						</Select>
-					</Field>
-					<Field>
-						<FieldLabel htmlFor="create-class-code">Course code</FieldLabel>
-						<Input
-							id="create-class-code"
-							value={courseCode}
-							onChange={(e) => setCourseCode(e.target.value)}
-							placeholder="CS 108"
-						/>
-					</Field>
-					<Field>
-						<FieldLabel htmlFor="create-class-name">Course name</FieldLabel>
-						<Input
-							id="create-class-name"
-							value={courseName}
-							onChange={(e) => setCourseName(e.target.value)}
-							placeholder="Introduction to Computing"
-						/>
-					</Field>
-					<div className="flex flex-col gap-3">
-						<FieldLabel>Schedule</FieldLabel>
-						{schedule.map((block, i) => (
-							<div
-								key={block.id}
-								className="flex flex-col gap-2 rounded-lg border p-3"
-							>
-								<div className="flex items-center justify-between">
-									<span className="text-xs font-medium text-muted-foreground">
-										Block {i + 1}
-									</span>
-									{schedule.length > 1 && (
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-6"
-											onClick={() =>
-												setSchedule((p) => p.filter((_, j) => j !== i))
-											}
-										>
-											<IconTrash className="size-3.5" />
-										</Button>
-									)}
-								</div>
-								<div className="grid grid-cols-7 gap-1">
-									{DAYS.map((day) => (
-										<Button
-											key={day.key}
-											variant={
-												block.days.includes(day.key) ? "default" : "outline"
-											}
-											size="sm"
-											className="h-8 text-xs"
-											onClick={() => toggleDay(i, day.key)}
-										>
-											{day.label}
-										</Button>
-									))}
-								</div>
-								<div className="border-t" />
-								<div className="grid grid-cols-2 gap-2">
-									<Field>
-										<FieldLabel className="text-xs">Start</FieldLabel>
-										<Input
-											type="time"
-											value={block.start_time}
-											onChange={(e) =>
-												updateBlock(i, { start_time: e.target.value })
-											}
-										/>
-									</Field>
-									<Field>
-										<FieldLabel className="text-xs">End</FieldLabel>
-										<Input
-											type="time"
-											value={block.end_time}
-											onChange={(e) =>
-												updateBlock(i, { end_time: e.target.value })
-											}
-										/>
-									</Field>
-								</div>
-							</div>
-						))}
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setSchedule((p) => [...p, createScheduleBlock()])}
-						>
-							<IconPlus data-icon="inline-start" />
-							Add schedule block
-						</Button>
-					</div>
-				</FieldGroup>
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
+			trigger={trigger}
+			title="Create class"
+			description="Add a new course with schedule and teacher assignment."
+			contentClassName="sm:max-w-2xl"
+			footer={
+				<>
+					<FormSheetCancelButton />
 					<Button
 						onClick={handleSubmit}
 						disabled={
@@ -327,8 +170,150 @@ export function CreateClassDialog({
 					>
 						{submitting ? "Creating…" : "Create"}
 					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</>
+			}
+		>
+			<FieldGroup>
+				<Field>
+					<FieldLabel htmlFor="create-class-teacher">Teacher</FieldLabel>
+					<Select
+						value={teacherId}
+						onValueChange={(v) => {
+							if (v !== null) setTeacherId(v);
+						}}
+					>
+						<SelectTrigger id="create-class-teacher" className="w-full">
+							<SelectValue placeholder="Select a teacher">
+								{getSelectLabel(teacherId, teacherOptions)}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+								{teacherOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor="create-class-semester">Semester</FieldLabel>
+					<Select
+						value={semesterId}
+						onValueChange={(v) => {
+							if (v !== null) setSemesterId(v);
+						}}
+					>
+						<SelectTrigger id="create-class-semester" className="w-full">
+							<SelectValue placeholder="Select a semester">
+								{getSelectLabel(semesterId, semesterOptions)}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+								{semesterOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor="create-class-code">Course code</FieldLabel>
+					<Input
+						id="create-class-code"
+						value={courseCode}
+						onChange={(e) => setCourseCode(e.target.value)}
+						placeholder="CS 108"
+					/>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor="create-class-name">Course name</FieldLabel>
+					<Input
+						id="create-class-name"
+						value={courseName}
+						onChange={(e) => setCourseName(e.target.value)}
+						placeholder="Introduction to Computing"
+					/>
+				</Field>
+				<div className="flex flex-col gap-3">
+					<FieldLabel>Schedule</FieldLabel>
+					{schedule.map((block, i) => (
+						<div
+							key={block.id}
+							className="flex flex-col gap-2 rounded-lg border p-3"
+						>
+							<div className="flex items-center justify-between">
+								<span className="text-xs font-medium text-muted-foreground">
+									Block {i + 1}
+								</span>
+								{schedule.length > 1 && (
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-6"
+										onClick={() =>
+											setSchedule((p) => p.filter((_, j) => j !== i))
+										}
+									>
+										<IconTrash className="size-3.5" />
+									</Button>
+								)}
+							</div>
+							<div className="grid grid-cols-7 gap-1">
+								{DAYS.map((day) => (
+									<Button
+										key={day.key}
+										variant={
+											block.days.includes(day.key) ? "default" : "outline"
+										}
+										size="sm"
+										className="h-8 text-xs"
+										onClick={() => toggleDay(i, day.key)}
+									>
+										{day.label}
+									</Button>
+								))}
+							</div>
+							<div className="border-t" />
+							<div className="grid grid-cols-2 gap-2">
+								<Field>
+									<FieldLabel className="text-xs">Start</FieldLabel>
+									<Input
+										type="time"
+										value={block.start_time}
+										onChange={(e) =>
+											updateBlock(i, { start_time: e.target.value })
+										}
+									/>
+								</Field>
+								<Field>
+									<FieldLabel className="text-xs">End</FieldLabel>
+									<Input
+										type="time"
+										value={block.end_time}
+										onChange={(e) =>
+											updateBlock(i, { end_time: e.target.value })
+										}
+									/>
+								</Field>
+							</div>
+						</div>
+					))}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setSchedule((p) => [...p, createScheduleBlock()])}
+					>
+						<IconPlus data-icon="inline-start" />
+						Add schedule block
+					</Button>
+				</div>
+			</FieldGroup>
+		</FormSheet>
 	);
 }

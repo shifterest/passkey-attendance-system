@@ -11,6 +11,10 @@ import {
 	DataTableFilterSection,
 	DataTableFilterSheet,
 } from "@/components/custom/data-table-shared";
+import {
+	FormSheet,
+	FormSheetCancelButton,
+} from "@/components/custom/form-sheet";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,14 +29,6 @@ import {
 	ComboboxList,
 	useComboboxAnchor,
 } from "@/components/ui/combobox";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import {
 	Field,
 	FieldContent,
@@ -255,296 +251,282 @@ export function EnrollmentManageDialog({
 	const activeFilterCount = yearFilter.length + programFilter.length;
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Create enrollments</DialogTitle>
-					<DialogDescription>
-						Select classes, filter students, and enroll in batch.
-					</DialogDescription>
-				</DialogHeader>
-				<FieldGroup>
-					<Field orientation="horizontal">
-						<FieldContent>
-							<FieldLabel>Classes</FieldLabel>
-							<FieldDescription>
-								Select one or more classes for this enrollment batch.
-							</FieldDescription>
-						</FieldContent>
-						<div className="w-full space-y-2 md:max-w-2xl">
-							<Combobox multiple value={classIds} onValueChange={setClassIds}>
-								<ComboboxChips ref={chipsRef}>
-									{classIds.map((id) => {
-										const option = classOptions.find(
-											(item) => item.value === id,
-										);
-										return (
-											<ComboboxChip key={id}>
-												{option?.label ?? id}
-											</ComboboxChip>
-										);
-									})}
-									<ComboboxChipsInput placeholder="Search classes..." />
-								</ComboboxChips>
-								<ComboboxContent anchor={chipsRef}>
-									<ComboboxList>
-										<ComboboxEmpty>No classes found.</ComboboxEmpty>
-										{classOptions.map((option) => (
-											<ComboboxItem key={option.value} value={option.value}>
-												{option.label}
-											</ComboboxItem>
-										))}
-									</ComboboxList>
-								</ComboboxContent>
-							</Combobox>
-							<p className="text-sm text-muted-foreground">{classSummary}</p>
+		<FormSheet
+			open={open}
+			onOpenChange={onOpenChange}
+			title="Create enrollments"
+			description="Select classes, filter students, and enroll in batch."
+			contentClassName="sm:max-w-5xl"
+			footer={
+				<>
+					<div className="mr-auto text-sm text-muted-foreground">
+						{selectionSummary}
+					</div>
+					<FormSheetCancelButton />
+					<Button
+						type="button"
+						onClick={handleSubmit}
+						disabled={
+							classIds.length === 0 || selectedIds.size === 0 || submitting
+						}
+					>
+						{submitting ? "Creating..." : "Create enrollments"}
+					</Button>
+				</>
+			}
+		>
+			<FieldGroup>
+				<Field orientation="horizontal">
+					<FieldContent>
+						<FieldLabel>Classes</FieldLabel>
+						<FieldDescription>
+							Select one or more classes for this enrollment batch.
+						</FieldDescription>
+					</FieldContent>
+					<div className="w-full space-y-2 md:max-w-2xl">
+						<Combobox multiple value={classIds} onValueChange={setClassIds}>
+							<ComboboxChips ref={chipsRef}>
+								{classIds.map((id) => {
+									const option = classOptions.find((item) => item.value === id);
+									return (
+										<ComboboxChip key={id}>{option?.label ?? id}</ComboboxChip>
+									);
+								})}
+								<ComboboxChipsInput placeholder="Search classes..." />
+							</ComboboxChips>
+							<ComboboxContent anchor={chipsRef}>
+								<ComboboxList>
+									<ComboboxEmpty>No classes found.</ComboboxEmpty>
+									{classOptions.map((option) => (
+										<ComboboxItem key={option.value} value={option.value}>
+											{option.label}
+										</ComboboxItem>
+									))}
+								</ComboboxList>
+							</ComboboxContent>
+						</Combobox>
+						<p className="text-sm text-muted-foreground">{classSummary}</p>
+					</div>
+				</Field>
+				<FieldSeparator />
+				<div className="flex flex-col gap-3">
+					<div className="flex items-center gap-2">
+						<div className="relative flex-1">
+							<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
+							<Input
+								value={query}
+								onChange={(event) => setQuery(event.currentTarget.value)}
+								placeholder="Search by name, school ID, or email"
+								className="pl-8"
+							/>
 						</div>
-					</Field>
-					<FieldSeparator />
-					<div className="flex flex-col gap-3">
-						<div className="flex items-center gap-2">
-							<div className="relative flex-1">
-								<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
-								<Input
-									value={query}
-									onChange={(event) => setQuery(event.currentTarget.value)}
-									placeholder="Search by name, school ID, or email"
-									className="pl-8"
-								/>
-							</div>
-							<DataTableFilterSheet
-								title="Student filters"
-								description="Refine the visible student list by enrollment year and program before batching enrollments."
-								contentClassName="sm:max-w-lg"
-								activeCount={activeFilterCount}
-							>
-								<DataTableFilterSection title="Enrollment year">
-									{yearOptions.map((year) => (
+						<DataTableFilterSheet
+							title="Student filters"
+							description="Refine the visible student list by enrollment year and program before batching enrollments."
+							contentClassName="sm:max-w-lg"
+							activeCount={activeFilterCount}
+						>
+							<DataTableFilterSection title="Enrollment year">
+								{yearOptions.map((year) => (
+									<DataTableFilterOption
+										key={year}
+										label={String(year)}
+										checked={yearFilter.includes(year)}
+										onCheckedChange={(checked) =>
+											toggleYearFilter(year, checked)
+										}
+									/>
+								))}
+							</DataTableFilterSection>
+							{programOptions.length > 0 ? (
+								<DataTableFilterSection title="Program">
+									{programOptions.map((program) => (
 										<DataTableFilterOption
-											key={year}
-											label={String(year)}
-											checked={yearFilter.includes(year)}
+											key={program}
+											label={program}
+											checked={programFilter.includes(program)}
 											onCheckedChange={(checked) =>
-												toggleYearFilter(year, checked)
+												toggleProgramFilter(program, checked)
 											}
 										/>
 									))}
 								</DataTableFilterSection>
-								{programOptions.length > 0 ? (
-									<DataTableFilterSection title="Program">
-										{programOptions.map((program) => (
-											<DataTableFilterOption
-												key={program}
-												label={program}
-												checked={programFilter.includes(program)}
-												onCheckedChange={(checked) =>
-													toggleProgramFilter(program, checked)
+							) : null}
+							<DataTableFilterActions>
+								<DataTableFilterResetAction
+									onClick={() => {
+										setYearFilter([]);
+										setProgramFilter([]);
+									}}
+								/>
+							</DataTableFilterActions>
+						</DataTableFilterSheet>
+					</div>
+					<div className="max-h-[360px] overflow-y-auto rounded-md border">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-12">
+										<div className="flex items-center justify-center">
+											<Checkbox
+												checked={allVisibleSelected}
+												indeterminate={
+													someVisibleSelected && !allVisibleSelected
 												}
+												onCheckedChange={(checked) =>
+													toggleSelectVisible(!!checked)
+												}
+												aria-label="Select visible students"
 											/>
-										))}
-									</DataTableFilterSection>
-								) : null}
-								<DataTableFilterActions>
-									<DataTableFilterResetAction
-										onClick={() => {
-											setYearFilter([]);
-											setProgramFilter([]);
-										}}
-									/>
-								</DataTableFilterActions>
-							</DataTableFilterSheet>
-						</div>
-						<div className="max-h-[360px] overflow-y-auto rounded-md border">
-							<Table>
-								<TableHeader>
+										</div>
+									</TableHead>
+									<TableHead>Student</TableHead>
+									<TableHead>School ID</TableHead>
+									<TableHead>Program</TableHead>
+									<TableHead>Enrollment Year</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{filteredStudents.length === 0 ? (
 									<TableRow>
-										<TableHead className="w-12">
-											<div className="flex items-center justify-center">
-												<Checkbox
-													checked={allVisibleSelected}
-													indeterminate={
-														someVisibleSelected && !allVisibleSelected
-													}
-													onCheckedChange={(checked) =>
-														toggleSelectVisible(!!checked)
-													}
-													aria-label="Select visible students"
-												/>
-											</div>
-										</TableHead>
-										<TableHead>Student</TableHead>
-										<TableHead>School ID</TableHead>
-										<TableHead>Program</TableHead>
-										<TableHead>Enrollment Year</TableHead>
+										<TableCell
+											colSpan={5}
+											className="py-6 text-center text-sm text-muted-foreground"
+										>
+											No students match the current filters.
+										</TableCell>
 									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{filteredStudents.length === 0 ? (
-										<TableRow>
-											<TableCell
-												colSpan={5}
-												className="py-6 text-center text-sm text-muted-foreground"
-											>
-												No students match the current filters.
+								) : (
+									filteredStudents.map((student) => (
+										<TableRow key={student.id}>
+											<TableCell>
+												<div className="flex items-center justify-center">
+													<Checkbox
+														checked={selectedIds.has(student.id)}
+														onCheckedChange={(checked) =>
+															toggleStudent(student.id, !!checked)
+														}
+														aria-label={`Select ${student.full_name}`}
+													/>
+												</div>
 											</TableCell>
+											<TableCell>
+												<div className="flex flex-col">
+													<span className="font-medium">
+														{student.full_name}
+													</span>
+													<span className="text-xs text-muted-foreground">
+														{student.email}
+													</span>
+												</div>
+											</TableCell>
+											<TableCell className="font-mono text-xs">
+												{student.school_id ?? "-"}
+											</TableCell>
+											<TableCell>{student.program ?? "—"}</TableCell>
+											<TableCell>{student.enrollment_year ?? "—"}</TableCell>
 										</TableRow>
-									) : (
-										filteredStudents.map((student) => (
-											<TableRow key={student.id}>
-												<TableCell>
-													<div className="flex items-center justify-center">
-														<Checkbox
-															checked={selectedIds.has(student.id)}
-															onCheckedChange={(checked) =>
-																toggleStudent(student.id, !!checked)
-															}
-															aria-label={`Select ${student.full_name}`}
-														/>
-													</div>
-												</TableCell>
-												<TableCell>
-													<div className="flex flex-col">
-														<span className="font-medium">
-															{student.full_name}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															{student.email}
-														</span>
-													</div>
-												</TableCell>
-												<TableCell className="font-mono text-xs">
-													{student.school_id ?? "-"}
-												</TableCell>
-												<TableCell>{student.program ?? "—"}</TableCell>
-												<TableCell>{student.enrollment_year ?? "—"}</TableCell>
-											</TableRow>
-										))
-									)}
-								</TableBody>
-							</Table>
-						</div>
-						<FieldSeparator />
-						<Field orientation="horizontal">
-							<FieldContent>
-								<FieldLabel htmlFor="enrollment-block-size">
-									Block size
-								</FieldLabel>
-								<FieldDescription>
-									Choose how many visible students a range selection should
-									capture.
-								</FieldDescription>
-							</FieldContent>
-							<ButtonGroup>
-								<Input
-									id="enrollment-block-size"
-									type="number"
-									min={1}
-									max={100}
-									value={blockSize}
-									onChange={(event) =>
-										setBlockSize(
-											clampBlock(Number(event.currentTarget.value) || 1),
-										)
-									}
-									className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-sm"
-									onClick={() => setBlockSize((value) => clampBlock(value - 1))}
-									disabled={blockSize <= 1}
-								>
-									<IconMinus />
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-sm"
-									onClick={() => setBlockSize((value) => clampBlock(value + 1))}
-									disabled={blockSize >= 100}
-								>
-									<IconPlus />
-								</Button>
-							</ButtonGroup>
-						</Field>
-						<FieldSeparator />
-						<Field orientation="horizontal">
-							<FieldContent>
-								<FieldLabel htmlFor="enrollment-offset">Offset</FieldLabel>
-								<FieldDescription>
-									Shift the visible range before applying the batch selection.
-								</FieldDescription>
-							</FieldContent>
-							<ButtonGroup>
-								<Input
-									id="enrollment-offset"
-									type="number"
-									min={0}
-									step={10}
-									value={offset}
-									onChange={(event) =>
-										setOffset(
-											clampOffset(Number(event.currentTarget.value) || 0),
-										)
-									}
-									className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-sm"
-									onClick={() => setOffset((value) => clampOffset(value - 10))}
-									disabled={offset <= 0}
-								>
-									<IconMinus />
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-sm"
-									onClick={() => setOffset((value) => clampOffset(value + 10))}
-								>
-									<IconPlus />
-								</Button>
-							</ButtonGroup>
-						</Field>
-						<div className="flex justify-end">
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					<FieldSeparator />
+					<Field orientation="horizontal">
+						<FieldContent>
+							<FieldLabel htmlFor="enrollment-block-size">
+								Block size
+							</FieldLabel>
+							<FieldDescription>
+								Choose how many visible students a range selection should
+								capture.
+							</FieldDescription>
+						</FieldContent>
+						<ButtonGroup>
+							<Input
+								id="enrollment-block-size"
+								type="number"
+								min={1}
+								max={100}
+								value={blockSize}
+								onChange={(event) =>
+									setBlockSize(
+										clampBlock(Number(event.currentTarget.value) || 1),
+									)
+								}
+								className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+							/>
 							<Button
 								type="button"
 								variant="outline"
-								size="sm"
-								onClick={() => selectRange(offset, blockSize)}
+								size="icon-sm"
+								onClick={() => setBlockSize((value) => clampBlock(value - 1))}
+								disabled={blockSize <= 1}
 							>
-								Select range
+								<IconMinus />
 							</Button>
-						</div>
-					</div>
-				</FieldGroup>
-				<DialogFooter className="items-center justify-between gap-2 sm:justify-between">
-					<div className="text-sm text-muted-foreground">
-						{selectionSummary}
-					</div>
-					<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="icon-sm"
+								onClick={() => setBlockSize((value) => clampBlock(value + 1))}
+								disabled={blockSize >= 100}
+							>
+								<IconPlus />
+							</Button>
+						</ButtonGroup>
+					</Field>
+					<FieldSeparator />
+					<Field orientation="horizontal">
+						<FieldContent>
+							<FieldLabel htmlFor="enrollment-offset">Offset</FieldLabel>
+							<FieldDescription>
+								Shift the visible range before applying the batch selection.
+							</FieldDescription>
+						</FieldContent>
+						<ButtonGroup>
+							<Input
+								id="enrollment-offset"
+								type="number"
+								min={0}
+								step={10}
+								value={offset}
+								onChange={(event) =>
+									setOffset(clampOffset(Number(event.currentTarget.value) || 0))
+								}
+								className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon-sm"
+								onClick={() => setOffset((value) => clampOffset(value - 10))}
+								disabled={offset <= 0}
+							>
+								<IconMinus />
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon-sm"
+								onClick={() => setOffset((value) => clampOffset(value + 10))}
+							>
+								<IconPlus />
+							</Button>
+						</ButtonGroup>
+					</Field>
+					<div className="flex justify-end">
 						<Button
 							type="button"
 							variant="outline"
-							onClick={() => onOpenChange(false)}
+							size="sm"
+							onClick={() => selectRange(offset, blockSize)}
 						>
-							Cancel
-						</Button>
-						<Button
-							type="button"
-							onClick={handleSubmit}
-							disabled={
-								classIds.length === 0 || selectedIds.size === 0 || submitting
-							}
-						>
-							{submitting ? "Creating..." : "Create enrollments"}
+							Select range
 						</Button>
 					</div>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</div>
+			</FieldGroup>
+		</FormSheet>
 	);
 }

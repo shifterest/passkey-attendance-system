@@ -136,19 +136,26 @@ export function CommandMenu() {
 			<CommandDialog
 				open={open}
 				onOpenChange={setOpen}
-				title="Search"
-				description="Search for users and classes"
+				title="Search everything"
+				description="Search everything"
 			>
-				<Command shouldFilter={false}>
+				<Command
+					shouldFilter={false}
+					className="[&_[data-slot=command-input-wrapper]]:pb-1"
+				>
 					<CommandInput
-						placeholder="Search users and classes..."
+						placeholder="Search everything"
 						value={query}
 						onValueChange={handleValueChange}
 					/>
 					<CommandList>
-						{query.trim() && users.length === 0 && classes.length === 0 && (
+						{!query.trim() ? (
+							<div className="px-3 py-6 text-center text-sm text-muted-foreground">
+								Type to begin.
+							</div>
+						) : users.length === 0 && classes.length === 0 ? (
 							<CommandEmpty>No results found.</CommandEmpty>
-						)}
+						) : null}
 						{users.length > 0 && (
 							<CommandGroup heading="Users">
 								{users.map((u) => (

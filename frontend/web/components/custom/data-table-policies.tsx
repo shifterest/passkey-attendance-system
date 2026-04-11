@@ -1,21 +1,6 @@
 "use client";
 
 import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
-import {
-	type ColumnDef,
-	type ColumnFiltersState,
-	type FilterFn,
-	getCoreRowModel,
-	getFacetedRowModel,
-	getFacetedUniqueValues,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	type SortingState,
-	useReactTable,
-	type VisibilityState,
-} from "@tanstack/react-table";
-import { useRouter } from "next/navigation";
 import * as React from "react";
 import {
 	type ClassDto,
@@ -23,26 +8,29 @@ import {
 	createPolicy,
 	deletePolicy,
 	type TeacherDto,
+	type UserDto,
 	updatePolicy,
 } from "@/app/lib/api";
-import { createDatabaseIdColumn } from "@/components/custom/data-table-cells";
 import {
-	DataTableBody,
-	DataTableFilterActions,
-	DataTableFilterOption,
-	DataTablePagination,
-	DataTableRowActions,
-	DataTableScaffold,
-	DataTableFilterResetAction,
-	DataTableFilterSection,
-	DataTableFilterSheet,
-	DataTableToolbar,
-	SortableHeader,
-} from "@/components/custom/data-table-shared";
+	FormSheet,
+	FormSheetCancelButton,
+} from "@/components/custom/form-sheet";
 import { SetPageHeader } from "@/components/custom/page-header-context";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import {
 	Dialog,
 	DialogClose,
@@ -53,11 +41,13 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-	DropdownMenuGroup,
-	DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+	Field,
+	FieldContent,
+	FieldDescription,
+	FieldGroup,
+	FieldSeparator,
+	FieldTitle,
+} from "@/components/ui/field";
 import {
 	Select,
 	SelectContent,
@@ -66,161 +56,584 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { getSelectLabel } from "@/lib/select-label";
 
 type PolicyScope = "system" | "teacher" | "class";
 
+type PolicyFormValues = {
+	standard_assurance_threshold: number;
+	high_assurance_threshold: number;
+	present_cutoff_minutes: number;
+	late_cutoff_minutes: number;
+	max_check_ins: number;
+};
+
+const DEFAULT_POLICY_VALUES: PolicyFormValues = {
+	standard_assurance_threshold: 5,
+	high_assurance_threshold: 9,
+	present_cutoff_minutes: 5,
+	late_cutoff_minutes: 15,
+	max_check_ins: 3,
+};
+
+const MAX_ASSURANCE_SCORE = 12;
+const MAX_WINDOW_MINUTES = 60;
+
 function getScope(policy: ClassPolicyDto): PolicyScope {
-	if (policy.class_id) return "class";
-	if (policy.created_by) return "teacher";
+	if (policy.class_id) {
+		return "class";
+	}
+
+	if (policy.created_by) {
+		return "teacher";
+	}
+
 	return "system";
 }
 
 function getScopeLabel(scope: PolicyScope): string {
-	if (scope === "system") return "System default";
-	if (scope === "teacher") return "Teacher default";
+	if (scope === "system") {
+		return "System default";
+	}
+
+	if (scope === "teacher") {
+		return "Teacher default";
+	}
+
 	return "Class override";
 }
 
-const SCOPE_FILTER_VALUES: PolicyScope[] = ["system", "teacher", "class"];
-const POLICY_SCOPE_OPTIONS = [
-	{ value: "system", label: "System default" },
-	{ value: "class", label: "Class override" },
-] as const;
+function toPolicyFormValues(policy: ClassPolicyDto | null): PolicyFormValues {
+	if (!policy) {
+		return DEFAULT_POLICY_VALUES;
+	}
 
-const includesSomeFilter: FilterFn<ClassPolicyDto> = (
-	row,
-	_columnId,
-	filterValue,
-) => {
-	if (!Array.isArray(filterValue)) return true;
-	return filterValue.includes(getScope(row.original));
-};
+	return {
+		standard_assurance_threshold: policy.standard_assurance_threshold,
+		high_assurance_threshold: policy.high_assurance_threshold,
+		present_cutoff_minutes: policy.present_cutoff_minutes,
+		late_cutoff_minutes: policy.late_cutoff_minutes,
+		max_check_ins: policy.max_check_ins,
+	};
+}
+
+function applyPolicyFieldChange(
+	values: PolicyFormValues,
+	field: keyof PolicyFormValues,
+	nextValue: number,
+): PolicyFormValues {
+	const next = {
+		...values,
+		[field]: nextValue,
+	};
+
+	if (
+		field === "standard_assurance_threshold" &&
+		next.high_assurance_threshold < next.standard_assurance_threshold
+	) {
+		next.high_assurance_threshold = next.standard_assurance_threshold;
+	}
+
+	if (
+		field === "high_assurance_threshold" &&
+		next.standard_assurance_threshold > next.high_assurance_threshold
+	) {
+		next.standard_assurance_threshold = next.high_assurance_threshold;
+	}
+
+	if (
+		field === "present_cutoff_minutes" &&
+		next.late_cutoff_minutes < next.present_cutoff_minutes
+	) {
+		next.late_cutoff_minutes = next.present_cutoff_minutes;
+	}
+
+	if (
+		field === "late_cutoff_minutes" &&
+		next.present_cutoff_minutes > next.late_cutoff_minutes
+	) {
+		next.present_cutoff_minutes = next.late_cutoff_minutes;
+	}
+
+	if (field === "max_check_ins") {
+		next.max_check_ins = Math.max(1, next.max_check_ins);
+	}
+
+	return next;
+}
+
+function getAssuranceBand(score: number, values: PolicyFormValues) {
+	if (score >= values.high_assurance_threshold) {
+		return "High";
+	}
+
+	if (score >= values.standard_assurance_threshold) {
+		return "Standard";
+	}
+
+	return "Low";
+}
+
+function getAttendanceStatus(
+	minutesSinceOpen: number,
+	values: PolicyFormValues,
+) {
+	if (minutesSinceOpen <= values.present_cutoff_minutes) {
+		return "Present";
+	}
+
+	if (minutesSinceOpen <= values.late_cutoff_minutes) {
+		return "Late";
+	}
+
+	return "Absent";
+}
+
+function getPolicyOwnerLabel(
+	policy: ClassPolicyDto,
+	teacherMap: Map<string, TeacherDto>,
+	currentUser: UserDto,
+) {
+	if (getScope(policy) === "system") {
+		return "Platform default";
+	}
+
+	if (!policy.created_by) {
+		return "Platform managed";
+	}
+
+	if (policy.created_by === currentUser.id) {
+		return "Owned by you";
+	}
+
+	return teacherMap.get(policy.created_by)?.full_name ?? policy.created_by;
+}
+
+function getPolicyTargetLabel(
+	policy: ClassPolicyDto,
+	classMap: Map<string, ClassDto>,
+	teacherMap: Map<string, TeacherDto>,
+	currentUser: UserDto,
+) {
+	const scope = getScope(policy);
+
+	if (scope === "system") {
+		return "Used when no teacher default or class override applies.";
+	}
+
+	if (scope === "teacher") {
+		const owner = getPolicyOwnerLabel(policy, teacherMap, currentUser);
+		return `${owner} fallback for uncustomized classes.`;
+	}
+
+	if (!policy.class_id) {
+		return "Class not found";
+	}
+
+	const classValue = classMap.get(policy.class_id);
+	if (!classValue) {
+		return policy.class_id;
+	}
+
+	return `${classValue.course_code} — ${classValue.course_name}`;
+}
+
+function canModifyPolicy(policy: ClassPolicyDto, currentUser: UserDto) {
+	if (currentUser.role === "admin" || currentUser.role === "operator") {
+		return true;
+	}
+
+	return policy.created_by === currentUser.id;
+}
+
+function sortPolicies(
+	policies: ClassPolicyDto[],
+	classMap: Map<string, ClassDto>,
+	teacherMap: Map<string, TeacherDto>,
+	currentUser: UserDto,
+) {
+	return [...policies].sort((left, right) => {
+		const leftLabel = getPolicyTargetLabel(
+			left,
+			classMap,
+			teacherMap,
+			currentUser,
+		);
+		const rightLabel = getPolicyTargetLabel(
+			right,
+			classMap,
+			teacherMap,
+			currentUser,
+		);
+
+		return leftLabel.localeCompare(rightLabel, undefined, {
+			numeric: true,
+			sensitivity: "base",
+		});
+	});
+}
+
+function PolicyMetric({
+	label,
+	value,
+	hint,
+}: {
+	label: string;
+	value: string;
+	hint: string;
+}) {
+	return (
+		<div className="rounded-3xl border bg-muted/40 p-4">
+			<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+				{label}
+			</div>
+			<div className="mt-2 font-heading text-xl font-medium text-foreground">
+				{value}
+			</div>
+			<div className="mt-1 text-sm text-muted-foreground">{hint}</div>
+		</div>
+	);
+}
+
+function PolicySummaryCard({
+	title,
+	value,
+	description,
+	caption,
+}: {
+	title: string;
+	value: string;
+	description: string;
+	caption: string;
+}) {
+	return (
+		<Card size="sm" className="border border-border/70 shadow-none">
+			<CardHeader className="gap-3 border-b">
+				<CardTitle>{title}</CardTitle>
+				<CardDescription>{description}</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-2">
+				<div className="font-heading text-3xl font-medium text-foreground">
+					{value}
+				</div>
+				<p className="text-sm text-muted-foreground">{caption}</p>
+			</CardContent>
+		</Card>
+	);
+}
+
+function PolicySliderField({
+	title,
+	description,
+	value,
+	min,
+	max,
+	onChange,
+	formatValue,
+}: {
+	title: string;
+	description: string;
+	value: number;
+	min: number;
+	max: number;
+	onChange: (value: number) => void;
+	formatValue: (value: number) => string;
+}) {
+	return (
+		<Field className="gap-4">
+			<div className="flex items-start justify-between gap-3">
+				<FieldContent>
+					<FieldTitle>{title}</FieldTitle>
+					<FieldDescription>{description}</FieldDescription>
+				</FieldContent>
+				<Badge variant="outline" className="shrink-0 font-mono text-xs">
+					{formatValue(value)}
+				</Badge>
+			</div>
+			<Slider
+				value={[value]}
+				min={min}
+				max={max}
+				step={1}
+				onValueChange={(next) => {
+					const nextValue = Array.isArray(next) ? next[0] : next;
+					onChange(nextValue ?? value);
+				}}
+			/>
+		</Field>
+	);
+}
+
+function PolicyWindowPreview({ values }: { values: PolicyFormValues }) {
+	return (
+		<Card size="sm" className="border border-border/70 shadow-none">
+			<CardHeader className="gap-1 border-b">
+				<CardTitle>Window preview</CardTitle>
+				<CardDescription>
+					Students are marked present until {values.present_cutoff_minutes}{" "}
+					minutes, late until {values.late_cutoff_minutes} minutes, then absent.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="grid gap-3 md:grid-cols-3">
+				<PolicyMetric
+					label="Present"
+					value={`0–${values.present_cutoff_minutes} min`}
+					hint="Automatically marked present."
+				/>
+				<PolicyMetric
+					label="Late"
+					value={`${values.present_cutoff_minutes + 1}–${values.late_cutoff_minutes} min`}
+					hint="Attendance remains valid but late."
+				/>
+				<PolicyMetric
+					label="After close"
+					value={`>${values.late_cutoff_minutes} min`}
+					hint="Status is absent and no longer shifts."
+				/>
+			</CardContent>
+		</Card>
+	);
+}
 
 function PolicyFormFields({
 	values,
 	onChange,
 }: {
-	values: {
-		standard_assurance_threshold: number;
-		high_assurance_threshold: number;
-		present_cutoff_minutes: number;
-		late_cutoff_minutes: number;
-		max_check_ins: number;
-	};
-	onChange: (field: string, value: number) => void;
+	values: PolicyFormValues;
+	onChange: (field: keyof PolicyFormValues, value: number) => void;
 }) {
 	return (
 		<FieldGroup>
-			<div className="grid grid-cols-2 gap-4">
-				<Field>
-					<FieldLabel>Standard threshold</FieldLabel>
-					<Input
-						type="number"
-						min={0}
-						value={values.standard_assurance_threshold}
-						onChange={(e) =>
-							onChange(
-								"standard_assurance_threshold",
-								Number.parseInt(e.target.value, 10) || 0,
-							)
-						}
-					/>
-				</Field>
-				<Field>
-					<FieldLabel>High threshold</FieldLabel>
-					<Input
-						type="number"
-						min={0}
-						value={values.high_assurance_threshold}
-						onChange={(e) =>
-							onChange(
-								"high_assurance_threshold",
-								Number.parseInt(e.target.value, 10) || 0,
-							)
-						}
-					/>
-				</Field>
-			</div>
-			<div className="grid grid-cols-2 gap-4">
-				<Field>
-					<FieldLabel>Present cutoff (min)</FieldLabel>
-					<Input
-						type="number"
-						min={0}
-						value={values.present_cutoff_minutes}
-						onChange={(e) =>
-							onChange(
-								"present_cutoff_minutes",
-								Number.parseInt(e.target.value, 10) || 0,
-							)
-						}
-					/>
-				</Field>
-				<Field>
-					<FieldLabel>Late cutoff (min)</FieldLabel>
-					<Input
-						type="number"
-						min={0}
-						value={values.late_cutoff_minutes}
-						onChange={(e) =>
-							onChange(
-								"late_cutoff_minutes",
-								Number.parseInt(e.target.value, 10) || 0,
-							)
-						}
-					/>
-				</Field>
-			</div>
-			<Field>
-				<FieldLabel>Max check-ins per window</FieldLabel>
-				<Input
-					type="number"
-					min={1}
-					value={values.max_check_ins}
-					onChange={(e) =>
-						onChange("max_check_ins", Number.parseInt(e.target.value, 10) || 1)
-					}
+			<div className="grid gap-6 xl:grid-cols-2">
+				<PolicySliderField
+					title="Standard threshold"
+					description="Scores below this band stay low assurance and need explicit teacher confirmation."
+					value={values.standard_assurance_threshold}
+					min={0}
+					max={MAX_ASSURANCE_SCORE}
+					onChange={(value) => onChange("standard_assurance_threshold", value)}
+					formatValue={(value) => `≥${value}`}
 				/>
-			</Field>
+				<PolicySliderField
+					title="High threshold"
+					description="Scores at or above this band are auto-confirmed without follow-up."
+					value={values.high_assurance_threshold}
+					min={0}
+					max={MAX_ASSURANCE_SCORE}
+					onChange={(value) => onChange("high_assurance_threshold", value)}
+					formatValue={(value) => `≥${value}`}
+				/>
+			</div>
+			<FieldSeparator>Attendance window</FieldSeparator>
+			<div className="grid gap-6 xl:grid-cols-2">
+				<PolicySliderField
+					title="Present cutoff"
+					description="Minutes from session open that still count as present."
+					value={values.present_cutoff_minutes}
+					min={0}
+					max={MAX_WINDOW_MINUTES}
+					onChange={(value) => onChange("present_cutoff_minutes", value)}
+					formatValue={(value) => `${value} min`}
+				/>
+				<PolicySliderField
+					title="Late cutoff"
+					description="Minutes from session open that still count as late instead of absent."
+					value={values.late_cutoff_minutes}
+					min={0}
+					max={MAX_WINDOW_MINUTES}
+					onChange={(value) => onChange("late_cutoff_minutes", value)}
+					formatValue={(value) => `${value} min`}
+				/>
+			</div>
+			<FieldSeparator>Retry budget</FieldSeparator>
+			<PolicySliderField
+				title="Max check-ins per window"
+				description="Limits how many retries a student gets before the current attendance window is exhausted."
+				value={values.max_check_ins}
+				min={1}
+				max={5}
+				onChange={(value) => onChange("max_check_ins", value)}
+				formatValue={(value) => `${value}`}
+			/>
+			<PolicyWindowPreview values={values} />
 		</FieldGroup>
 	);
 }
 
-function CreatePolicyDialog({
+function PolicyPlayground({ values }: { values: PolicyFormValues }) {
+	const [score, setScore] = React.useState(
+		Math.min(values.standard_assurance_threshold, MAX_ASSURANCE_SCORE),
+	);
+	const [minutes, setMinutes] = React.useState(values.present_cutoff_minutes);
+
+	React.useEffect(() => {
+		setScore(
+			Math.min(values.standard_assurance_threshold, MAX_ASSURANCE_SCORE),
+		);
+		setMinutes(values.present_cutoff_minutes);
+	}, [values]);
+
+	const band = getAssuranceBand(score, values);
+	const attendanceStatus = getAttendanceStatus(minutes, values);
+	const reviewState =
+		band === "Low"
+			? "Teacher confirmation required"
+			: band === "High"
+				? "Auto-confirmed"
+				: "Auto-accepted";
+
+	return (
+		<Accordion>
+			<AccordionItem value="playground">
+				<AccordionTrigger>
+					<div>
+						<div className="font-medium text-foreground">Policy playground</div>
+						<div className="mt-1 text-sm font-normal text-muted-foreground">
+							Preview how band thresholds and time windows behave before saving.
+						</div>
+					</div>
+				</AccordionTrigger>
+				<AccordionContent>
+					<div className="space-y-6">
+						<div className="grid gap-6 xl:grid-cols-2">
+							<PolicySliderField
+								title="Assurance score"
+								description="Try the effective score a check-in would receive after proximity and integrity weighting."
+								value={score}
+								min={0}
+								max={MAX_ASSURANCE_SCORE}
+								onChange={setScore}
+								formatValue={(value) => `${value}`}
+							/>
+							<PolicySliderField
+								title="Minutes since open"
+								description="Slide forward through the attendance window to see when present becomes late and absent."
+								value={minutes}
+								min={0}
+								max={MAX_WINDOW_MINUTES}
+								onChange={setMinutes}
+								formatValue={(value) => `${value} min`}
+							/>
+						</div>
+						<div className="grid gap-3 lg:grid-cols-3">
+							<PolicyMetric
+								label="Band"
+								value={band}
+								hint={`Standard begins at ${values.standard_assurance_threshold}; high begins at ${values.high_assurance_threshold}.`}
+							/>
+							<PolicyMetric
+								label="Attendance"
+								value={attendanceStatus}
+								hint={`Present until ${values.present_cutoff_minutes} min, late until ${values.late_cutoff_minutes} min.`}
+							/>
+							<PolicyMetric
+								label="Teacher action"
+								value={reviewState}
+								hint="Low band attempts stay held; standard and high proceed automatically."
+							/>
+						</div>
+					</div>
+				</AccordionContent>
+			</AccordionItem>
+		</Accordion>
+	);
+}
+
+function CreatePolicySheet({
+	currentUser,
+	policies,
 	classes,
-	trigger,
 	onCreated,
+	trigger,
 }: {
+	currentUser: UserDto;
+	policies: ClassPolicyDto[];
 	classes: ClassDto[];
-	trigger: React.ReactElement;
-	onCreated: () => void;
+	onCreated: () => Promise<void>;
+	trigger: React.ReactNode;
 }) {
 	const [open, setOpen] = React.useState(false);
-	const [scope, setScope] = React.useState<"system" | "class">("class");
+	const [scope, setScope] = React.useState<PolicyScope>(
+		currentUser.role === "teacher" ? "teacher" : "system",
+	);
 	const [classId, setClassId] = React.useState("");
-	const [values, setValues] = React.useState({
-		standard_assurance_threshold: 5,
-		high_assurance_threshold: 9,
-		present_cutoff_minutes: 5,
-		late_cutoff_minutes: 15,
-		max_check_ins: 3,
-	});
+	const [values, setValues] = React.useState<PolicyFormValues>(
+		DEFAULT_POLICY_VALUES,
+	);
 	const [submitting, setSubmitting] = React.useState(false);
 
-	const handleChange = (field: string, value: number) => {
-		setValues((prev) => ({ ...prev, [field]: value }));
-	};
-	const classOptions = React.useMemo(
+	const teacherDefaultExists = React.useMemo(
 		() =>
-			classes.map((classValue) => ({
-				value: classValue.id,
-				label: `${classValue.course_code} — ${classValue.course_name}`,
-			})),
-		[classes],
+			policies.some(
+				(policy) =>
+					getScope(policy) === "teacher" &&
+					policy.created_by === currentUser.id,
+			),
+		[currentUser.id, policies],
 	);
+	const existingClassOverrideIds = React.useMemo(
+		() =>
+			new Set(
+				policies
+					.filter(
+						(policy) =>
+							getScope(policy) === "class" &&
+							policy.created_by === currentUser.id,
+					)
+					.map((policy) => policy.class_id)
+					.filter((value): value is string => Boolean(value)),
+			),
+		[currentUser.id, policies],
+	);
+	const availableClassOptions = React.useMemo(
+		() =>
+			classes
+				.filter((classValue) => !existingClassOverrideIds.has(classValue.id))
+				.map((classValue) => ({
+					value: classValue.id,
+					label: `${classValue.course_code} — ${classValue.course_name}`,
+				})),
+		[classes, existingClassOverrideIds],
+	);
+	const scopeOptions = React.useMemo(() => {
+		if (currentUser.role === "teacher") {
+			return [
+				!teacherDefaultExists
+					? { value: "teacher", label: "Teacher default" }
+					: null,
+				availableClassOptions.length > 0
+					? { value: "class", label: "Class override" }
+					: null,
+			].filter(
+				(option): option is { value: PolicyScope; label: string } =>
+					option !== null,
+			);
+		}
 
-	const handleSubmit = async () => {
+		return [{ value: "system" as PolicyScope, label: "System default" }];
+	}, [availableClassOptions.length, currentUser.role, teacherDefaultExists]);
+
+	React.useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		setValues(DEFAULT_POLICY_VALUES);
+		setScope(
+			scopeOptions[0]?.value ??
+				(currentUser.role === "teacher" ? "teacher" : "system"),
+		);
+		setClassId(availableClassOptions[0]?.value ?? "");
+	}, [availableClassOptions, currentUser.role, open, scopeOptions]);
+
+	const disableSubmit = scope === "class" && !classId;
+
+	async function handleSubmit() {
+		if (disableSubmit || submitting) {
+			return;
+		}
+
 		setSubmitting(true);
 		try {
 			await createPolicy({
@@ -228,35 +641,82 @@ function CreatePolicyDialog({
 				...values,
 			});
 			setOpen(false);
-			onCreated();
+			await onCreated();
 		} finally {
 			setSubmitting(false);
 		}
-	};
+	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger} />
-			<DialogContent>
-				<DialogTitle>Create policy</DialogTitle>
-				<DialogDescription>
-					Set assurance thresholds and session window configuration.
-				</DialogDescription>
-				<FieldGroup>
-					<Field>
-						<FieldLabel>Scope</FieldLabel>
+		<FormSheet
+			open={open}
+			onOpenChange={setOpen}
+			trigger={trigger}
+			title="Create policy"
+			description="Create one default or override at a time so the effective fallback chain stays explicit."
+			contentClassName="sm:max-w-2xl"
+			footer={
+				<>
+					<FormSheetCancelButton />
+					<Button onClick={handleSubmit} disabled={submitting || disableSubmit}>
+						{submitting ? "Creating..." : "Create"}
+					</Button>
+				</>
+			}
+		>
+			<FieldGroup>
+				<Field className="gap-3">
+					<FieldContent>
+						<FieldTitle>Scope</FieldTitle>
+						<FieldDescription>
+							System defaults set the global fallback. Teacher defaults and
+							class overrides stay owned by the teacher account that created
+							them.
+						</FieldDescription>
+					</FieldContent>
+					<Select
+						value={scope}
+						onValueChange={(value) => setScope(value as PolicyScope)}
+					>
+						<SelectTrigger className="w-full sm:max-w-sm">
+							<SelectValue>{getSelectLabel(scope, scopeOptions)}</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+								{scopeOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</Field>
+				{scope === "class" ? (
+					<Field className="gap-3">
+						<FieldContent>
+							<FieldTitle>Class target</FieldTitle>
+							<FieldDescription>
+								Pick the class that should diverge from the default timing or
+								assurance thresholds.
+							</FieldDescription>
+						</FieldContent>
 						<Select
-							value={scope}
-							onValueChange={(v) => setScope(v as "system" | "class")}
+							value={classId}
+							onValueChange={(value) => {
+								if (value !== null) {
+									setClassId(value);
+								}
+							}}
 						>
-							<SelectTrigger>
-								<SelectValue>
-									{getSelectLabel(scope, POLICY_SCOPE_OPTIONS)}
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Select a class">
+									{getSelectLabel(classId, availableClassOptions)}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectGroup>
-									{POLICY_SCOPE_OPTIONS.map((option) => (
+									{availableClassOptions.map((option) => (
 										<SelectItem key={option.value} value={option.value}>
 											{option.label}
 										</SelectItem>
@@ -265,113 +725,81 @@ function CreatePolicyDialog({
 							</SelectContent>
 						</Select>
 					</Field>
-					{scope === "class" && (
-						<Field>
-							<FieldLabel>Class</FieldLabel>
-							<Select
-								value={classId}
-								onValueChange={(v) => {
-									if (v !== null) setClassId(v);
-								}}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Select a class">
-										{getSelectLabel(classId, classOptions)}
-									</SelectValue>
-								</SelectTrigger>
-								<SelectContent>
-									<SelectGroup>
-										{classOptions.map((option) => (
-											<SelectItem key={option.value} value={option.value}>
-												{option.label}
-											</SelectItem>
-										))}
-									</SelectGroup>
-								</SelectContent>
-							</Select>
-						</Field>
-					)}
-				</FieldGroup>
-				<PolicyFormFields values={values} onChange={handleChange} />
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
-					<Button
-						onClick={handleSubmit}
-						disabled={submitting || (scope === "class" && !classId)}
-					>
-						Create
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				) : null}
+				<FieldSeparator>Thresholds and timing</FieldSeparator>
+				<PolicyFormFields
+					values={values}
+					onChange={(field, value) =>
+						setValues((current) =>
+							applyPolicyFieldChange(current, field, value),
+						)
+					}
+				/>
+			</FieldGroup>
+		</FormSheet>
 	);
 }
 
-function EditPolicyDialog({
+function EditPolicySheet({
 	policy,
+	targetLabel,
 	trigger,
 	onUpdated,
 }: {
 	policy: ClassPolicyDto;
-	trigger: React.ReactElement;
-	onUpdated: () => void;
+	targetLabel: string;
+	trigger: React.ReactNode;
+	onUpdated: () => Promise<void>;
 }) {
 	const [open, setOpen] = React.useState(false);
-	const [values, setValues] = React.useState({
-		standard_assurance_threshold: policy.standard_assurance_threshold,
-		high_assurance_threshold: policy.high_assurance_threshold,
-		present_cutoff_minutes: policy.present_cutoff_minutes,
-		late_cutoff_minutes: policy.late_cutoff_minutes,
-		max_check_ins: policy.max_check_ins,
-	});
+	const [values, setValues] = React.useState<PolicyFormValues>(() =>
+		toPolicyFormValues(policy),
+	);
 	const [submitting, setSubmitting] = React.useState(false);
 
 	React.useEffect(() => {
-		setValues({
-			standard_assurance_threshold: policy.standard_assurance_threshold,
-			high_assurance_threshold: policy.high_assurance_threshold,
-			present_cutoff_minutes: policy.present_cutoff_minutes,
-			late_cutoff_minutes: policy.late_cutoff_minutes,
-			max_check_ins: policy.max_check_ins,
-		});
+		setValues(toPolicyFormValues(policy));
 	}, [policy]);
 
-	const handleChange = (field: string, value: number) => {
-		setValues((prev) => ({ ...prev, [field]: value }));
-	};
+	async function handleSubmit() {
+		if (submitting) {
+			return;
+		}
 
-	const handleSubmit = async () => {
 		setSubmitting(true);
 		try {
 			await updatePolicy(policy.id, values);
 			setOpen(false);
-			onUpdated();
+			await onUpdated();
 		} finally {
 			setSubmitting(false);
 		}
-	};
+	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger} />
-			<DialogContent>
-				<DialogTitle>Edit policy</DialogTitle>
-				<DialogDescription>
-					Update assurance thresholds and session window configuration.
-				</DialogDescription>
-				<PolicyFormFields values={values} onChange={handleChange} />
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
+		<FormSheet
+			open={open}
+			onOpenChange={setOpen}
+			trigger={trigger}
+			title="Edit policy"
+			description={targetLabel}
+			contentClassName="sm:max-w-2xl"
+			footer={
+				<>
+					<FormSheetCancelButton />
 					<Button onClick={handleSubmit} disabled={submitting}>
-						Save
+						{submitting ? "Saving..." : "Save"}
 					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+				</>
+			}
+		>
+			<PolicyFormFields
+				values={values}
+				onChange={(field, value) =>
+					setValues((current) => applyPolicyFieldChange(current, field, value))
+				}
+			/>
+		</FormSheet>
 	);
 }
 
@@ -383,33 +811,42 @@ function DeletePolicyDialog({
 }: {
 	policy: ClassPolicyDto;
 	scopeLabel: string;
-	trigger: React.ReactElement;
-	onDeleted: () => void;
+	trigger: React.ReactNode;
+	onDeleted: () => Promise<void>;
 }) {
 	const [open, setOpen] = React.useState(false);
 	const [submitting, setSubmitting] = React.useState(false);
 
-	const handleDelete = async () => {
+	async function handleDelete() {
+		if (submitting) {
+			return;
+		}
+
 		setSubmitting(true);
 		try {
 			await deletePolicy(policy.id);
 			setOpen(false);
-			onDeleted();
+			await onDeleted();
 		} finally {
 			setSubmitting(false);
 		}
-	};
+	}
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger} />
+			<DialogTrigger
+				render={React.isValidElement(trigger) ? trigger : undefined}
+			>
+				{!React.isValidElement(trigger) ? trigger : null}
+			</DialogTrigger>
 			<DialogContent>
-				<DialogTitle>Delete policy</DialogTitle>
-				<DialogDescription>
-					This will permanently delete the {scopeLabel.toLowerCase()} policy.
-					Classes using this policy will fall back to the next applicable
-					default.
-				</DialogDescription>
+				<div className="space-y-1">
+					<DialogTitle>Delete policy</DialogTitle>
+					<DialogDescription>
+						This permanently removes the {scopeLabel.toLowerCase()} and pushes
+						affected classes back to the next available fallback.
+					</DialogDescription>
+				</div>
 				<DialogFooter>
 					<DialogClose render={<Button variant="outline" />}>
 						Cancel
@@ -419,7 +856,7 @@ function DeletePolicyDialog({
 						onClick={handleDelete}
 						disabled={submitting}
 					>
-						Delete
+						{submitting ? "Deleting..." : "Delete"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -427,375 +864,384 @@ function DeletePolicyDialog({
 	);
 }
 
+function PolicyCard({
+	policy,
+	classMap,
+	teacherMap,
+	currentUser,
+	onRefresh,
+}: {
+	policy: ClassPolicyDto;
+	classMap: Map<string, ClassDto>;
+	teacherMap: Map<string, TeacherDto>;
+	currentUser: UserDto;
+	onRefresh: () => Promise<void>;
+}) {
+	const scope = getScope(policy);
+	const scopeLabel = getScopeLabel(scope);
+	const targetLabel = getPolicyTargetLabel(
+		policy,
+		classMap,
+		teacherMap,
+		currentUser,
+	);
+	const ownerLabel = getPolicyOwnerLabel(policy, teacherMap, currentUser);
+	const isEditable = canModifyPolicy(policy, currentUser);
+	const heading =
+		scope === "system"
+			? "Global fallback"
+			: scope === "teacher"
+				? ownerLabel
+				: targetLabel;
+	const description =
+		scope === "system"
+			? "Applies whenever neither a teacher default nor a class override is present."
+			: scope === "teacher"
+				? `${ownerLabel} baseline for classes that do not have a direct override.`
+				: "Direct class override used in place of the default fallback chain.";
+
+	return (
+		<Card size="sm" className="border border-border/70 shadow-none">
+			<CardHeader className="gap-4 border-b">
+				<div className="flex flex-wrap items-start justify-between gap-3">
+					<div className="space-y-2">
+						<Badge variant="outline">{scopeLabel}</Badge>
+						<CardTitle>{heading}</CardTitle>
+						<CardDescription>{description}</CardDescription>
+					</div>
+					{isEditable ? (
+						<div className="flex flex-wrap items-center gap-2">
+							<EditPolicySheet
+								policy={policy}
+								targetLabel={targetLabel}
+								trigger={
+									<Button variant="outline" size="sm">
+										<IconPencil data-icon="inline-start" />
+										Edit
+									</Button>
+								}
+								onUpdated={onRefresh}
+							/>
+							<DeletePolicyDialog
+								policy={policy}
+								scopeLabel={scopeLabel}
+								trigger={
+									<Button variant="destructive" size="sm">
+										<IconTrash data-icon="inline-start" />
+										Delete
+									</Button>
+								}
+								onDeleted={onRefresh}
+							/>
+						</div>
+					) : null}
+				</div>
+			</CardHeader>
+			<CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-5">
+				<PolicyMetric
+					label="Standard"
+					value={`≥${policy.standard_assurance_threshold}`}
+					hint="Automatic acceptance begins here."
+				/>
+				<PolicyMetric
+					label="High"
+					value={`≥${policy.high_assurance_threshold}`}
+					hint="Automatic confirmation begins here."
+				/>
+				<PolicyMetric
+					label="Present"
+					value={`${policy.present_cutoff_minutes} min`}
+					hint="Present attendance limit from session open."
+				/>
+				<PolicyMetric
+					label="Late"
+					value={`${policy.late_cutoff_minutes} min`}
+					hint="Late attendance limit from session open."
+				/>
+				<PolicyMetric
+					label="Retries"
+					value={`${policy.max_check_ins}`}
+					hint="Check-in attempts allowed inside one window."
+				/>
+			</CardContent>
+			<div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-4 text-sm text-muted-foreground">
+				<span>{targetLabel}</span>
+				<span>{ownerLabel}</span>
+			</div>
+		</Card>
+	);
+}
+
+function PolicyEmptyState({
+	title,
+	description,
+}: {
+	title: string;
+	description: string;
+}) {
+	return (
+		<Card
+			size="sm"
+			className="border border-dashed border-border/80 shadow-none"
+		>
+			<CardHeader>
+				<CardTitle>{title}</CardTitle>
+				<CardDescription>{description}</CardDescription>
+			</CardHeader>
+		</Card>
+	);
+}
+
 export function DataTablePolicies({
-	policies: initialPolicies,
+	policies,
 	classes,
 	teachers,
+	currentUser,
+	onRefresh,
 }: {
 	policies: ClassPolicyDto[];
 	classes: ClassDto[];
 	teachers: TeacherDto[];
+	currentUser: UserDto;
+	onRefresh: () => Promise<void>;
 }) {
-	const router = useRouter();
-	const [data, setData] = React.useState(initialPolicies);
-	const [rowSelection, setRowSelection] = React.useState({});
-	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({
-			id: false,
-		});
-	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-		() => [{ id: "scope", value: [...SCOPE_FILTER_VALUES] }],
+	const classMap = React.useMemo(
+		() => new Map(classes.map((classValue) => [classValue.id, classValue])),
+		[classes],
 	);
-	const [sorting, setSorting] = React.useState<SortingState>([]);
-	const [pagination, setPagination] = React.useState({
-		pageIndex: 0,
-		pageSize: 10,
-	});
-	const [globalFilter, setGlobalFilter] = React.useState("");
-
-	React.useEffect(() => {
-		setData(initialPolicies);
-	}, [initialPolicies]);
-
-	const classMap = React.useMemo(() => {
-		const m = new Map<string, ClassDto>();
-		for (const c of classes) m.set(c.id, c);
-		return m;
-	}, [classes]);
-
-	const teacherMap = React.useMemo(() => {
-		const m = new Map<string, TeacherDto>();
-		for (const t of teachers) m.set(t.id, t);
-		return m;
-	}, [teachers]);
-
-	const refresh = React.useCallback(() => router.refresh(), [router]);
-
-	const columns = React.useMemo<ColumnDef<ClassPolicyDto>[]>(
-		() => [
-			{
-				id: "select",
-				header: ({ table }) => (
-					<div className="flex items-center justify-center">
-						<Checkbox
-							checked={table.getIsAllPageRowsSelected()}
-							indeterminate={
-								table.getIsSomePageRowsSelected() &&
-								!table.getIsAllPageRowsSelected()
-							}
-							onCheckedChange={(value) =>
-								table.toggleAllPageRowsSelected(!!value)
-							}
-							aria-label="Select all"
-						/>
-					</div>
-				),
-				cell: ({ row }) => (
-					<div className="flex w-8 items-center justify-center">
-						<Checkbox
-							checked={row.getIsSelected()}
-							onCheckedChange={(value) => row.toggleSelected(!!value)}
-							aria-label="Select row"
-						/>
-					</div>
-				),
-				enableSorting: false,
-				enableHiding: false,
-			},
-			createDatabaseIdColumn<ClassPolicyDto>(),
-			{
-				id: "scope",
-				header: ({ column }) => (
-					<SortableHeader column={column} label="Scope" />
-				),
-				filterFn: includesSomeFilter,
-				accessorFn: (row) => getScope(row),
-				cell: ({ row }) => {
-					const scope = getScope(row.original);
-					return (
-						<Badge
-							variant="outline"
-							className="text-muted-foreground px-1.5 capitalize"
-						>
-							{getScopeLabel(scope)}
-						</Badge>
-					);
-				},
-			},
-			{
-				id: "target",
-				header: "Target",
-				cell: ({ row }) => {
-					const scope = getScope(row.original);
-					if (scope === "system")
-						return (
-							<span className="text-muted-foreground text-sm">All classes</span>
-						);
-					if (scope === "class" && row.original.class_id) {
-						const cls = classMap.get(row.original.class_id);
-						return cls ? (
-							<span className="text-sm font-medium">
-								{cls.course_code} — {cls.course_name}
-							</span>
-						) : (
-							<span className="text-muted-foreground text-sm font-mono">
-								{row.original.class_id}
-							</span>
-						);
-					}
-					if (scope === "teacher" && row.original.created_by) {
-						const teacher = teacherMap.get(row.original.created_by);
-						return teacher ? (
-							<span className="text-sm font-medium">{teacher.full_name}</span>
-						) : (
-							<span className="text-muted-foreground text-sm font-mono">
-								{row.original.created_by}
-							</span>
-						);
-					}
-					return <span className="text-muted-foreground text-sm">—</span>;
-				},
-			},
-			{
-				accessorKey: "standard_assurance_threshold",
-				header: ({ column }) => (
-					<SortableHeader column={column} label="Standard" />
-				),
-				cell: ({ row }) => (
-					<span className="font-mono text-sm">
-						≥{row.original.standard_assurance_threshold}
-					</span>
-				),
-			},
-			{
-				accessorKey: "high_assurance_threshold",
-				header: ({ column }) => <SortableHeader column={column} label="High" />,
-				cell: ({ row }) => (
-					<span className="font-mono text-sm">
-						≥{row.original.high_assurance_threshold}
-					</span>
-				),
-			},
-			{
-				accessorKey: "present_cutoff_minutes",
-				header: ({ column }) => (
-					<SortableHeader column={column} label="Present cutoff" />
-				),
-				cell: ({ row }) => (
-					<span className="text-muted-foreground text-sm">
-						{row.original.present_cutoff_minutes} min
-					</span>
-				),
-			},
-			{
-				accessorKey: "late_cutoff_minutes",
-				header: ({ column }) => (
-					<SortableHeader column={column} label="Late cutoff" />
-				),
-				cell: ({ row }) => (
-					<span className="text-muted-foreground text-sm">
-						{row.original.late_cutoff_minutes} min
-					</span>
-				),
-			},
-			{
-				accessorKey: "max_check_ins",
-				header: ({ column }) => (
-					<SortableHeader column={column} label="Max check-ins" />
-				),
-				cell: ({ row }) => (
-					<span className="text-muted-foreground text-sm">
-						{row.original.max_check_ins}
-					</span>
-				),
-			},
-			{
-				id: "actions",
-				header: "",
-				cell: ({ row }) => {
-					const scope = getScope(row.original);
-					const scopeLabel = getScopeLabel(scope);
-					return (
-						<DataTableRowActions>
-							<DropdownMenuGroup>
-								<EditPolicyDialog
-									policy={row.original}
-									trigger={
-										<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-											<IconPencil className="mr-2 size-4" />
-											Edit
-										</DropdownMenuItem>
-									}
-									onUpdated={refresh}
-								/>
-								<DeletePolicyDialog
-									policy={row.original}
-									scopeLabel={scopeLabel}
-									trigger={
-										<DropdownMenuItem
-											variant="destructive"
-											onSelect={(e) => e.preventDefault()}
-										>
-											<IconTrash className="mr-2 size-4" />
-											Delete
-										</DropdownMenuItem>
-									}
-									onDeleted={refresh}
-								/>
-							</DropdownMenuGroup>
-						</DataTableRowActions>
-					);
-				},
-			},
-		],
-		[classMap, teacherMap, refresh],
+	const teacherMap = React.useMemo(
+		() => new Map(teachers.map((teacher) => [teacher.id, teacher])),
+		[teachers],
 	);
+	const systemPolicies = React.useMemo(
+		() => policies.filter((policy) => getScope(policy) === "system"),
+		[policies],
+	);
+	const teacherPolicies = React.useMemo(
+		() =>
+			sortPolicies(
+				policies.filter((policy) => getScope(policy) === "teacher"),
+				classMap,
+				teacherMap,
+				currentUser,
+			),
+		[classMap, currentUser, policies, teacherMap],
+	);
+	const classPolicies = React.useMemo(
+		() =>
+			sortPolicies(
+				policies.filter((policy) => getScope(policy) === "class"),
+				classMap,
+				teacherMap,
+				currentUser,
+			),
+		[classMap, currentUser, policies, teacherMap],
+	);
+	const teacherDefaultForCurrentUser = React.useMemo(
+		() =>
+			teacherPolicies.find((policy) => policy.created_by === currentUser.id) ??
+			null,
+		[currentUser.id, teacherPolicies],
+	);
+	const playgroundValues = React.useMemo(
+		() =>
+			toPolicyFormValues(
+				teacherDefaultForCurrentUser ??
+					systemPolicies[0] ??
+					classPolicies[0] ??
+					null,
+			),
+		[classPolicies, systemPolicies, teacherDefaultForCurrentUser],
+	);
+	const canCreatePolicy = React.useMemo(() => {
+		if (currentUser.role === "teacher") {
+			const teacherDefaultExists = teacherPolicies.some(
+				(policy) => policy.created_by === currentUser.id,
+			);
+			const classOverrideCount = classPolicies.filter(
+				(policy) => policy.created_by === currentUser.id,
+			).length;
 
-	const table = useReactTable({
-		data,
-		columns,
-		state: {
-			sorting,
-			columnVisibility,
-			rowSelection,
-			columnFilters,
-			pagination,
-			globalFilter,
-		},
-		globalFilterFn: (row) => {
-			const q = globalFilter.toLowerCase();
-			if (row.original.id.toLowerCase().includes(q)) return true;
-			const scope = getScope(row.original);
-			if (getScopeLabel(scope).toLowerCase().includes(q)) return true;
-			if (scope === "class" && row.original.class_id) {
-				const cls = classMap.get(row.original.class_id);
-				if (
-					cls &&
-					(cls.course_code.toLowerCase().includes(q) ||
-						cls.course_name.toLowerCase().includes(q))
-				)
-					return true;
-			}
-			if (scope === "teacher" && row.original.created_by) {
-				const teacher = teacherMap.get(row.original.created_by);
-				if (teacher?.full_name.toLowerCase().includes(q)) return true;
-			}
-			return false;
-		},
-		getRowId: (row) => row.id,
-		enableRowSelection: true,
-		onRowSelectionChange: setRowSelection,
-		onSortingChange: setSorting,
-		onColumnVisibilityChange: setColumnVisibility,
-		onColumnFiltersChange: setColumnFilters,
-		onPaginationChange: setPagination,
-		getCoreRowModel: getCoreRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFacetedRowModel: getFacetedRowModel(),
-		getFacetedUniqueValues: getFacetedUniqueValues(),
-	});
+			return !teacherDefaultExists || classOverrideCount < classes.length;
+		}
 
-	const toggleFilterValue = (
-		columnId: string,
-		value: string,
-		checked: boolean,
-	) => {
-		setColumnFilters((prev) => {
-			const existing = prev.find((f) => f.id === columnId);
-			const values = Array.isArray(existing?.value)
-				? (existing.value as string[])
-				: [];
-			if (!checked && values.includes(value) && values.length === 1)
-				return prev;
-			const next = checked
-				? Array.from(new Set([...values, value]))
-				: values.filter((v) => v !== value);
-			return [
-				...prev.filter((f) => f.id !== columnId),
-				{ id: columnId, value: next },
-			];
-		});
-	};
-
-	const isChecked = (columnId: string, value: string) => {
-		const f = columnFilters.find((f) => f.id === columnId);
-		return Array.isArray(f?.value)
-			? (f.value as string[]).includes(value)
-			: false;
-	};
-
-	const activeFilterCount = React.useMemo(() => {
-		const scopeValues = columnFilters.find((f) => f.id === "scope")?.value as
-			| string[]
-			| undefined;
-
-		return (scopeValues?.length ?? SCOPE_FILTER_VALUES.length) <
-			SCOPE_FILTER_VALUES.length
-			? 1
-			: 0;
-	}, [columnFilters]);
+		return systemPolicies.length === 0;
+	}, [
+		classPolicies,
+		classes.length,
+		currentUser.id,
+		currentUser.role,
+		systemPolicies.length,
+		teacherPolicies,
+	]);
+	const createLabel =
+		currentUser.role === "teacher"
+			? teacherDefaultForCurrentUser
+				? "Create override"
+				: "Create policy"
+			: "Create default";
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
 			<SetPageHeader
 				title="Policies"
 				description="Assurance thresholds and session window configuration."
 				actions={
-					<CreatePolicyDialog
-						classes={classes}
-						trigger={
-							<Button size="sm">
-								<IconPlus data-icon="inline-start" />
-								Create
-							</Button>
-						}
-						onCreated={refresh}
-					/>
+					canCreatePolicy ? (
+						<CreatePolicySheet
+							currentUser={currentUser}
+							policies={policies}
+							classes={classes}
+							onCreated={onRefresh}
+							trigger={
+								<Button size="sm">
+									<IconPlus data-icon="inline-start" />
+									{createLabel}
+								</Button>
+							}
+						/>
+					) : null
 				}
 			/>
-			<DataTableScaffold
-				toolbarStart={
-					<DataTableToolbar
-						table={table}
-						onSearch={(q) => setGlobalFilter(q)}
-						columnVisibilityWidth="w-56"
-						filters={
-							<DataTableFilterSheet
-								title="Policy filters"
-								description="Refine policies by scope."
-								activeCount={activeFilterCount}
-							>
-								<DataTableFilterSection title="Scope">
-									{SCOPE_FILTER_VALUES.map((scope) => (
-										<DataTableFilterOption
-											key={scope}
-											label={getScopeLabel(scope)}
-											checked={isChecked("scope", scope)}
-											onCheckedChange={(checked) =>
-												toggleFilterValue("scope", scope, checked)
-											}
-										/>
-									))}
-								</DataTableFilterSection>
-								<DataTableFilterActions>
-									<DataTableFilterResetAction
-										onClick={() =>
-											setColumnFilters([
-												{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
-											])
-										}
-									/>
-								</DataTableFilterActions>
-							</DataTableFilterSheet>
-						}
-					/>
-				}
-			>
-				<DataTableBody table={table} columnCount={columns.length} />
-				<DataTablePagination table={table} />
-			</DataTableScaffold>
+			<div className="grid gap-4 xl:grid-cols-3">
+				<PolicySummaryCard
+					title="System default"
+					value={
+						systemPolicies.length > 0
+							? String(systemPolicies.length)
+							: "Missing"
+					}
+					description="The global fallback used when no teacher or class-specific rule exists."
+					caption={
+						systemPolicies.length > 0
+							? `${systemPolicies[0].standard_assurance_threshold}/${systemPolicies[0].high_assurance_threshold} threshold baseline is currently active.`
+							: "Create one baseline so every class inherits a predictable fallback."
+					}
+				/>
+				<PolicySummaryCard
+					title={
+						currentUser.role === "teacher" ? "Your default" : "Teacher defaults"
+					}
+					value={
+						currentUser.role === "teacher"
+							? teacherDefaultForCurrentUser
+								? "Ready"
+								: "Missing"
+							: String(teacherPolicies.length)
+					}
+					description="Teacher-owned baselines sit between the system default and direct class overrides."
+					caption={
+						currentUser.role === "teacher"
+							? teacherDefaultForCurrentUser
+								? `Classes without an override fall back to ${teacherDefaultForCurrentUser.standard_assurance_threshold}/${teacherDefaultForCurrentUser.high_assurance_threshold}.`
+								: "Create your teacher default once, then override only the classes that really need it."
+							: `${teacherPolicies.length} teacher-managed fallback policies are visible in this workspace.`
+					}
+				/>
+				<PolicySummaryCard
+					title="Class overrides"
+					value={String(classPolicies.length)}
+					description="Direct overrides replace the default chain for one specific class."
+					caption={
+						currentUser.role === "teacher"
+							? `${classPolicies.filter((policy) => policy.created_by === currentUser.id).length} of your classes currently diverge from the default fallback.`
+							: `${classPolicies.length} classes across the workspace have an explicit override.`
+					}
+				/>
+			</div>
+			<PolicyPlayground values={playgroundValues} />
+			<div className="space-y-4">
+				<div>
+					<h2 className="font-heading text-lg font-medium text-foreground">
+						System default
+					</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Keep one clear baseline so classes always fall back to a known
+						policy.
+					</p>
+				</div>
+				<div className="grid gap-4">
+					{systemPolicies.length > 0 ? (
+						systemPolicies.map((policy) => (
+							<PolicyCard
+								key={policy.id}
+								policy={policy}
+								classMap={classMap}
+								teacherMap={teacherMap}
+								currentUser={currentUser}
+								onRefresh={onRefresh}
+							/>
+						))
+					) : (
+						<PolicyEmptyState
+							title="No system default yet"
+							description="Create the platform-wide fallback before layering teacher-specific defaults or class overrides."
+						/>
+					)}
+				</div>
+			</div>
+			<div className="space-y-4">
+				<div>
+					<h2 className="font-heading text-lg font-medium text-foreground">
+						{currentUser.role === "teacher"
+							? "Teacher default"
+							: "Teacher defaults"}
+					</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Teacher-owned baselines keep routine class policy consistent without
+						forcing every class to carry an override.
+					</p>
+				</div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					{teacherPolicies.length > 0 ? (
+						teacherPolicies.map((policy) => (
+							<PolicyCard
+								key={policy.id}
+								policy={policy}
+								classMap={classMap}
+								teacherMap={teacherMap}
+								currentUser={currentUser}
+								onRefresh={onRefresh}
+							/>
+						))
+					) : (
+						<PolicyEmptyState
+							title="No teacher defaults yet"
+							description="Teacher defaults are optional, but they keep repeated class policy changes from turning into manual override sprawl."
+						/>
+					)}
+				</div>
+			</div>
+			<div className="space-y-4">
+				<div>
+					<h2 className="font-heading text-lg font-medium text-foreground">
+						Class overrides
+					</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Use direct overrides only when one class truly needs a different
+						timing or assurance policy than its default fallback.
+					</p>
+				</div>
+				<div className="grid gap-4 xl:grid-cols-2">
+					{classPolicies.length > 0 ? (
+						classPolicies.map((policy) => (
+							<PolicyCard
+								key={policy.id}
+								policy={policy}
+								classMap={classMap}
+								teacherMap={teacherMap}
+								currentUser={currentUser}
+								onRefresh={onRefresh}
+							/>
+						))
+					) : (
+						<PolicyEmptyState
+							title="No class overrides yet"
+							description="That is usually a healthy sign. Keep overrides rare and let the fallback chain do most of the work."
+						/>
+					)}
+				</div>
+			</div>
 		</div>
 	);
 }

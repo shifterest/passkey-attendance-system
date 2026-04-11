@@ -25,12 +25,13 @@ import {
 	DataTableBody,
 	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTablePagination,
-	DataTableScaffold,
 	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
+	DataTablePagination,
+	DataTableScaffold,
 	DataTableToolbar,
+	DEFAULT_TABLE_PAGE_SIZE,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
@@ -169,7 +170,9 @@ const columns: ColumnDef<AuditEventDto>[] = [
 	{
 		accessorKey: "event_type",
 		filterFn: includesSomeFilter,
-		header: ({ column }) => <SortableHeader column={column} label="Event" />,
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Event type" />
+		),
 		cell: ({ row }) => {
 			const color =
 				EVENT_TYPE_COLORS[row.original.event_type] ?? "text-muted-foreground";
@@ -226,7 +229,7 @@ export function DataTableLogs({
 	]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: 25,
+		pageSize: DEFAULT_TABLE_PAGE_SIZE,
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -348,7 +351,7 @@ export function DataTableLogs({
 			}
 		>
 			<DataTableBody table={table} columnCount={columns.length} />
-			<DataTablePagination table={table} pageSizeOptions={[25, 50, 100]} />
+			<DataTablePagination table={table} />
 		</DataTableScaffold>
 	);
 }

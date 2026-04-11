@@ -185,26 +185,28 @@ async def import_enrollments(
     return result
 
 
-@router.post("/import-orgs")
-async def import_orgs(
-    file: Annotated[UploadFile, File()],
-    dry_run: Annotated[bool, Form()] = False,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_role("admin", "operator")),
-):
-    content = await file.read()
-    result = process_org_import(content=content, dry_run=dry_run, db=db)
-    if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
-    if not dry_run:
-        log_audit_event(
-            AuditEvents.IMPORT_COMPLETED,
-            _.id,
-            None,
-            {"type": "orgs", "created": result.get("created", 0)},
-            db,
-        )
-        db.commit()
-    return result
+if settings.org_events_enabled:
+
+    @router.post("/import-orgs")
+    async def import_orgs(
+        file: Annotated[UploadFile, File()],
+        dry_run: Annotated[bool, Form()] = False,
+        db: Session = Depends(get_db),
+        _: User = Depends(require_role("admin", "operator")),
+    ):
+        content = await file.read()
+        result = process_org_import(content=content, dry_run=dry_run, db=db)
+        if "error" in result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
+            )
+        if not dry_run:
+            log_audit_event(
+                AuditEvents.IMPORT_COMPLETED,
+                _.id,
+                None,
+                {"type": "orgs", "created": result.get("created", 0)},
+                db,
+            )
+            db.commit()
+        return result
