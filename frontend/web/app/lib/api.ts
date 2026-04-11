@@ -88,6 +88,7 @@ export type TeacherDto = {
 	class_count: number;
 	student_count: number;
 	has_open_session: boolean;
+	active_session_class: string | null;
 	default_policy: {
 		id: string;
 		class_id: string | null;

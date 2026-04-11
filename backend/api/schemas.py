@@ -79,6 +79,7 @@ class UserTeacherResponse(UserBase):
     class_count: int
     student_count: int
     has_open_session: bool
+    active_session_class: str | None = None
     registered: bool
     default_policy: "ClassPolicyResponse | None" = None
 

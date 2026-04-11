@@ -21,6 +21,7 @@ import {
 import {
 	Select,
 	SelectContent,
+	SelectGroup,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
@@ -121,18 +122,20 @@ export function ChartAreaInteractive({ data }: { data: ChartDatum[] }) {
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent className="rounded-xl">
-							<SelectItem value="90d" className="rounded-lg">
-								Last 3 months
-							</SelectItem>
-							<SelectItem value="30d" className="rounded-lg">
-								Last 30 days
-							</SelectItem>
-							<SelectItem value="7d" className="rounded-lg">
-								Last 7 days
-							</SelectItem>
-							<SelectItem value="1d" className="rounded-lg">
-								Last 24 hours
-							</SelectItem>
+							<SelectGroup>
+								<SelectItem value="90d" className="rounded-lg">
+									Last 3 months
+								</SelectItem>
+								<SelectItem value="30d" className="rounded-lg">
+									Last 30 days
+								</SelectItem>
+								<SelectItem value="7d" className="rounded-lg">
+									Last 7 days
+								</SelectItem>
+								<SelectItem value="1d" className="rounded-lg">
+									Last 24 hours
+								</SelectItem>
+							</SelectGroup>
 						</SelectContent>
 					</Select>
 				</CardAction>

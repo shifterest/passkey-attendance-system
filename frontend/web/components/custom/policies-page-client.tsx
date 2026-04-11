@@ -75,7 +75,11 @@ export function PoliciesPageClient() {
 			setData({ policies, classes, teachers });
 		} catch (loadError) {
 			console.error("Failed to load policies page", loadError);
-			setError("Policy data could not be loaded.");
+			setError(
+				loadError instanceof Error
+					? loadError.message
+					: "Policy data could not be loaded.",
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -91,7 +95,7 @@ export function PoliciesPageClient() {
 
 	if (userLoading || loading) {
 		return (
-			<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+			<div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
 				<SetPageHeader
 					title="Policies"
 					description="Assurance thresholds and session window configuration."
@@ -110,7 +114,7 @@ export function PoliciesPageClient() {
 
 	if (!user || !["teacher", "admin", "operator"].includes(user.role)) {
 		return (
-			<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+			<div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
 				<SetPageHeader
 					title="Policies"
 					description="Assurance thresholds and session window configuration."
@@ -129,7 +133,7 @@ export function PoliciesPageClient() {
 
 	if (error) {
 		return (
-			<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+			<div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
 				<SetPageHeader
 					title="Policies"
 					description="Assurance thresholds and session window configuration."

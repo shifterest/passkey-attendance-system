@@ -23,20 +23,23 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
+const ALL_ROLE_FILTER_VALUES = [
+	"student",
+	"teacher",
+	"admin",
+	"operator",
+] as const;
 const REGISTERED_FILTER_VALUES = [true, false] as const;
 
 const includesSomeFilter: FilterFn<UserDto> = (row, columnId, filterValue) => {
@@ -119,12 +122,20 @@ const columns: ColumnDef<UserDto>[] = [
 	},
 ];
 
-const getDefaultColumnFilters = (): ColumnFiltersState => [
-	{ id: "role", value: [...ROLE_FILTER_VALUES] },
+const getDefaultColumnFilters = (
+	roleValues: readonly string[],
+): ColumnFiltersState => [
+	{ id: "role", value: [...roleValues] },
 	{ id: "registered", value: [...REGISTERED_FILTER_VALUES] },
 ];
 
-export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
+export function DataTableUsers({
+	data: initialData,
+	roleFilterValues = ALL_ROLE_FILTER_VALUES,
+}: {
+	data: UserDto[];
+	roleFilterValues?: readonly string[];
+}) {
 	const [data, setData] = React.useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -133,12 +144,12 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			email: false,
 		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-		getDefaultColumnFilters,
+		() => getDefaultColumnFilters(roleFilterValues),
 	);
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -219,8 +230,7 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			?.value as boolean[] | undefined;
 
 		return (
-			((roleValues?.length ?? ROLE_FILTER_VALUES.length) <
-			ROLE_FILTER_VALUES.length
+			((roleValues?.length ?? roleFilterValues.length) < roleFilterValues.length
 				? 1
 				: 0) +
 			((registrationValues?.length ?? REGISTERED_FILTER_VALUES.length) <
@@ -228,7 +238,7 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 				? 1
 				: 0)
 		);
-	}, [columnFilters]);
+	}, [columnFilters, roleFilterValues.length]);
 
 	return (
 		<DataTableScaffold
@@ -241,9 +251,12 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 							title="User filters"
 							description="Refine the user table by role and registered state."
 							activeCount={activeFilterCount}
+							onReset={() =>
+								setColumnFilters(getDefaultColumnFilters(roleFilterValues))
+							}
 						>
 							<DataTableFilterSection title="Role">
-								{ROLE_FILTER_VALUES.map((role) => (
+								{roleFilterValues.map((role) => (
 									<DataTableFilterOption
 										key={role}
 										label={`${role.charAt(0).toUpperCase() + role.slice(1)}s`}
@@ -270,11 +283,6 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 									}
 								/>
 							</DataTableFilterSection>
-							<DataTableFilterActions>
-								<DataTableFilterResetAction
-									onClick={() => setColumnFilters(getDefaultColumnFilters())}
-								/>
-							</DataTableFilterActions>
 						</DataTableFilterSheet>
 					}
 				/>

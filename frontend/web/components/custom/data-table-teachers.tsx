@@ -1,6 +1,6 @@
 "use client";
 
-import { IconCircle, IconCircleCheckFilled } from "@tabler/icons-react";
+import { IconCircleCheckFilled } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -23,15 +23,13 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
@@ -124,13 +122,10 @@ const columns: ColumnDef<TeacherDto>[] = [
 			row.original.has_open_session ? (
 				<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
 					<IconCircleCheckFilled />
-					Active
+					{row.original.active_session_class ?? "Active"}
 				</Badge>
 			) : (
-				<Badge variant="outline" className="px-1.5 text-muted-foreground">
-					<IconCircle />
-					Inactive
-				</Badge>
+				"—"
 			),
 	},
 	{
@@ -185,7 +180,7 @@ export function DataTableTeachers({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -319,11 +314,6 @@ export function DataTableTeachers({
 									}
 								/>
 							</DataTableFilterSection>
-							<DataTableFilterActions>
-								<DataTableFilterResetAction
-									onClick={() => setColumnFilters(getDefaultColumnFilters())}
-								/>
-							</DataTableFilterActions>
 						</DataTableFilterSheet>
 					}
 				/>

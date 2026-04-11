@@ -100,13 +100,19 @@ def get_teacher_details(user_id: str, db: Session):
     }
 
     now = datetime.now(timezone.utc)
-    has_open_session = (
+    active_session = (
         db.query(CheckInSession)
         .filter(CheckInSession.class_id.in_(class_ids))
         .filter(CheckInSession.start_time <= now)
         .filter(CheckInSession.end_time >= now)
         .first()
-    ) is not None
+    )
+    class_by_id = {c.id: c for c in classes}
+    active_session_class = None
+    if active_session:
+        active_cls = class_by_id.get(active_session.class_id)
+        if active_cls:
+            active_session_class = active_cls.course_code
 
     default_policy = (
         db.query(ClassPolicy)
@@ -117,7 +123,8 @@ def get_teacher_details(user_id: str, db: Session):
     return {
         "class_count": len(classes),
         "student_count": len(student_ids),
-        "has_open_session": has_open_session,
+        "has_open_session": active_session is not None,
+        "active_session_class": active_session_class,
         "registered": db.query(Credential).filter(Credential.user_id == user_id).first()
         is not None,
         "default_policy": default_policy,

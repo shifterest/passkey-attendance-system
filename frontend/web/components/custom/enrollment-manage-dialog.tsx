@@ -5,9 +5,7 @@ import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 
 import {
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 } from "@/components/custom/data-table-shared";
@@ -38,6 +36,7 @@ import {
 	FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
 	Table,
 	TableBody,
@@ -213,18 +212,32 @@ export function EnrollmentManageDialog({
 
 	const toggleYearFilter = (year: number, checked: boolean) => {
 		setYearFilter((previous) => {
-			if (checked) {
-				return [...new Set([...previous, year])];
+			if (previous.length === 0) {
+				if (!checked) return yearOptions.filter((y) => y !== year);
+				return previous;
 			}
+			if (checked) {
+				const next = [...new Set([...previous, year])];
+				if (yearOptions.every((y) => next.includes(y))) return [];
+				return next;
+			}
+			if (previous.length === 1 && previous.includes(year)) return previous;
 			return previous.filter((value) => value !== year);
 		});
 	};
 
 	const toggleProgramFilter = (program: string, checked: boolean) => {
 		setProgramFilter((previous) => {
-			if (checked) {
-				return [...new Set([...previous, program])];
+			if (previous.length === 0) {
+				if (!checked) return programOptions.filter((p) => p !== program);
+				return previous;
 			}
+			if (checked) {
+				const next = [...new Set([...previous, program])];
+				if (programOptions.every((p) => next.includes(p))) return [];
+				return next;
+			}
+			if (previous.length === 1 && previous.includes(program)) return previous;
 			return previous.filter((value) => value !== program);
 		});
 	};
@@ -248,7 +261,8 @@ export function EnrollmentManageDialog({
 		classIds.length === 0
 			? "No classes selected"
 			: `${classIds.length} class${classIds.length > 1 ? "es" : ""} selected`;
-	const activeFilterCount = yearFilter.length + programFilter.length;
+	const activeFilterCount =
+		(yearFilter.length > 0 ? 1 : 0) + (programFilter.length > 0 ? 1 : 0);
 
 	return (
 		<FormSheet
@@ -263,15 +277,15 @@ export function EnrollmentManageDialog({
 						{selectionSummary}
 					</div>
 					<FormSheetCancelButton />
-					<Button
+					<LoadingButton
 						type="button"
 						onClick={handleSubmit}
-						disabled={
-							classIds.length === 0 || selectedIds.size === 0 || submitting
-						}
+						disabled={classIds.length === 0 || selectedIds.size === 0}
+						loading={submitting}
+						loadingText="Creating…"
 					>
-						{submitting ? "Creating..." : "Create enrollments"}
-					</Button>
+						Create enrollments
+					</LoadingButton>
 				</>
 			}
 		>
@@ -325,13 +339,19 @@ export function EnrollmentManageDialog({
 							description="Refine the visible student list by enrollment year and program before batching enrollments."
 							contentClassName="sm:max-w-lg"
 							activeCount={activeFilterCount}
+							onReset={() => {
+								setYearFilter([]);
+								setProgramFilter([]);
+							}}
 						>
 							<DataTableFilterSection title="Enrollment year">
 								{yearOptions.map((year) => (
 									<DataTableFilterOption
 										key={year}
 										label={String(year)}
-										checked={yearFilter.includes(year)}
+										checked={
+											yearFilter.length === 0 || yearFilter.includes(year)
+										}
 										onCheckedChange={(checked) =>
 											toggleYearFilter(year, checked)
 										}
@@ -344,7 +364,10 @@ export function EnrollmentManageDialog({
 										<DataTableFilterOption
 											key={program}
 											label={program}
-											checked={programFilter.includes(program)}
+											checked={
+												programFilter.length === 0 ||
+												programFilter.includes(program)
+											}
 											onCheckedChange={(checked) =>
 												toggleProgramFilter(program, checked)
 											}
@@ -352,14 +375,6 @@ export function EnrollmentManageDialog({
 									))}
 								</DataTableFilterSection>
 							) : null}
-							<DataTableFilterActions>
-								<DataTableFilterResetAction
-									onClick={() => {
-										setYearFilter([]);
-										setProgramFilter([]);
-									}}
-								/>
-							</DataTableFilterActions>
 						</DataTableFilterSheet>
 					</div>
 					<div className="max-h-[360px] overflow-y-auto rounded-md border">

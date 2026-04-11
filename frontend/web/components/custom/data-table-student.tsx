@@ -1,6 +1,11 @@
 "use client";
 
-import { IconCircleCheckFilled, IconCircleXFilled } from "@tabler/icons-react";
+import {
+	IconCircleCheckFilled,
+	IconCircleXFilled,
+	IconQrcode,
+	IconUserMinus,
+} from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -32,24 +37,19 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
 
 export const schema = z.object({
@@ -251,30 +251,22 @@ function columns(
 			cell: ({ row }) => (
 				<DataTableRowActions contentClassName="w-64">
 					{row.original.registered ? (
-						<>
-							<DropdownMenuItem
-								onClick={async () => {
-									setRegistrationQrDialogState(row);
-								}}
-							>
-								Regenerate registration QR
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								onClick={async () => {
-									await onUnregister(row.original.id);
-								}}
-								variant="destructive"
-							>
-								Unregister
-							</DropdownMenuItem>
-						</>
+						<DropdownMenuItem
+							onClick={async () => {
+								await onUnregister(row.original.id);
+							}}
+							variant="destructive"
+						>
+							<IconUserMinus />
+							Unregister
+						</DropdownMenuItem>
 					) : (
 						<DropdownMenuItem
 							onClick={async () => {
 								setRegistrationQrDialogState(row);
 							}}
 						>
+							<IconQrcode />
 							Generate registration QR
 						</DropdownMenuItem>
 					)}
@@ -313,6 +305,7 @@ export function DataTableStudent({
 			email: false,
 			enrollment_year: false,
 			low_assurance: false,
+			records: false,
 		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		getDefaultColumnFilters,
@@ -320,7 +313,7 @@ export function DataTableStudent({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 
 	const [globalFilter, setGlobalFilter] = useState("");
@@ -371,7 +364,15 @@ export function DataTableStudent({
 
 	const toggleYearFilter = (year: number, checked: boolean) => {
 		setYearFilter((prev) => {
-			if (checked) return [...new Set([...prev, year])];
+			if (prev.length === 0) {
+				if (!checked) return yearOptions.filter((y) => y !== year);
+				return prev;
+			}
+			if (checked) {
+				const next = [...new Set([...prev, year])];
+				if (yearOptions.every((y) => next.includes(y))) return [];
+				return next;
+			}
 			if (prev.length === 1 && prev.includes(year)) return prev;
 			return prev.filter((y) => y !== year);
 		});
@@ -379,7 +380,15 @@ export function DataTableStudent({
 
 	const toggleProgramFilter = (program: string, checked: boolean) => {
 		setProgramFilter((prev) => {
-			if (checked) return [...new Set([...prev, program])];
+			if (prev.length === 0) {
+				if (!checked) return programOptions.filter((p) => p !== program);
+				return prev;
+			}
+			if (checked) {
+				const next = [...new Set([...prev, program])];
+				if (programOptions.every((p) => next.includes(p))) return [];
+				return next;
+			}
 			if (prev.length === 1 && prev.includes(program)) return prev;
 			return prev.filter((p) => p !== program);
 		});
@@ -572,8 +581,8 @@ export function DataTableStudent({
 			IN_CLASS_FILTER_VALUES.length
 				? 1
 				: 0) +
-			yearFilter.length +
-			programFilter.length
+			(yearFilter.length > 0 ? 1 : 0) +
+			(programFilter.length > 0 ? 1 : 0)
 		);
 	}, [columnFilters, programFilter.length, yearFilter.length]);
 
@@ -607,6 +616,11 @@ export function DataTableStudent({
 								description="Refine the student table by registered state, attendance state, program, and enrollment year."
 								contentClassName="sm:max-w-lg"
 								activeCount={activeFilterCount}
+								onReset={() => {
+									setColumnFilters(getDefaultColumnFilters());
+									setYearFilter([]);
+									setProgramFilter([]);
+								}}
 							>
 								<DataTableFilterSection title="Registered">
 									<DataTableFilterOption
@@ -640,13 +654,16 @@ export function DataTableStudent({
 										}}
 									/>
 								</DataTableFilterSection>
-								{programOptions.length > 0 ? (
+								{programOptions.length > 1 ? (
 									<DataTableFilterSection title="Program">
 										{programOptions.map((program) => (
 											<DataTableFilterOption
 												key={program}
 												label={program}
-												checked={programFilter.includes(program)}
+												checked={
+													programFilter.length === 0 ||
+													programFilter.includes(program)
+												}
 												onCheckedChange={(checked) =>
 													toggleProgramFilter(program, checked)
 												}
@@ -654,13 +671,15 @@ export function DataTableStudent({
 										))}
 									</DataTableFilterSection>
 								) : null}
-								{yearOptions.length > 0 ? (
+								{yearOptions.length > 1 ? (
 									<DataTableFilterSection title="Enrollment year">
 										{yearOptions.map((year) => (
 											<DataTableFilterOption
 												key={year}
 												label={String(year)}
-												checked={yearFilter.includes(year)}
+												checked={
+													yearFilter.length === 0 || yearFilter.includes(year)
+												}
 												onCheckedChange={(checked) =>
 													toggleYearFilter(year, checked)
 												}
@@ -668,15 +687,6 @@ export function DataTableStudent({
 										))}
 									</DataTableFilterSection>
 								) : null}
-								<DataTableFilterActions>
-									<DataTableFilterResetAction
-										onClick={() => {
-											setColumnFilters(getDefaultColumnFilters());
-											setYearFilter([]);
-											setProgramFilter([]);
-										}}
-									/>
-								</DataTableFilterActions>
 							</DataTableFilterSheet>
 						}
 					/>

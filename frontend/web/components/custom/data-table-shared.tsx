@@ -32,6 +32,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -40,11 +41,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
+	SheetFooter,
 	SheetHeader,
 	SheetTitle,
 	SheetTrigger,
@@ -66,10 +67,27 @@ const COLUMN_LABEL_OVERRIDES: Record<string, string> = {
 	in_class: "Checked in",
 	low_assurance: "Low assurance",
 	event_type: "Event type",
+	student_id: "Student",
+	class_id: "Class",
+	school_id: "School ID",
+	enrolled_at: "Enrolled",
+	enrollment_year: "Enrollment year",
 };
 
-export const DEFAULT_TABLE_PAGE_SIZE = 20;
-export const DEFAULT_TABLE_PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
+export const DEFAULT_TABLE_PAGE_SIZE = 25;
+export const DEFAULT_TABLE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const PAGE_SIZE_KEY = "pas_default_page_size";
+
+export function getStoredPageSize(): number {
+	if (typeof window === "undefined") return DEFAULT_TABLE_PAGE_SIZE;
+	const stored = localStorage.getItem(PAGE_SIZE_KEY);
+	if (stored) {
+		const parsed = Number(stored);
+		if (DEFAULT_TABLE_PAGE_SIZE_OPTIONS.includes(parsed)) return parsed;
+	}
+	return DEFAULT_TABLE_PAGE_SIZE;
+}
 
 export function columnIdToLabel(id: string): string {
 	if (id in COLUMN_LABEL_OVERRIDES) {
@@ -160,6 +178,7 @@ export function DataTableFilterSheet({
 	label = "Filters",
 	contentClassName,
 	activeCount = 0,
+	onReset,
 }: {
 	children: ReactNode;
 	title?: string;
@@ -167,6 +186,7 @@ export function DataTableFilterSheet({
 	label?: string;
 	contentClassName?: string;
 	activeCount?: number;
+	onReset?: () => void;
 }) {
 	return (
 		<Sheet>
@@ -181,15 +201,27 @@ export function DataTableFilterSheet({
 			</SheetTrigger>
 			<SheetContent
 				side="right"
-				className={cn("w-full sm:max-w-md", contentClassName)}
+				className={cn("w-full p-0 sm:max-w-md", contentClassName)}
 			>
-				<SheetHeader>
+				<SheetHeader className="gap-1 border-b">
 					<SheetTitle>{title}</SheetTitle>
 					<SheetDescription>{description}</SheetDescription>
 				</SheetHeader>
-				<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
-					{children}
-				</div>
+				<ScrollArea className="min-h-0 flex-1">
+					<div className="flex flex-col gap-6 p-6">{children}</div>
+				</ScrollArea>
+				{onReset && activeCount > 0 ? (
+					<SheetFooter className="border-t">
+						<Button
+							type="button"
+							variant="outline"
+							className="w-full"
+							onClick={onReset}
+						>
+							Reset filters
+						</Button>
+					</SheetFooter>
+				) : null}
 			</SheetContent>
 		</Sheet>
 	);
@@ -235,34 +267,6 @@ export function DataTableFilterOption({
 			/>
 			<span className="text-sm">{label}</span>
 		</label>
-	);
-}
-
-export function DataTableFilterActions({ children }: { children: ReactNode }) {
-	return (
-		<>
-			<Separator />
-			<div className="flex flex-col gap-2">{children}</div>
-		</>
-	);
-}
-
-export function DataTableFilterResetAction({
-	onClick,
-	children = "Reset filters",
-}: {
-	onClick: () => void;
-	children?: ReactNode;
-}) {
-	return (
-		<Button
-			type="button"
-			variant="outline"
-			className="w-full"
-			onClick={onClick}
-		>
-			{children}
-		</Button>
 	);
 }
 

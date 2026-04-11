@@ -13,7 +13,7 @@ export const ApiPaths = {
 	adminImportOrgs: "/admin/import-orgs",
 	teachers: "/teachers",
 	teacherClasses: (teacherId: string) => `/teachers/${teacherId}/classes`,
-	classes: "/classes/",
+	classes: "/classes",
 	class: (classId: string) => `/classes/${classId}`,
 	sessions: "/sessions",
 	sessionsByClass: (classId: string) => `/sessions/by-class/${classId}`,

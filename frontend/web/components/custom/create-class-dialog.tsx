@@ -9,8 +9,15 @@ import {
 	FormSheetCancelButton,
 } from "@/components/custom/form-sheet";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Field,
+	FieldGroup,
+	FieldLabel,
+	FieldSeparator,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
 	Select,
 	SelectContent,
@@ -68,6 +75,7 @@ export function CreateClassDialog({
 	const [schedule, setSchedule] = React.useState<ScheduleBlock[]>([
 		createScheduleBlock(),
 	]);
+	const addBlockRef = React.useRef<HTMLButtonElement>(null);
 	const teacherOptions = React.useMemo(
 		() =>
 			teachers.map((teacher) => ({
@@ -158,46 +166,23 @@ export function CreateClassDialog({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button
+					<LoadingButton
 						onClick={handleSubmit}
+						loading={submitting}
+						loadingText="Creating…"
 						disabled={
-							submitting ||
 							!courseCode.trim() ||
 							!courseName.trim() ||
 							!teacherId ||
 							!semesterId
 						}
 					>
-						{submitting ? "Creating…" : "Create"}
-					</Button>
+						Create
+					</LoadingButton>
 				</>
 			}
 		>
 			<FieldGroup>
-				<Field>
-					<FieldLabel htmlFor="create-class-teacher">Teacher</FieldLabel>
-					<Select
-						value={teacherId}
-						onValueChange={(v) => {
-							if (v !== null) setTeacherId(v);
-						}}
-					>
-						<SelectTrigger id="create-class-teacher" className="w-full">
-							<SelectValue placeholder="Select a teacher">
-								{getSelectLabel(teacherId, teacherOptions)}
-							</SelectValue>
-						</SelectTrigger>
-						<SelectContent>
-							<SelectGroup>
-								{teacherOptions.map((option) => (
-									<SelectItem key={option.value} value={option.value}>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectGroup>
-						</SelectContent>
-					</Select>
-				</Field>
 				<Field>
 					<FieldLabel htmlFor="create-class-semester">Semester</FieldLabel>
 					<Select
@@ -223,6 +208,31 @@ export function CreateClassDialog({
 					</Select>
 				</Field>
 				<Field>
+					<FieldLabel htmlFor="create-class-teacher">Teacher</FieldLabel>
+					<Select
+						value={teacherId}
+						onValueChange={(v) => {
+							if (v !== null) setTeacherId(v);
+						}}
+					>
+						<SelectTrigger id="create-class-teacher" className="w-full">
+							<SelectValue placeholder="Select a teacher">
+								{getSelectLabel(teacherId, teacherOptions)}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectGroup>
+								{teacherOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectGroup>
+						</SelectContent>
+					</Select>
+				</Field>
+				<FieldSeparator />
+				<Field>
 					<FieldLabel htmlFor="create-class-code">Course code</FieldLabel>
 					<Input
 						id="create-class-code"
@@ -240,74 +250,79 @@ export function CreateClassDialog({
 						placeholder="Introduction to Computing"
 					/>
 				</Field>
+				<FieldSeparator />
 				<div className="flex flex-col gap-3">
 					<FieldLabel>Schedule</FieldLabel>
 					{schedule.map((block, i) => (
-						<div
-							key={block.id}
-							className="flex flex-col gap-2 rounded-lg border p-3"
-						>
-							<div className="flex items-center justify-between">
-								<span className="text-xs font-medium text-muted-foreground">
-									Block {i + 1}
-								</span>
+						<Card key={block.id} size="sm">
+							<CardHeader className="flex-row items-center justify-between">
+								<CardTitle>Block {i + 1}</CardTitle>
 								{schedule.length > 1 && (
 									<Button
 										variant="ghost"
-										size="icon"
-										className="size-6"
+										size="icon-xs"
 										onClick={() =>
 											setSchedule((p) => p.filter((_, j) => j !== i))
 										}
 									>
-										<IconTrash className="size-3.5" />
+										<IconTrash />
 									</Button>
 								)}
-							</div>
-							<div className="grid grid-cols-7 gap-1">
-								{DAYS.map((day) => (
-									<Button
-										key={day.key}
-										variant={
-											block.days.includes(day.key) ? "default" : "outline"
-										}
-										size="sm"
-										className="h-8 text-xs"
-										onClick={() => toggleDay(i, day.key)}
-									>
-										{day.label}
-									</Button>
-								))}
-							</div>
-							<div className="border-t" />
-							<div className="grid grid-cols-2 gap-2">
-								<Field>
-									<FieldLabel className="text-xs">Start</FieldLabel>
-									<Input
-										type="time"
-										value={block.start_time}
-										onChange={(e) =>
-											updateBlock(i, { start_time: e.target.value })
-										}
-									/>
-								</Field>
-								<Field>
-									<FieldLabel className="text-xs">End</FieldLabel>
-									<Input
-										type="time"
-										value={block.end_time}
-										onChange={(e) =>
-											updateBlock(i, { end_time: e.target.value })
-										}
-									/>
-								</Field>
-							</div>
-						</div>
+							</CardHeader>
+							<CardContent className="flex flex-col gap-3">
+								<div className="grid grid-cols-7 gap-1">
+									{DAYS.map((day) => (
+										<Button
+											key={day.key}
+											variant={
+												block.days.includes(day.key) ? "default" : "outline"
+											}
+											size="sm"
+											className="h-8 text-xs"
+											onClick={() => toggleDay(i, day.key)}
+										>
+											{day.label}
+										</Button>
+									))}
+								</div>
+								<div className="grid grid-cols-2 gap-2">
+									<Field>
+										<FieldLabel className="text-xs">Start</FieldLabel>
+										<Input
+											type="time"
+											value={block.start_time}
+											onChange={(e) =>
+												updateBlock(i, { start_time: e.target.value })
+											}
+										/>
+									</Field>
+									<Field>
+										<FieldLabel className="text-xs">End</FieldLabel>
+										<Input
+											type="time"
+											value={block.end_time}
+											onChange={(e) =>
+												updateBlock(i, { end_time: e.target.value })
+											}
+										/>
+									</Field>
+								</div>
+							</CardContent>
+						</Card>
 					))}
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => setSchedule((p) => [...p, createScheduleBlock()])}
+						onClick={() => {
+							setSchedule((p) => [...p, createScheduleBlock()]);
+							requestAnimationFrame(() => {
+								addBlockRef.current?.scrollIntoView({
+									behavior: "smooth",
+									block: "end",
+								});
+							});
+						}}
+						ref={addBlockRef}
 					>
 						<IconPlus data-icon="inline-start" />
 						Add schedule block

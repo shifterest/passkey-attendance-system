@@ -48,6 +48,7 @@ import {
 	FieldSeparator,
 	FieldTitle,
 } from "@/components/ui/field";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
 	Select,
 	SelectContent,
@@ -658,9 +659,14 @@ function CreatePolicySheet({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button onClick={handleSubmit} disabled={submitting || disableSubmit}>
-						{submitting ? "Creating..." : "Create"}
-					</Button>
+					<LoadingButton
+						onClick={handleSubmit}
+						disabled={submitting || disableSubmit}
+						loading={submitting}
+						loadingText="Creating…"
+					>
+						Create
+					</LoadingButton>
 				</>
 			}
 		>
@@ -787,9 +793,13 @@ function EditPolicySheet({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button onClick={handleSubmit} disabled={submitting}>
-						{submitting ? "Saving..." : "Save"}
-					</Button>
+					<LoadingButton
+						onClick={handleSubmit}
+						loading={submitting}
+						loadingText="Saving…"
+					>
+						Save
+					</LoadingButton>
 				</>
 			}
 		>
@@ -851,13 +861,14 @@ function DeletePolicyDialog({
 					<DialogClose render={<Button variant="outline" />}>
 						Cancel
 					</DialogClose>
-					<Button
+					<LoadingButton
 						variant="destructive"
 						onClick={handleDelete}
-						disabled={submitting}
+						loading={submitting}
+						loadingText="Deleting…"
 					>
-						{submitting ? "Deleting..." : "Delete"}
-					</Button>
+						Delete
+					</LoadingButton>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

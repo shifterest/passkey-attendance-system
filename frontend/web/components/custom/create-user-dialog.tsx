@@ -7,9 +7,14 @@ import {
 	FormSheet,
 	FormSheetCancelButton,
 } from "@/components/custom/form-sheet";
-import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+	Field,
+	FieldGroup,
+	FieldLabel,
+	FieldSeparator,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { LoadingButton } from "@/components/ui/loading-button";
 import {
 	Select,
 	SelectContent,
@@ -106,9 +111,14 @@ export function CreateUserDialog({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button onClick={handleSubmit} disabled={!canSubmit}>
-						{submitting ? "Creating…" : "Create"}
-					</Button>
+					<LoadingButton
+						onClick={handleSubmit}
+						loading={submitting}
+						loadingText="Creating…"
+						disabled={!canSubmit}
+					>
+						Create
+					</LoadingButton>
 				</>
 			}
 		>
@@ -139,6 +149,7 @@ export function CreateUserDialog({
 						</Select>
 					</Field>
 				)}
+				<FieldSeparator />
 				<Field>
 					<FieldLabel htmlFor="create-user-name">Full name</FieldLabel>
 					<Input

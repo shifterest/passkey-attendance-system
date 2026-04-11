@@ -29,7 +29,7 @@ import {
 	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import {
@@ -37,18 +37,18 @@ import {
 	FormSheetCancelButton,
 } from "@/components/custom/form-sheet";
 import { SetPageHeader } from "@/components/custom/page-header-context";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
 import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -62,6 +62,8 @@ import {
 	FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { Switch } from "@/components/ui/switch";
 
 type SemesterFormState = {
 	name: string;
@@ -105,9 +107,6 @@ function SemesterFormFields({
 			<Field orientation="horizontal">
 				<FieldContent>
 					<FieldLabel htmlFor="semester-name">Semester name</FieldLabel>
-					<FieldDescription>
-						Use the academic term label shown throughout class management.
-					</FieldDescription>
 				</FieldContent>
 				<Input
 					id="semester-name"
@@ -121,10 +120,6 @@ function SemesterFormFields({
 			<Field orientation="horizontal">
 				<FieldContent>
 					<FieldLabel htmlFor="semester-start">Start date</FieldLabel>
-					<FieldDescription>
-						Classes linked to this semester open sessions only inside its active
-						window.
-					</FieldDescription>
 				</FieldContent>
 				<Input
 					id="semester-start"
@@ -137,9 +132,6 @@ function SemesterFormFields({
 			<Field orientation="horizontal">
 				<FieldContent>
 					<FieldLabel htmlFor="semester-end">End date</FieldLabel>
-					<FieldDescription>
-						Closing date used for term-bound class scheduling.
-					</FieldDescription>
 				</FieldContent>
 				<Input
 					id="semester-end"
@@ -154,19 +146,16 @@ function SemesterFormFields({
 				<FieldContent>
 					<FieldLabel htmlFor="semester-active">Active semester</FieldLabel>
 					<FieldDescription>
-						Mark this as the current semester and automatically deactivate any
-						existing active term.
+						Deactivates any other active term when enabled.
 					</FieldDescription>
 				</FieldContent>
-				<Button
+				<Switch
 					id="semester-active"
-					type="button"
-					variant={values.is_active ? "default" : "outline"}
-					size="sm"
-					onClick={() => onChange({ ...values, is_active: !values.is_active })}
-				>
-					{values.is_active ? "Active" : "Inactive"}
-				</Button>
+					checked={values.is_active}
+					onCheckedChange={(checked) =>
+						onChange({ ...values, is_active: checked })
+					}
+				/>
 			</Field>
 		</FieldGroup>
 	);
@@ -209,17 +198,16 @@ function CreateSemesterDialog({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button
+					<LoadingButton
 						onClick={handleCreate}
+						loading={submitting}
+						loadingText="Creating…"
 						disabled={
-							submitting ||
-							!values.name.trim() ||
-							!values.start_date ||
-							!values.end_date
+							!values.name.trim() || !values.start_date || !values.end_date
 						}
 					>
-						{submitting ? "Creating..." : "Create"}
-					</Button>
+						Create
+					</LoadingButton>
 				</>
 			}
 		>
@@ -268,17 +256,16 @@ function EditSemesterDialog({
 			footer={
 				<>
 					<FormSheetCancelButton />
-					<Button
+					<LoadingButton
 						onClick={handleSave}
+						loading={submitting}
+						loadingText="Saving…"
 						disabled={
-							submitting ||
-							!values.name.trim() ||
-							!values.start_date ||
-							!values.end_date
+							!values.name.trim() || !values.start_date || !values.end_date
 						}
 					>
-						{submitting ? "Saving..." : "Save"}
-					</Button>
+						Save
+					</LoadingButton>
 				</>
 			}
 		>
@@ -311,30 +298,28 @@ function DeleteSemesterDialog({
 	}
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger render={trigger} />
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Delete semester</DialogTitle>
-					<DialogDescription>
+		<AlertDialog open={open} onOpenChange={setOpen}>
+			<AlertDialogTrigger render={trigger} />
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Delete semester</AlertDialogTitle>
+					<AlertDialogDescription>
 						Remove {semester.name}. Classes linked to it will need a replacement
 						term before session windows can be opened safely.
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<DialogClose render={<Button variant="outline" />}>
-						Cancel
-					</DialogClose>
-					<Button
-						variant="destructive"
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<LoadingButton
 						onClick={handleDelete}
-						disabled={submitting}
+						loading={submitting}
+						loadingText="Deleting…"
 					>
-						{submitting ? "Deleting..." : "Delete"}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+						Delete
+					</LoadingButton>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }
 
@@ -347,7 +332,7 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 	const [globalFilter, setGlobalFilter] = useState("");
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 
 	const columns = useMemo<ColumnDef<SemesterDto>[]>(

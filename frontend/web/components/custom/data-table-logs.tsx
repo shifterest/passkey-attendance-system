@@ -23,15 +23,13 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
@@ -114,8 +112,22 @@ function renderDetailSummary(event: AuditEventDto) {
 		return reason;
 	}
 
-	const keys = Object.keys(event.detail);
-	return `${keys.slice(0, 4).join(", ")}${keys.length > 4 ? "\u2026" : ""}`;
+	if (typeof event.detail.reason === "string") {
+		return event.detail.reason;
+	}
+
+	const entries = Object.entries(event.detail);
+	if (entries.length === 0) return "\u2014";
+
+	return entries
+		.slice(0, 3)
+		.map(([k, v]) => {
+			const label = k.replace(/_/g, " ");
+			if (v == null) return `${label}: \u2014`;
+			const s = String(v);
+			return `${label}: ${s.length > 24 ? `${s.slice(0, 21)}\u2026` : s}`;
+		})
+		.join(" \u00b7 ");
 }
 
 const includesSomeFilter: FilterFn<AuditEventDto> = (
@@ -197,7 +209,7 @@ const columns: ColumnDef<AuditEventDto>[] = [
 	},
 	{
 		accessorKey: "detail",
-		header: "Detail",
+		header: "Summary",
 		cell: ({ row }) => {
 			return (
 				<span className="text-xs text-muted-foreground">
@@ -229,7 +241,7 @@ export function DataTableLogs({
 	]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 
@@ -327,6 +339,7 @@ export function DataTableLogs({
 							description="Refine audit events by event type."
 							contentClassName="sm:max-w-lg"
 							activeCount={activeFilterCount}
+							onReset={() => setColumnFilters([])}
 						>
 							<DataTableFilterSection title="Event type">
 								{eventTypes.map((eventType) => (
@@ -340,11 +353,6 @@ export function DataTableLogs({
 									/>
 								))}
 							</DataTableFilterSection>
-							<DataTableFilterActions>
-								<DataTableFilterResetAction
-									onClick={() => setColumnFilters([])}
-								/>
-							</DataTableFilterActions>
 						</DataTableFilterSheet>
 					}
 				/>

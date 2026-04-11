@@ -24,7 +24,7 @@ import {
 	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { useNavigationTransition } from "@/components/custom/navigation-transition";
@@ -63,7 +63,7 @@ export function DataTableClasses({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 	const [globalFilter, setGlobalFilter] = React.useState("");
 

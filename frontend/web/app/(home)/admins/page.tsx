@@ -26,7 +26,7 @@ export default async function Page() {
 					/>
 				}
 			/>
-			<DataTableUsers data={admins} />
+			<DataTableUsers data={admins} roleFilterValues={["admin", "operator"]} />
 		</div>
 	);
 }

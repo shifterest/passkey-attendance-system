@@ -27,15 +27,13 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
-	DataTableFilterResetAction,
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableScaffold,
 	DataTableToolbar,
-	DEFAULT_TABLE_PAGE_SIZE,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
@@ -252,7 +250,7 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 	const [flagFilter, setFlagFilter] = React.useState<string[]>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
-		pageSize: DEFAULT_TABLE_PAGE_SIZE,
+		pageSize: getStoredPageSize(),
 	});
 	const [isBulkApproving, setIsBulkApproving] = React.useState(false);
 
@@ -428,6 +426,11 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 							title="Record filters"
 							description="Refine attendance records by status, assurance band, and flags."
 							activeCount={activeFilterCount}
+							onReset={() => {
+								setStatusFilter(["present", "late", "absent"]);
+								setBandFilter(["high", "standard", "low"]);
+								setFlagFilter([]);
+							}}
 						>
 							<DataTableFilterSection title="Status">
 								{["present", "late", "absent"].map((status) => (
@@ -464,15 +467,6 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 									/>
 								))}
 							</DataTableFilterSection>
-							<DataTableFilterActions>
-								<DataTableFilterResetAction
-									onClick={() => {
-										setStatusFilter(["present", "late", "absent"]);
-										setBandFilter(["high", "standard", "low"]);
-										setFlagFilter([]);
-									}}
-								/>
-							</DataTableFilterActions>
 						</DataTableFilterSheet>
 					}
 				/>

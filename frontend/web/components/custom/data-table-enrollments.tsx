@@ -10,12 +10,12 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import {
 	type ClassDto,
 	type ClassEnrollmentDto,
-	createEnrollment,
 	deleteEnrollment,
 	type UserExtendedDto,
 } from "@/app/lib/api";
@@ -25,18 +25,17 @@ import {
 } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableFilterActions,
 	DataTableFilterOption,
+	DataTableFilterSection,
+	DataTableFilterSheet,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
-	DataTableFilterResetAction,
-	DataTableFilterSection,
-	DataTableFilterSheet,
 	DataTableToolbar,
+	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
+
 import { ImportEnrollmentsDialog } from "@/components/custom/import-enrollments-dialog";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import {
@@ -62,16 +61,13 @@ export function DataTableEnrollments({
 	enrollments: initialEnrollments,
 	classes,
 	students,
-	initialClassId,
 }: {
 	enrollments: ClassEnrollmentDto[];
 	classes: ClassDto[];
 	students: UserExtendedDto[];
-	initialClassId?: string;
 }) {
 	const router = useRouter();
 	const [enrollments, setEnrollments] = React.useState(initialEnrollments);
-	const [openDialog, setOpenDialog] = React.useState(false);
 	const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
 
 	React.useEffect(() => {
@@ -88,6 +84,7 @@ export function DataTableEnrollments({
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({
 			id: false,
+			enrolled_at: false,
 		});
 
 	const classById = React.useMemo(
@@ -102,13 +99,6 @@ export function DataTableEnrollments({
 	React.useEffect(() => {
 		setEnrollments(initialEnrollments);
 	}, [initialEnrollments]);
-
-	React.useEffect(() => {
-		const classId = initialClassId;
-		if (classId && classById.has(classId)) {
-			setOpenDialog(true);
-		}
-	}, [initialClassId, classById]);
 
 	const yearOptions = React.useMemo(() => {
 		const values = new Set<number>();
@@ -170,30 +160,6 @@ export function DataTableEnrollments({
 		[router],
 	);
 
-	const handleCreateBatch = async (
-		classIds: string[],
-		studentIds: string[],
-	) => {
-		let added = 0;
-		let skipped = 0;
-
-		for (const classId of classIds) {
-			for (const studentId of studentIds) {
-				try {
-					await createEnrollment({ class_id: classId, student_id: studentId });
-					added += 1;
-				} catch {
-					skipped += 1;
-				}
-			}
-		}
-
-		setStatusMessage(
-			`Enrollment complete. Added: ${added}. Skipped: ${skipped}.`,
-		);
-		router.refresh();
-	};
-
 	const columns = React.useMemo<ColumnDef<ClassEnrollmentDto>[]>(
 		() => [
 			{
@@ -236,14 +202,7 @@ export function DataTableEnrollments({
 				cell: ({ row }) => {
 					const student = studentById.get(row.original.student_id);
 					if (!student) return "-";
-					return (
-						<div className="flex flex-col">
-							<span className="font-medium">{student.full_name}</span>
-							<span className="text-xs text-muted-foreground">
-								{student.email}
-							</span>
-						</div>
-					);
+					return <span className="font-medium">{student.full_name}</span>;
 				},
 			},
 			{
@@ -362,21 +321,13 @@ export function DataTableEnrollments({
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
-		initialState: { pagination: { pageSize: 20 } },
+		initialState: { pagination: { pageSize: getStoredPageSize() } },
 	});
 
 	const activeFilterCount = classFilter.length + yearFilter.length;
 
 	return (
 		<div className="flex flex-col gap-4">
-			<EnrollmentManageDialog
-				open={openDialog}
-				onOpenChange={setOpenDialog}
-				classes={classes}
-				students={students}
-				prefilledClassId={initialClassId}
-				onSubmit={handleCreateBatch}
-			/>
 			<SetPageHeader
 				title="Enrollments"
 				description="Manage student-class enrollments."
@@ -390,7 +341,7 @@ export function DataTableEnrollments({
 								</Button>
 							}
 						/>
-						<Button size="sm" onClick={() => setOpenDialog(true)}>
+						<Button size="sm" render={<Link href="/enrollments/create" />}>
 							<IconPlus data-icon="inline-start" />
 							Create
 						</Button>
@@ -412,6 +363,10 @@ export function DataTableEnrollments({
 								title="Enrollment filters"
 								description="Refine enrollments by class and enrollment year."
 								activeCount={activeFilterCount}
+								onReset={() => {
+									setClassFilter([]);
+									setYearFilter([]);
+								}}
 							>
 								<DataTableFilterSection title="Class">
 									{classes.map((classValue) => (
@@ -445,21 +400,13 @@ export function DataTableEnrollments({
 										/>
 									))}
 								</DataTableFilterSection>
-								<DataTableFilterActions>
-									<DataTableFilterResetAction
-										onClick={() => {
-											setClassFilter([]);
-											setYearFilter([]);
-										}}
-									/>
-								</DataTableFilterActions>
 							</DataTableFilterSheet>
 						}
 					/>
 				}
 			>
 				<DataTableBody table={table} columnCount={columns.length} />
-				<DataTablePagination table={table} pageSizeOptions={[10, 20, 30, 50]} />
+				<DataTablePagination table={table} />
 			</DataTableScaffold>
 		</div>
 	);
