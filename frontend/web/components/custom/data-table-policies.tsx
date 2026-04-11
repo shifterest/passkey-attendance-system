@@ -25,16 +25,21 @@ import {
 	type TeacherDto,
 	updatePolicy,
 } from "@/app/lib/api";
+import { createDatabaseIdColumn } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
+	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -48,11 +53,8 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-	DropdownMenuCheckboxItem,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -438,7 +440,9 @@ export function DataTablePolicies({
 	const [data, setData] = React.useState(initialPolicies);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		() => [{ id: "scope", value: [...SCOPE_FILTER_VALUES] }],
 	);
@@ -498,9 +502,12 @@ export function DataTablePolicies({
 				enableSorting: false,
 				enableHiding: false,
 			},
+			createDatabaseIdColumn<ClassPolicyDto>(),
 			{
 				id: "scope",
-				header: "Scope",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Scope" />
+				),
 				filterFn: includesSomeFilter,
 				accessorFn: (row) => getScope(row),
 				cell: ({ row }) => {
@@ -551,7 +558,9 @@ export function DataTablePolicies({
 			},
 			{
 				accessorKey: "standard_assurance_threshold",
-				header: "Standard",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Standard" />
+				),
 				cell: ({ row }) => (
 					<span className="font-mono text-sm">
 						≥{row.original.standard_assurance_threshold}
@@ -560,7 +569,7 @@ export function DataTablePolicies({
 			},
 			{
 				accessorKey: "high_assurance_threshold",
-				header: "High",
+				header: ({ column }) => <SortableHeader column={column} label="High" />,
 				cell: ({ row }) => (
 					<span className="font-mono text-sm">
 						≥{row.original.high_assurance_threshold}
@@ -569,7 +578,9 @@ export function DataTablePolicies({
 			},
 			{
 				accessorKey: "present_cutoff_minutes",
-				header: "Present cutoff",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Present cutoff" />
+				),
 				cell: ({ row }) => (
 					<span className="text-muted-foreground text-sm">
 						{row.original.present_cutoff_minutes} min
@@ -578,7 +589,9 @@ export function DataTablePolicies({
 			},
 			{
 				accessorKey: "late_cutoff_minutes",
-				header: "Late cutoff",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Late cutoff" />
+				),
 				cell: ({ row }) => (
 					<span className="text-muted-foreground text-sm">
 						{row.original.late_cutoff_minutes} min
@@ -587,7 +600,9 @@ export function DataTablePolicies({
 			},
 			{
 				accessorKey: "max_check_ins",
-				header: "Max check-ins",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Max check-ins" />
+				),
 				cell: ({ row }) => (
 					<span className="text-muted-foreground text-sm">
 						{row.original.max_check_ins}
@@ -649,6 +664,7 @@ export function DataTablePolicies({
 		},
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
+			if (row.original.id.toLowerCase().includes(q)) return true;
 			const scope = getScope(row.original);
 			if (getScopeLabel(scope).toLowerCase().includes(q)) return true;
 			if (scope === "class" && row.original.class_id) {
@@ -710,6 +726,17 @@ export function DataTablePolicies({
 			: false;
 	};
 
+	const activeFilterCount = React.useMemo(() => {
+		const scopeValues = columnFilters.find((f) => f.id === "scope")?.value as
+			| string[]
+			| undefined;
+
+		return (scopeValues?.length ?? SCOPE_FILTER_VALUES.length) <
+			SCOPE_FILTER_VALUES.length
+			? 1
+			: 0;
+	}, [columnFilters]);
+
 	return (
 		<div className="flex flex-col gap-4">
 			<SetPageHeader
@@ -729,36 +756,41 @@ export function DataTablePolicies({
 				}
 			/>
 			<DataTableScaffold
-				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-				toolbarEnd={
-					<>
-						<DataTableFilterMenu>
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Scope</DropdownMenuLabel>
-								{SCOPE_FILTER_VALUES.map((scope) => (
-									<DropdownMenuCheckboxItem
-										key={scope}
-										checked={isChecked("scope", scope)}
-										onCheckedChange={(c) => toggleFilterValue("scope", scope, c)}
-									>
-										{getScopeLabel(scope)}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() =>
-									setColumnFilters([
-										{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
-									])
-								}
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(q) => setGlobalFilter(q)}
+						columnVisibilityWidth="w-56"
+						filters={
+							<DataTableFilterSheet
+								title="Policy filters"
+								description="Refine policies by scope."
+								activeCount={activeFilterCount}
 							>
-								Reset filters
-							</DropdownMenuItem>
-						</DataTableFilterMenu>
-						<DataTableColumnVisibility table={table} width="w-56" />
-					</>
+								<DataTableFilterSection title="Scope">
+									{SCOPE_FILTER_VALUES.map((scope) => (
+										<DataTableFilterOption
+											key={scope}
+											label={getScopeLabel(scope)}
+											checked={isChecked("scope", scope)}
+											onCheckedChange={(checked) =>
+												toggleFilterValue("scope", scope, checked)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterActions>
+									<DataTableFilterResetAction
+										onClick={() =>
+											setColumnFilters([
+												{ id: "scope", value: [...SCOPE_FILTER_VALUES] },
+											])
+										}
+									/>
+								</DataTableFilterActions>
+							</DataTableFilterSheet>
+						}
+					/>
 				}
 			>
 				<DataTableBody table={table} columnCount={columns.length} />

@@ -21,29 +21,26 @@ import * as React from "react";
 import type { AttendanceRecordDto } from "@/app/lib/api";
 import { approveRecord } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	DatabaseIdCell,
+	formatTableDateTime,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-
-function formatTimestamp(ts: string) {
-	return new Date(ts).toLocaleString();
-}
-
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 function statusVariant(
 	status: string,
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -108,6 +105,7 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 		enableSorting: false,
 		enableHiding: false,
 	},
+	createDatabaseIdColumn<AttendanceRecordDto>(),
 	{
 		accessorKey: "timestamp",
 		header: ({ column }) => (
@@ -115,27 +113,21 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 		),
 		cell: ({ row }) => (
 			<span className="whitespace-nowrap text-sm">
-				{formatTimestamp(row.original.timestamp)}
+				{formatTableDateTime(row.original.timestamp)}
 			</span>
 		),
 	},
 	{
 		accessorKey: "user_id",
-		header: "User",
-		cell: ({ row }) => (
-			<span className="font-mono text-xs">
-				{row.original.user_id.slice(0, 8)}…
-			</span>
-		),
+		header: ({ column }) => <SortableHeader column={column} label="User ID" />,
+		cell: ({ row }) => <DatabaseIdCell value={row.original.user_id} />,
 	},
 	{
 		accessorKey: "session_id",
-		header: "Session",
-		cell: ({ row }) => (
-			<span className="font-mono text-xs">
-				{row.original.session_id.slice(0, 8)}…
-			</span>
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Session ID" />
 		),
+		cell: ({ row }) => <DatabaseIdCell value={row.original.session_id} />,
 	},
 	{
 		accessorKey: "status",
@@ -235,7 +227,11 @@ const columns: ColumnDef<AttendanceRecordDto>[] = [
 export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 	const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+			user_id: false,
+			session_id: false,
+		});
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "timestamp", desc: true },
 	]);
@@ -414,69 +410,70 @@ export function DataTableRecords({ data }: { data: AttendanceRecordDto[] }) {
 		.rows.map((row) => row.original)
 		.filter((record) => isRecordApprovable(record, approvedIds));
 
+	const activeFilterCount =
+		(statusFilter.length < 3 ? 1 : 0) +
+		(bandFilter.length < 3 ? 1 : 0) +
+		flagFilter.length;
+
 	return (
 		<DataTableScaffold
-			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-			toolbarEnd={
-				<>
-					<DataTableFilterMenu>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Status</DropdownMenuLabel>
-							{["present", "late", "absent"].map((s) => (
-								<DropdownMenuCheckboxItem
-									key={s}
-									checked={statusFilter.includes(s)}
-									onCheckedChange={(c) => toggleStatus(s, c)}
-								>
-									{s.charAt(0).toUpperCase() + s.slice(1)}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Assurance Band</DropdownMenuLabel>
-							{["high", "standard", "low"].map((b) => (
-								<DropdownMenuCheckboxItem
-									key={b}
-									checked={bandFilter.includes(b)}
-									onCheckedChange={(c) => toggleBand(b, c)}
-								>
-									{b.charAt(0).toUpperCase() + b.slice(1)}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Flags</DropdownMenuLabel>
-							{[
-								{ key: "flagged", label: "Flagged" },
-								{ key: "approved", label: "Manually approved" },
-								{ key: "sync_pending", label: "Sync pending" },
-								{ key: "mock_gps", label: "Mock GPS" },
-							].map(({ key, label }) => (
-								<DropdownMenuCheckboxItem
-									key={key}
-									checked={flagFilter.includes(key)}
-									onCheckedChange={(c) => toggleFlag(key, c)}
-								>
-									{label}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => {
-								setStatusFilter(["present", "late", "absent"]);
-								setBandFilter(["high", "standard", "low"]);
-								setFlagFilter([]);
-							}}
+			toolbarStart={
+				<DataTableToolbar
+					table={table}
+					onSearch={(q) => setGlobalFilter(q)}
+					filters={
+						<DataTableFilterSheet
+							title="Record filters"
+							description="Refine attendance records by status, assurance band, and flags."
+							activeCount={activeFilterCount}
 						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} />
-				</>
+							<DataTableFilterSection title="Status">
+								{["present", "late", "absent"].map((status) => (
+									<DataTableFilterOption
+										key={status}
+										label={status.charAt(0).toUpperCase() + status.slice(1)}
+										checked={statusFilter.includes(status)}
+										onCheckedChange={(checked) => toggleStatus(status, checked)}
+									/>
+								))}
+							</DataTableFilterSection>
+							<DataTableFilterSection title="Assurance band">
+								{["high", "standard", "low"].map((band) => (
+									<DataTableFilterOption
+										key={band}
+										label={band.charAt(0).toUpperCase() + band.slice(1)}
+										checked={bandFilter.includes(band)}
+										onCheckedChange={(checked) => toggleBand(band, checked)}
+									/>
+								))}
+							</DataTableFilterSection>
+							<DataTableFilterSection title="Flags">
+								{[
+									{ key: "flagged", label: "Flagged" },
+									{ key: "approved", label: "Manually approved" },
+									{ key: "sync_pending", label: "Sync pending" },
+									{ key: "mock_gps", label: "Mock GPS" },
+								].map(({ key, label }) => (
+									<DataTableFilterOption
+										key={key}
+										label={label}
+										checked={flagFilter.includes(key)}
+										onCheckedChange={(checked) => toggleFlag(key, checked)}
+									/>
+								))}
+							</DataTableFilterSection>
+							<DataTableFilterActions>
+								<DataTableFilterResetAction
+									onClick={() => {
+										setStatusFilter(["present", "late", "absent"]);
+										setBandFilter(["high", "standard", "low"]);
+										setFlagFilter([]);
+									}}
+								/>
+							</DataTableFilterActions>
+						</DataTableFilterSheet>
+					}
+				/>
 			}
 		>
 			<DataTableBody table={table} columnCount={allColumns.length} />

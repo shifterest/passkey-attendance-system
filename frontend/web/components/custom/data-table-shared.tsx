@@ -18,8 +18,11 @@ import {
 	flexRender,
 	type Table as TanstackTable,
 } from "@tanstack/react-table";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
+import { SearchForm } from "@/components/custom/search-form";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -29,6 +32,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
 	Select,
 	SelectContent,
@@ -37,6 +41,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -104,10 +116,13 @@ export function DataTableColumnVisibility<TData>({
 			<DropdownMenuContent align="end" className={width}>
 				{table
 					.getAllColumns()
-					.filter(
-						(column) =>
-							typeof column.accessorFn !== "undefined" && column.getCanHide(),
-					)
+					.filter((column) => {
+						const definition = column.columnDef;
+						return (
+							("accessorFn" in definition || "accessorKey" in definition) &&
+							column.getCanHide()
+						);
+					})
 					.map((column) => (
 						<DropdownMenuCheckboxItem
 							key={column.id}
@@ -122,28 +137,116 @@ export function DataTableColumnVisibility<TData>({
 	);
 }
 
-export function DataTableFilterMenu({
+export function DataTableFilterSheet({
 	children,
-	contentClassName = "w-48",
-	label = "Filter",
-	align = "end",
+	title = "Filters",
+	description = "Refine the visible rows.",
+	label = "Filters",
+	contentClassName,
+	activeCount = 0,
 }: {
 	children: ReactNode;
-	contentClassName?: string;
+	title?: string;
+	description?: string;
 	label?: string;
-	align?: "center" | "end" | "start";
+	contentClassName?: string;
+	activeCount?: number;
 }) {
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+		<Sheet>
+			<SheetTrigger render={<Button variant="outline" size="sm" />}>
 				<IconFilter data-icon="inline-start" />
 				{label}
-				<IconChevronDown data-icon="inline-end" />
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align={align} className={contentClassName}>
-				{children}
-			</DropdownMenuContent>
-		</DropdownMenu>
+				{activeCount > 0 ? (
+					<Badge variant="secondary" className="ml-1 px-1.5">
+						{activeCount}
+					</Badge>
+				) : null}
+			</SheetTrigger>
+			<SheetContent
+				side="right"
+				className={cn("w-full sm:max-w-md", contentClassName)}
+			>
+				<SheetHeader>
+					<SheetTitle>{title}</SheetTitle>
+					<SheetDescription>{description}</SheetDescription>
+				</SheetHeader>
+				<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
+					{children}
+				</div>
+			</SheetContent>
+		</Sheet>
+	);
+}
+
+export function DataTableFilterSection({
+	title,
+	children,
+}: {
+	title: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div className="flex flex-col gap-3">
+			<div className="space-y-1">
+				<h3 className="font-medium text-foreground">{title}</h3>
+			</div>
+			<div className="flex flex-col gap-2">{children}</div>
+		</div>
+	);
+}
+
+export function DataTableFilterOption({
+	label,
+	checked,
+	onCheckedChange,
+}: {
+	label: ReactNode;
+	checked: boolean;
+	onCheckedChange: (checked: boolean) => void;
+}) {
+	const inputId = useId();
+
+	return (
+		<label
+			htmlFor={inputId}
+			className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-muted/40"
+		>
+			<Checkbox
+				id={inputId}
+				checked={checked}
+				onCheckedChange={(value) => onCheckedChange(value === true)}
+			/>
+			<span className="text-sm">{label}</span>
+		</label>
+	);
+}
+
+export function DataTableFilterActions({ children }: { children: ReactNode }) {
+	return (
+		<>
+			<Separator />
+			<div className="flex flex-col gap-2">{children}</div>
+		</>
+	);
+}
+
+export function DataTableFilterResetAction({
+	onClick,
+	children = "Reset filters",
+}: {
+	onClick: () => void;
+	children?: ReactNode;
+}) {
+	return (
+		<Button
+			type="button"
+			variant="outline"
+			className="w-full"
+			onClick={onClick}
+		>
+			{children}
+		</Button>
 	);
 }
 
@@ -166,7 +269,11 @@ export function DataTableScaffold({
 		<div className={cn("flex flex-col gap-4", className)}>
 			{hasToolbar ? (
 				<div className="flex flex-wrap items-center gap-2 px-4 lg:px-6">
-					{toolbarStart ? <div className="min-w-0">{toolbarStart}</div> : null}
+					{toolbarStart ? (
+						<div className={cn("min-w-0", toolbarEnd ? undefined : "flex-1")}>
+							{toolbarStart}
+						</div>
+					) : null}
 					{toolbarEnd ? (
 						<div className="ml-auto flex items-center gap-2">{toolbarEnd}</div>
 					) : null}
@@ -179,6 +286,36 @@ export function DataTableScaffold({
 				)}
 			>
 				{children}
+			</div>
+		</div>
+	);
+}
+
+export function DataTableToolbar<TData>({
+	table,
+	onSearch,
+	filters,
+	columnVisibilityWidth,
+	extraActions,
+	showSearch = true,
+}: {
+	table: TanstackTable<TData>;
+	onSearch: (query: string) => void;
+	filters?: ReactNode;
+	columnVisibilityWidth?: string;
+	extraActions?: ReactNode;
+	showSearch?: boolean;
+}) {
+	return (
+		<div className="flex min-w-0 flex-1 items-center gap-2">
+			{showSearch ? <SearchForm onSearch={onSearch} /> : null}
+			<div className="ml-auto flex items-center gap-2">
+				{filters}
+				{extraActions}
+				<DataTableColumnVisibility
+					table={table}
+					width={columnVisibilityWidth}
+				/>
 			</div>
 		</div>
 	);
@@ -385,7 +522,10 @@ export function DataTableBody<TData>({
 			<TableBody>
 				{table.getRowModel().rows.length ? (
 					table.getRowModel().rows.map((row) => (
-						<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+						<TableRow
+							key={row.id}
+							data-state={row.getIsSelected() && "selected"}
+						>
 							{row.getVisibleCells().map((cell) => (
 								<TableCell
 									key={cell.id}

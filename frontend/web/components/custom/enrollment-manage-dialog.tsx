@@ -4,7 +4,13 @@ import { IconMinus, IconPlus, IconSearch } from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 
-import { DataTableFilterMenu } from "@/components/custom/data-table-shared";
+import {
+	DataTableFilterActions,
+	DataTableFilterOption,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+} from "@/components/custom/data-table-shared";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,13 +33,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
 	Field,
 	FieldContent,
@@ -253,6 +252,7 @@ export function EnrollmentManageDialog({
 		classIds.length === 0
 			? "No classes selected"
 			: `${classIds.length} class${classIds.length > 1 ? "es" : ""} selected`;
+	const activeFilterCount = yearFilter.length + programFilter.length;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -312,55 +312,47 @@ export function EnrollmentManageDialog({
 									className="pl-8"
 								/>
 							</div>
-							<DataTableFilterMenu>
-								<DropdownMenuGroup>
-									<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
+							<DataTableFilterSheet
+								title="Student filters"
+								description="Refine the visible student list by enrollment year and program before batching enrollments."
+								contentClassName="sm:max-w-lg"
+								activeCount={activeFilterCount}
+							>
+								<DataTableFilterSection title="Enrollment year">
 									{yearOptions.map((year) => (
-										<DropdownMenuCheckboxItem
+										<DataTableFilterOption
 											key={year}
+											label={String(year)}
 											checked={yearFilter.includes(year)}
 											onCheckedChange={(checked) =>
 												toggleYearFilter(year, checked)
 											}
-										>
-											{year}
-										</DropdownMenuCheckboxItem>
+										/>
 									))}
-								</DropdownMenuGroup>
-								{programOptions.length > 0 && (
-									<>
-										<DropdownMenuSeparator />
-										<DropdownMenuGroup>
-											<DropdownMenuLabel>Program</DropdownMenuLabel>
-											{programOptions.map((program) => (
-												<DropdownMenuCheckboxItem
-													key={program}
-													checked={programFilter.includes(program)}
-													onCheckedChange={(checked) =>
-														toggleProgramFilter(program, checked)
-													}
-												>
-													{program}
-												</DropdownMenuCheckboxItem>
-											))}
-										</DropdownMenuGroup>
-									</>
-								)}
-								{(yearFilter.length > 0 || programFilter.length > 0) && (
-									<>
-										<DropdownMenuSeparator />
-										<DropdownMenuItem
-											variant="destructive"
-											onClick={() => {
-												setYearFilter([]);
-												setProgramFilter([]);
-											}}
-										>
-											Reset filters
-										</DropdownMenuItem>
-									</>
-								)}
-							</DataTableFilterMenu>
+								</DataTableFilterSection>
+								{programOptions.length > 0 ? (
+									<DataTableFilterSection title="Program">
+										{programOptions.map((program) => (
+											<DataTableFilterOption
+												key={program}
+												label={program}
+												checked={programFilter.includes(program)}
+												onCheckedChange={(checked) =>
+													toggleProgramFilter(program, checked)
+												}
+											/>
+										))}
+									</DataTableFilterSection>
+								) : null}
+								<DataTableFilterActions>
+									<DataTableFilterResetAction
+										onClick={() => {
+											setYearFilter([]);
+											setProgramFilter([]);
+										}}
+									/>
+								</DataTableFilterActions>
+							</DataTableFilterSheet>
 						</div>
 						<div className="max-h-[360px] overflow-y-auto rounded-md border">
 							<Table>

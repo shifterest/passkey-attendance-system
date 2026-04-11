@@ -15,15 +15,18 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { ClassDto, TeacherDto } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	ThresholdDisplay,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { useNavigationTransition } from "@/components/custom/navigation-transition";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -53,7 +56,9 @@ export function DataTableClasses({
 	const [data, setData] = React.useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+		});
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [pagination, setPagination] = React.useState({
 		pageIndex: 0,
@@ -96,6 +101,7 @@ export function DataTableClasses({
 				enableSorting: false,
 				enableHiding: false,
 			},
+			createDatabaseIdColumn<ClassDto>(),
 			{
 				accessorKey: "course_code",
 				header: ({ column }) => <SortableHeader column={column} label="Code" />,
@@ -140,10 +146,10 @@ export function DataTableClasses({
 				id: "thresholds",
 				header: "Thresholds",
 				cell: ({ row }) => (
-					<span className="text-xs text-muted-foreground">
-						Standard ≥{row.original.standard_assurance_threshold} · High ≥
-						{row.original.high_assurance_threshold}
-					</span>
+					<ThresholdDisplay
+						standard={row.original.standard_assurance_threshold}
+						high={row.original.high_assurance_threshold}
+					/>
 				),
 			},
 			{
@@ -189,6 +195,7 @@ export function DataTableClasses({
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(q) ||
 				row.original.course_code.toLowerCase().includes(q) ||
 				row.original.course_name.toLowerCase().includes(q)
 			);
@@ -207,8 +214,9 @@ export function DataTableClasses({
 
 	return (
 		<DataTableScaffold
-			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-			toolbarEnd={<DataTableColumnVisibility table={table} />}
+			toolbarStart={
+				<DataTableToolbar table={table} onSearch={(q) => setGlobalFilter(q)} />
+			}
 		>
 			<DataTableBody table={table} columnCount={columns.length} />
 			<DataTablePagination table={table} />

@@ -27,25 +27,28 @@ import {
 } from "@/app/lib/api";
 import { getRegistrationSession } from "@/app/lib/webauthn";
 import {
+	createDatabaseIdColumn,
+	RegistrationStatusBadge,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
 import { RegistrationQrDialog } from "./registration-qr-dialog";
 
 export const schema = z.object({
@@ -116,6 +119,7 @@ function columns(
 			enableSorting: false,
 			enableHiding: false,
 		},
+		createDatabaseIdColumn<z.infer<typeof schema>>(),
 		{
 			accessorKey: "full_name",
 			header: ({ column }) => (
@@ -136,7 +140,9 @@ function columns(
 		},
 		{
 			accessorKey: "program",
-			header: "Program",
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Program" />
+			),
 			cell: ({ row }) => row.original.program ?? "—",
 		},
 		{
@@ -156,30 +162,19 @@ function columns(
 		{
 			accessorKey: "registered",
 			filterFn: includesSomeFilter,
-			header: "Registration",
-			cell: ({ row }) =>
-				row.original.registered ? (
-					<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-						<IconCircleCheckFilled />
-						Registered
-					</Badge>
-				) : (
-					<button
-						type="button"
-						className="cursor-pointer"
-						onClick={() => setRegistrationQrDialogState(row)}
-						tabIndex={0}
-					>
-						<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-							<IconCircleXFilled />
-							Unregistered
-						</Badge>
-					</button>
-				),
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Registration" />
+			),
+			cell: ({ row }) => (
+				<RegistrationStatusBadge
+					registered={row.original.registered}
+					onUnregisteredClick={() => setRegistrationQrDialogState(row)}
+				/>
+			),
 		},
 		{
 			accessorKey: "email",
-			header: "Email",
+			header: ({ column }) => <SortableHeader column={column} label="Email" />,
 			cell: ({ row }) => (
 				<span className="text-sm text-muted-foreground">
 					{row.original.email}
@@ -188,7 +183,9 @@ function columns(
 		},
 		{
 			accessorKey: "ongoing_class",
-			header: "Session",
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Session" />
+			),
 			cell: ({ row }) =>
 				row.original.ongoing_class ? (
 					<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
@@ -202,7 +199,9 @@ function columns(
 		{
 			accessorKey: "in_class",
 			filterFn: includesSomeFilter,
-			header: "Checked in",
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Checked in" />
+			),
 			cell: ({ row }) => {
 				if (!row.original.ongoing_class) return "—";
 				return row.original.in_class ? (
@@ -309,6 +308,7 @@ export function DataTableStudent({
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({
+			id: false,
 			email: false,
 			year_level: false,
 			low_assurance: false,
@@ -480,6 +480,7 @@ export function DataTableStudent({
 		globalFilterFn: (row) => {
 			const query = globalFilter.toLowerCase();
 			return (
+				String(row.original.id).toLowerCase().includes(query) ||
 				String(row.original.full_name).toLowerCase().includes(query) ||
 				String(row.original.school_id).toLowerCase().includes(query) ||
 				String(row.original.email).toLowerCase().includes(query) ||
@@ -553,6 +554,28 @@ export function DataTableStudent({
 		.rows.map((row) => row.original)
 		.filter((student) => student.registered);
 
+	const activeFilterCount = React.useMemo(() => {
+		const registrationValues = columnFilters.find(
+			(filter) => filter.id === "registered",
+		)?.value as Array<string | boolean> | undefined;
+		const inClassValues = columnFilters.find(
+			(filter) => filter.id === "in_class",
+		)?.value as Array<string | boolean> | undefined;
+
+		return (
+			((registrationValues?.length ?? REGISTERED_FILTER_VALUES.length) <
+			REGISTERED_FILTER_VALUES.length
+				? 1
+				: 0) +
+			((inClassValues?.length ?? IN_CLASS_FILTER_VALUES.length) <
+			IN_CLASS_FILTER_VALUES.length
+				? 1
+				: 0) +
+			yearFilter.length +
+			programFilter.length
+		);
+	}, [columnFilters, programFilter.length, yearFilter.length]);
+
 	return (
 		<>
 			<RegistrationQrDialog
@@ -573,97 +596,85 @@ export function DataTableStudent({
 			<DataTableScaffold
 				className="w-full"
 				toolbarStart={
-					<>
-						<Label htmlFor="view-selector" className="sr-only">
-							View
-						</Label>
-						<SearchForm onSearch={(query) => setGlobalFilter(query)} />
-					</>
-				}
-				toolbarEnd={
-					<>
-						<DataTableFilterMenu>
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Registration</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("registered", true)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("registered", true, checked);
-									}}
-								>
-									Registered
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("registered", false)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("registered", false, checked);
-									}}
-								>
-									Unregistered
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Checked in</DropdownMenuLabel>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("in_class", true)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("in_class", true, checked);
-									}}
-								>
-									Checked in
-								</DropdownMenuCheckboxItem>
-								<DropdownMenuCheckboxItem
-									checked={isFilterValueChecked("in_class", false)}
-									onCheckedChange={(checked) => {
-										toggleFilterValue("in_class", false, checked);
-									}}
-								>
-									Not checked in
-								</DropdownMenuCheckboxItem>
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Program</DropdownMenuLabel>
-								{programOptions.map((program) => (
-									<DropdownMenuCheckboxItem
-										key={program}
-										checked={programFilter.includes(program)}
-										onCheckedChange={(checked) =>
-											toggleProgramFilter(program, checked)
-										}
-									>
-										{program}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-								{yearOptions.map((year) => (
-									<DropdownMenuCheckboxItem
-										key={year}
-										checked={yearFilter.includes(year)}
-										onCheckedChange={(checked) => toggleYearFilter(year, checked)}
-									>
-										{year}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onClick={() => {
-									setColumnFilters(getDefaultColumnFilters());
-									setYearFilter([]);
-									setProgramFilter([]);
-								}}
+					<DataTableToolbar
+						table={table}
+						onSearch={(query) => setGlobalFilter(query)}
+						columnVisibilityWidth="w-32"
+						filters={
+							<DataTableFilterSheet
+								title="Student filters"
+								description="Refine the student table by registration, attendance state, program, and enrollment year."
+								contentClassName="sm:max-w-lg"
+								activeCount={activeFilterCount}
 							>
-								Reset filters
-							</DropdownMenuItem>
-						</DataTableFilterMenu>
-						<DataTableColumnVisibility table={table} width="w-32" />
-					</>
+								<DataTableFilterSection title="Registration">
+									<DataTableFilterOption
+										label="Registered"
+										checked={isFilterValueChecked("registered", true)}
+										onCheckedChange={(checked) => {
+											toggleFilterValue("registered", true, checked);
+										}}
+									/>
+									<DataTableFilterOption
+										label="Unregistered"
+										checked={isFilterValueChecked("registered", false)}
+										onCheckedChange={(checked) => {
+											toggleFilterValue("registered", false, checked);
+										}}
+									/>
+								</DataTableFilterSection>
+								<DataTableFilterSection title="Checked in">
+									<DataTableFilterOption
+										label="Checked in"
+										checked={isFilterValueChecked("in_class", true)}
+										onCheckedChange={(checked) => {
+											toggleFilterValue("in_class", true, checked);
+										}}
+									/>
+									<DataTableFilterOption
+										label="Not checked in"
+										checked={isFilterValueChecked("in_class", false)}
+										onCheckedChange={(checked) => {
+											toggleFilterValue("in_class", false, checked);
+										}}
+									/>
+								</DataTableFilterSection>
+								<DataTableFilterSection title="Program">
+									{programOptions.map((program) => (
+										<DataTableFilterOption
+											key={program}
+											label={program}
+											checked={programFilter.includes(program)}
+											onCheckedChange={(checked) =>
+												toggleProgramFilter(program, checked)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterSection title="Enrollment year">
+									{yearOptions.map((year) => (
+										<DataTableFilterOption
+											key={year}
+											label={String(year)}
+											checked={yearFilter.includes(year)}
+											onCheckedChange={(checked) =>
+												toggleYearFilter(year, checked)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterActions>
+									<DataTableFilterResetAction
+										onClick={() => {
+											setColumnFilters(getDefaultColumnFilters());
+											setYearFilter([]);
+											setProgramFilter([]);
+										}}
+									/>
+								</DataTableFilterActions>
+							</DataTableFilterSheet>
+						}
+					/>
 				}
 			>
 				<DataTableBody

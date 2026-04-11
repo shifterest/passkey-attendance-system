@@ -20,15 +20,18 @@ import {
 	updateSemester,
 } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	formatTableDate,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,14 +86,6 @@ function mergeSemesterRows(rows: SemesterDto[], next: SemesterDto) {
 	}
 
 	return normalized.map((row) => (row.id === next.id ? next : row));
-}
-
-function formatDate(value: string) {
-	return new Date(value).toLocaleDateString(undefined, {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
 }
 
 function SemesterFormFields({
@@ -346,7 +341,9 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 	const [sorting, setSorting] = useState<SortingState>([
 		{ id: "start_date", desc: true },
 	]);
-	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+		id: false,
+	});
 	const [globalFilter, setGlobalFilter] = useState("");
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -355,10 +352,13 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 
 	const columns = useMemo<ColumnDef<SemesterDto>[]>(
 		() => [
+			createDatabaseIdColumn<SemesterDto>(),
 			{
 				accessorKey: "name",
 				header: ({ column }) => <SortableHeader column={column} label="Name" />,
-				cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+				cell: ({ row }) => (
+					<span className="font-medium">{row.original.name}</span>
+				),
 			},
 			{
 				id: "status",
@@ -377,19 +377,19 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				header: ({ column }) => (
 					<SortableHeader column={column} label="Start" />
 				),
-				cell: ({ row }) => formatDate(row.original.start_date),
+				cell: ({ row }) => formatTableDate(row.original.start_date),
 			},
 			{
 				accessorKey: "end_date",
 				header: ({ column }) => <SortableHeader column={column} label="End" />,
-				cell: ({ row }) => formatDate(row.original.end_date),
+				cell: ({ row }) => formatTableDate(row.original.end_date),
 			},
 			{
 				accessorKey: "created_at",
 				header: ({ column }) => (
 					<SortableHeader column={column} label="Created" />
 				),
-				cell: ({ row }) => formatDate(row.original.created_at),
+				cell: ({ row }) => formatTableDate(row.original.created_at),
 			},
 			{
 				id: "actions",
@@ -458,6 +458,7 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 		globalFilterFn: (row, _columnId, value) => {
 			const query = String(value).toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(query) ||
 				row.original.name.toLowerCase().includes(query) ||
 				row.original.start_date.toLowerCase().includes(query) ||
 				row.original.end_date.toLowerCase().includes(query)
@@ -479,8 +480,12 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				}
 			/>
 			<DataTableScaffold
-				toolbarStart={<SearchForm onSearch={(query) => setGlobalFilter(query)} />}
-				toolbarEnd={<DataTableColumnVisibility table={table} />}
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(query) => setGlobalFilter(query)}
+					/>
+				}
 			>
 				<DataTableBody table={table} columnCount={columns.length} />
 				<DataTablePagination table={table} />

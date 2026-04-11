@@ -17,23 +17,24 @@ import {
 import * as React from "react";
 import type { AuditEventDto } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	DatabaseIdCell,
+	formatTableDateTime,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { SearchForm } from "@/components/custom/search-form";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
 	manual_approval: "text-yellow-600 dark:text-yellow-400",
@@ -153,6 +154,7 @@ const columns: ColumnDef<AuditEventDto>[] = [
 		enableSorting: false,
 		enableHiding: false,
 	},
+	createDatabaseIdColumn<AuditEventDto>(),
 	{
 		accessorKey: "created_at",
 		header: ({ column }) => (
@@ -160,14 +162,14 @@ const columns: ColumnDef<AuditEventDto>[] = [
 		),
 		cell: ({ row }) => (
 			<span className="whitespace-nowrap text-sm">
-				{new Date(row.original.created_at).toLocaleString()}
+				{formatTableDateTime(row.original.created_at)}
 			</span>
 		),
 	},
 	{
 		accessorKey: "event_type",
 		filterFn: includesSomeFilter,
-		header: "Event",
+		header: ({ column }) => <SortableHeader column={column} label="Event" />,
 		cell: ({ row }) => {
 			const color =
 				EVENT_TYPE_COLORS[row.original.event_type] ?? "text-muted-foreground";
@@ -180,23 +182,15 @@ const columns: ColumnDef<AuditEventDto>[] = [
 	},
 	{
 		accessorKey: "actor_id",
-		header: "Actor",
-		cell: ({ row }) => (
-			<span className="font-mono text-xs">
-				{row.original.actor_id ? `${row.original.actor_id.slice(0, 8)}…` : "—"}
-			</span>
-		),
+		header: ({ column }) => <SortableHeader column={column} label="Actor ID" />,
+		cell: ({ row }) => <DatabaseIdCell value={row.original.actor_id} />,
 	},
 	{
 		accessorKey: "target_id",
-		header: "Target",
-		cell: ({ row }) => (
-			<span className="font-mono text-xs">
-				{row.original.target_id
-					? `${row.original.target_id.slice(0, 8)}…`
-					: "—"}
-			</span>
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Target ID" />
 		),
+		cell: ({ row }) => <DatabaseIdCell value={row.original.target_id} />,
 	},
 	{
 		accessorKey: "detail",
@@ -219,7 +213,11 @@ export function DataTableLogs({
 	const [data, setData] = React.useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+			actor_id: false,
+			target_id: false,
+		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		[],
 	);
@@ -260,6 +258,7 @@ export function DataTableLogs({
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(q) ||
 				row.original.event_type.toLowerCase().includes(q) ||
 				(row.original.actor_id ?? "").toLowerCase().includes(q) ||
 				(row.original.target_id ?? "").toLowerCase().includes(q)
@@ -302,34 +301,50 @@ export function DataTableLogs({
 			: true;
 	};
 
+	const activeFilterCount = React.useMemo(() => {
+		const eventTypeValues = columnFilters.find((f) => f.id === "event_type")
+			?.value as string[] | undefined;
+
+		if (!eventTypeValues) {
+			return 0;
+		}
+
+		return eventTypeValues.length < eventTypes.length ? 1 : 0;
+	}, [columnFilters, eventTypes]);
+
 	return (
 		<DataTableScaffold
-			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-			toolbarEnd={
-				<>
-					<DataTableFilterMenu contentClassName="w-56 max-h-80 overflow-y-auto">
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Event type</DropdownMenuLabel>
-							{eventTypes.map((t) => (
-								<DropdownMenuCheckboxItem
-									key={t}
-									checked={isChecked(t)}
-									onCheckedChange={(c) => toggleFilterValue(t, c)}
-								>
-									{t}
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => setColumnFilters([])}
+			toolbarStart={
+				<DataTableToolbar
+					table={table}
+					onSearch={(q) => setGlobalFilter(q)}
+					filters={
+						<DataTableFilterSheet
+							title="Log filters"
+							description="Refine audit events by event type."
+							contentClassName="sm:max-w-lg"
+							activeCount={activeFilterCount}
 						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} />
-				</>
+							<DataTableFilterSection title="Event type">
+								{eventTypes.map((eventType) => (
+									<DataTableFilterOption
+										key={eventType}
+										label={eventType}
+										checked={isChecked(eventType)}
+										onCheckedChange={(checked) =>
+											toggleFilterValue(eventType, checked)
+										}
+									/>
+								))}
+							</DataTableFilterSection>
+							<DataTableFilterActions>
+								<DataTableFilterResetAction
+									onClick={() => setColumnFilters([])}
+								/>
+							</DataTableFilterActions>
+						</DataTableFilterSheet>
+					}
+				/>
 			}
 		>
 			<DataTableBody table={table} columnCount={columns.length} />

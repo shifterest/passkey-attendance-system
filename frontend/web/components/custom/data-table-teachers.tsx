@@ -1,10 +1,6 @@
 "use client";
 
-import {
-	IconCircle,
-	IconCircleCheckFilled,
-	IconCircleXFilled,
-} from "@tabler/icons-react";
+import { IconCircle, IconCircleCheckFilled } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -23,22 +19,22 @@ import * as React from "react";
 import type { TeacherDto } from "@/app/lib/api";
 import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { SearchForm } from "@/components/custom/search-form";
+import {
+	createDatabaseIdColumn,
+	RegistrationStatusBadge,
+} from "@/components/custom/data-table-cells";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 
 const REGISTERED_FILTER_VALUES = [true, false] as const;
 const SESSION_FILTER_VALUES = [true, false] as const;
@@ -80,6 +76,7 @@ const columns: ColumnDef<TeacherDto>[] = [
 		enableSorting: false,
 		enableHiding: false,
 	},
+	createDatabaseIdColumn<TeacherDto>(),
 	{
 		accessorKey: "full_name",
 		header: ({ column }) => (
@@ -102,23 +99,16 @@ const columns: ColumnDef<TeacherDto>[] = [
 	{
 		accessorKey: "registered",
 		filterFn: includesSomeFilter,
-		header: "Registration",
-		cell: ({ row }) =>
-			row.original.registered ? (
-				<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-					<IconCircleCheckFilled />
-					Registered
-				</Badge>
-			) : (
-				<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-					<IconCircleXFilled />
-					Unregistered
-				</Badge>
-			),
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Registration" />
+		),
+		cell: ({ row }) => (
+			<RegistrationStatusBadge registered={row.original.registered} />
+		),
 	},
 	{
 		accessorKey: "email",
-		header: "Email",
+		header: ({ column }) => <SortableHeader column={column} label="Email" />,
 		cell: ({ row }) => (
 			<span className="text-sm text-muted-foreground">
 				{row.original.email}
@@ -128,7 +118,7 @@ const columns: ColumnDef<TeacherDto>[] = [
 	{
 		accessorKey: "has_open_session",
 		filterFn: includesSomeFilter,
-		header: "Session",
+		header: ({ column }) => <SortableHeader column={column} label="Session" />,
 		cell: ({ row }) =>
 			row.original.has_open_session ? (
 				<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
@@ -157,8 +147,9 @@ const columns: ColumnDef<TeacherDto>[] = [
 		),
 	},
 	{
+		accessorKey: "default_policy",
 		id: "policy",
-		header: "Policy",
+		header: ({ column }) => <SortableHeader column={column} label="Policy" />,
 		cell: ({ row }) =>
 			row.original.default_policy ? (
 				<Badge variant="outline" className="px-1.5">
@@ -184,6 +175,7 @@ export function DataTableTeachers({
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
 		React.useState<VisibilityState>({
+			id: false,
 			email: false,
 		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -214,6 +206,7 @@ export function DataTableTeachers({
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(q) ||
 				row.original.full_name.toLowerCase().includes(q) ||
 				(row.original.school_id ?? "").toLowerCase().includes(q) ||
 				row.original.email.toLowerCase().includes(q)
@@ -263,61 +256,76 @@ export function DataTableTeachers({
 			: false;
 	};
 
+	const activeFilterCount = React.useMemo(() => {
+		const registrationValues = columnFilters.find((f) => f.id === "registered")
+			?.value as boolean[] | undefined;
+		const sessionValues = columnFilters.find((f) => f.id === "has_open_session")
+			?.value as boolean[] | undefined;
+
+		return (
+			((registrationValues?.length ?? REGISTERED_FILTER_VALUES.length) <
+			REGISTERED_FILTER_VALUES.length
+				? 1
+				: 0) +
+			((sessionValues?.length ?? SESSION_FILTER_VALUES.length) <
+			SESSION_FILTER_VALUES.length
+				? 1
+				: 0)
+		);
+	}, [columnFilters]);
+
 	return (
 		<DataTableScaffold
-			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-			toolbarEnd={
-				<>
-					<DataTableFilterMenu>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Registration</DropdownMenuLabel>
-							<DropdownMenuCheckboxItem
-								checked={isChecked("registered", true)}
-								onCheckedChange={(c) =>
-									toggleFilterValue("registered", true, c)
-								}
-							>
-								Registered
-							</DropdownMenuCheckboxItem>
-							<DropdownMenuCheckboxItem
-								checked={isChecked("registered", false)}
-								onCheckedChange={(c) =>
-									toggleFilterValue("registered", false, c)
-								}
-							>
-								Unregistered
-							</DropdownMenuCheckboxItem>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Session</DropdownMenuLabel>
-							<DropdownMenuCheckboxItem
-								checked={isChecked("has_open_session", true)}
-								onCheckedChange={(c) =>
-									toggleFilterValue("has_open_session", true, c)
-								}
-							>
-								Active
-							</DropdownMenuCheckboxItem>
-							<DropdownMenuCheckboxItem
-								checked={isChecked("has_open_session", false)}
-								onCheckedChange={(c) =>
-									toggleFilterValue("has_open_session", false, c)
-								}
-							>
-								Inactive
-							</DropdownMenuCheckboxItem>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => setColumnFilters(getDefaultColumnFilters())}
+			toolbarStart={
+				<DataTableToolbar
+					table={table}
+					onSearch={(q) => setGlobalFilter(q)}
+					filters={
+						<DataTableFilterSheet
+							title="Teacher filters"
+							description="Refine the teacher table by registration and current session state."
+							activeCount={activeFilterCount}
 						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} />
-				</>
+							<DataTableFilterSection title="Registration">
+								<DataTableFilterOption
+									label="Registered"
+									checked={isChecked("registered", true)}
+									onCheckedChange={(checked) =>
+										toggleFilterValue("registered", true, checked)
+									}
+								/>
+								<DataTableFilterOption
+									label="Unregistered"
+									checked={isChecked("registered", false)}
+									onCheckedChange={(checked) =>
+										toggleFilterValue("registered", false, checked)
+									}
+								/>
+							</DataTableFilterSection>
+							<DataTableFilterSection title="Session">
+								<DataTableFilterOption
+									label="Active"
+									checked={isChecked("has_open_session", true)}
+									onCheckedChange={(checked) =>
+										toggleFilterValue("has_open_session", true, checked)
+									}
+								/>
+								<DataTableFilterOption
+									label="Inactive"
+									checked={isChecked("has_open_session", false)}
+									onCheckedChange={(checked) =>
+										toggleFilterValue("has_open_session", false, checked)
+									}
+								/>
+							</DataTableFilterSection>
+							<DataTableFilterActions>
+								<DataTableFilterResetAction
+									onClick={() => setColumnFilters(getDefaultColumnFilters())}
+								/>
+							</DataTableFilterActions>
+						</DataTableFilterSheet>
+					}
+				/>
 			}
 		>
 			<DataTableBody table={table} columnCount={columns.length} />

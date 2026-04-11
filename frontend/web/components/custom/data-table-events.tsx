@@ -17,15 +17,19 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createEvent, type EventDto, type OrgDto } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	formatTableDate,
+	ThresholdDisplay,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableScaffold,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { TransitionLink } from "@/components/custom/navigation-transition";
 import { SetPageHeader } from "@/components/custom/page-header-context";
-import { SearchForm } from "@/components/custom/search-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -61,7 +65,9 @@ export function DataTableEvents({
 	const [data] = useState(events);
 	const [sorting, setSorting] = useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+	const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+		id: false,
+	});
 	const [rowSelection, setRowSelection] = useState({});
 	const [pagination, setPagination] = useState<PaginationState>({
 		pageIndex: 0,
@@ -110,6 +116,7 @@ export function DataTableEvents({
 				enableSorting: false,
 				enableHiding: false,
 			},
+			createDatabaseIdColumn<EventDto>(),
 			{
 				accessorKey: "name",
 				header: ({ column }) => <SortableHeader column={column} label="Name" />,
@@ -126,8 +133,11 @@ export function DataTableEvents({
 				},
 			},
 			{
-				accessorKey: "org_id",
-				header: "Organization",
+				id: "org_id",
+				accessorFn: (row) => orgMap.get(row.org_id)?.name ?? row.org_id,
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Organization" />
+				),
 				cell: ({ row }) => {
 					const org = orgMap.get(row.original.org_id);
 					return org ? (
@@ -155,10 +165,10 @@ export function DataTableEvents({
 				id: "thresholds",
 				header: "Thresholds",
 				cell: ({ row }) => (
-					<span className="text-xs text-muted-foreground">
-						Standard ≥{row.original.standard_assurance_threshold} · High ≥
-						{row.original.high_assurance_threshold}
-					</span>
+					<ThresholdDisplay
+						standard={row.original.standard_assurance_threshold}
+						high={row.original.high_assurance_threshold}
+					/>
 				),
 			},
 			{
@@ -166,8 +176,7 @@ export function DataTableEvents({
 				header: ({ column }) => (
 					<SortableHeader column={column} label="Created" />
 				),
-				cell: ({ row }) =>
-					new Date(row.original.created_at).toLocaleDateString(),
+				cell: ({ row }) => formatTableDate(row.original.created_at),
 			},
 		],
 		[orgMap],
@@ -195,6 +204,7 @@ export function DataTableEvents({
 			const e = row.original;
 			const orgName = orgMap.get(e.org_id)?.name ?? "";
 			return (
+				e.id.toLowerCase().includes(s) ||
 				e.name.toLowerCase().includes(s) ||
 				(e.description ?? "").toLowerCase().includes(s) ||
 				orgName.toLowerCase().includes(s)
@@ -309,8 +319,12 @@ export function DataTableEvents({
 				}
 			/>
 			<DataTableScaffold
-				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-				toolbarEnd={<DataTableColumnVisibility table={table} />}
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(q) => setGlobalFilter(q)}
+					/>
+				}
 			>
 				<DataTableBody table={table} columnCount={columns.length} />
 				<DataTablePagination table={table} />

@@ -6,6 +6,8 @@ import {
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
+	getSortedRowModel,
+	type SortingState,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
@@ -13,12 +15,14 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { OrgDto } from "@/app/lib/api";
 import { createOrg, deleteOrg } from "@/app/lib/api";
+import { createDatabaseIdColumn } from "@/components/custom/data-table-cells";
 import {
 	DataTableBody,
-	DataTableColumnVisibility,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableToolbar,
+	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { ImportOrgsDialog } from "@/components/custom/import-orgs-dialog";
 import {
@@ -26,7 +30,6 @@ import {
 	useNavigationTransition,
 } from "@/components/custom/navigation-transition";
 import { SetPageHeader } from "@/components/custom/page-header-context";
-import { SearchForm } from "@/components/custom/search-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -74,9 +77,10 @@ const columns: ColumnDef<OrgDto>[] = [
 		enableSorting: false,
 		enableHiding: false,
 	},
+	createDatabaseIdColumn<OrgDto>(),
 	{
 		accessorKey: "name",
-		header: "Name",
+		header: ({ column }) => <SortableHeader column={column} label="Name" />,
 		cell: ({ row }) => (
 			<TransitionLink
 				href={`/orgs/${row.original.id}`}
@@ -107,8 +111,11 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 		pageSize: 10,
 	});
 	const [rowSelection, setRowSelection] = React.useState({});
+	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+		});
 	const [createOpen, setCreateOpen] = React.useState(false);
 	const [name, setName] = React.useState("");
 	const [description, setDescription] = React.useState("");
@@ -180,13 +187,21 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 	const table = useReactTable({
 		data,
 		columns: allColumns,
-		state: { pagination, globalFilter, columnVisibility, rowSelection },
+		state: {
+			pagination,
+			globalFilter,
+			columnVisibility,
+			rowSelection,
+			sorting,
+		},
 		enableRowSelection: true,
 		onRowSelectionChange: setRowSelection,
+		onSortingChange: setSorting,
 		onColumnVisibilityChange: setColumnVisibility,
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(q) ||
 				row.original.name.toLowerCase().includes(q) ||
 				(row.original.description ?? "").toLowerCase().includes(q)
 			);
@@ -196,6 +211,7 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 		getCoreRowModel: getCoreRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
 	});
 
 	return (
@@ -259,8 +275,12 @@ export function OrgList({ data: initialData }: { data: OrgDto[] }) {
 				</DialogContent>
 			</Dialog>
 			<DataTableScaffold
-				toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-				toolbarEnd={<DataTableColumnVisibility table={table} />}
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(q) => setGlobalFilter(q)}
+					/>
+				}
 			>
 				<DataTableBody
 					table={table}

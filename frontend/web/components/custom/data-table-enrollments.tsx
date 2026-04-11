@@ -20,18 +20,25 @@ import {
 	type UserExtendedDto,
 } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	formatTableDate,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableRowActions,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { EnrollmentManageDialog } from "@/components/custom/enrollment-manage-dialog";
 import { ImportEnrollmentsDialog } from "@/components/custom/import-enrollments-dialog";
 import { SetPageHeader } from "@/components/custom/page-header-context";
-import { SearchForm } from "@/components/custom/search-form";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -47,11 +54,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenuCheckboxItem,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 export function DataTableEnrollments({
@@ -82,7 +86,9 @@ export function DataTableEnrollments({
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+		});
 
 	const classById = React.useMemo(
 		() => new Map(classes.map((classValue) => [classValue.id, classValue])),
@@ -141,6 +147,9 @@ export function DataTableEnrollments({
 			}
 
 			return (
+				enrollment.id.toLowerCase().includes(loweredQuery) ||
+				enrollment.student_id.toLowerCase().includes(loweredQuery) ||
+				enrollment.class_id.toLowerCase().includes(loweredQuery) ||
 				student.full_name.toLowerCase().includes(loweredQuery) ||
 				(student.school_id ?? "").toLowerCase().includes(loweredQuery) ||
 				classValue.course_code.toLowerCase().includes(loweredQuery) ||
@@ -216,9 +225,14 @@ export function DataTableEnrollments({
 				enableSorting: false,
 				enableHiding: false,
 			},
+			createDatabaseIdColumn<ClassEnrollmentDto>(),
 			{
-				accessorKey: "student_id",
-				header: "Student",
+				id: "student_id",
+				accessorFn: (row) =>
+					studentById.get(row.student_id)?.full_name ?? row.student_id,
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Student" />
+				),
 				cell: ({ row }) => {
 					const student = studentById.get(row.original.student_id);
 					if (!student) return "-";
@@ -234,7 +248,10 @@ export function DataTableEnrollments({
 			},
 			{
 				id: "school_id",
-				header: "School ID",
+				accessorFn: (row) => studentById.get(row.student_id)?.school_id ?? "",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="School ID" />
+				),
 				cell: ({ row }) => {
 					const student = studentById.get(row.original.student_id);
 					return (
@@ -246,15 +263,27 @@ export function DataTableEnrollments({
 			},
 			{
 				id: "enrollment_year",
-				header: "Enrollment Year",
+				accessorFn: (row) =>
+					studentById.get(row.student_id)?.enrollment_year ?? -1,
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Enrollment Year" />
+				),
 				cell: ({ row }) => {
 					const student = studentById.get(row.original.student_id);
 					return student?.enrollment_year ?? "—";
 				},
 			},
 			{
-				accessorKey: "class_id",
-				header: "Class",
+				id: "class_id",
+				accessorFn: (row) => {
+					const classValue = classById.get(row.class_id);
+					return classValue
+						? `${classValue.course_code} ${classValue.course_name}`
+						: row.class_id;
+				},
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Class" />
+				),
 				cell: ({ row }) => {
 					const classValue = classById.get(row.original.class_id);
 					if (!classValue) return "-";
@@ -276,7 +305,7 @@ export function DataTableEnrollments({
 				accessorFn: (row) => row.enrolled_at,
 				cell: ({ row }) =>
 					row.original.enrolled_at
-						? new Date(row.original.enrolled_at).toLocaleDateString()
+						? formatTableDate(row.original.enrolled_at)
 						: "—",
 			},
 			{
@@ -336,6 +365,8 @@ export function DataTableEnrollments({
 		initialState: { pagination: { pageSize: 20 } },
 	});
 
+	const activeFilterCount = classFilter.length + yearFilter.length;
+
 	return (
 		<div className="flex flex-col gap-4">
 			<EnrollmentManageDialog
@@ -372,64 +403,59 @@ export function DataTableEnrollments({
 				</div>
 			)}
 			<DataTableScaffold
-				toolbarStart={<SearchForm onSearch={(q) => setQuery(q)} />}
-				toolbarEnd={
-					<>
-						<DataTableFilterMenu contentClassName="w-56">
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Class</DropdownMenuLabel>
-								{classes.map((classValue) => (
-									<DropdownMenuCheckboxItem
-										key={classValue.id}
-										checked={classFilter.includes(classValue.id)}
-										onCheckedChange={(checked) =>
-											setClassFilter((prev) =>
-												checked
-													? [...prev, classValue.id]
-													: prev.filter((id) => id !== classValue.id),
-											)
-										}
-									>
-										{classValue.course_code}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							<DropdownMenuSeparator />
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>Enrollment Year</DropdownMenuLabel>
-								{yearOptions.map((year) => (
-									<DropdownMenuCheckboxItem
-										key={year}
-										checked={yearFilter.includes(year)}
-										onCheckedChange={(checked) =>
-											setYearFilter((prev) =>
-												checked
-													? [...prev, year]
-													: prev.filter((y) => y !== year),
-											)
-										}
-									>
-										{year}
-									</DropdownMenuCheckboxItem>
-								))}
-							</DropdownMenuGroup>
-							{(classFilter.length > 0 || yearFilter.length > 0) && (
-								<>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										variant="destructive"
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(q) => setQuery(q)}
+						filters={
+							<DataTableFilterSheet
+								title="Enrollment filters"
+								description="Refine enrollments by class and enrollment year."
+								activeCount={activeFilterCount}
+							>
+								<DataTableFilterSection title="Class">
+									{classes.map((classValue) => (
+										<DataTableFilterOption
+											key={classValue.id}
+											label={classValue.course_code}
+											checked={classFilter.includes(classValue.id)}
+											onCheckedChange={(checked) =>
+												setClassFilter((prev) =>
+													checked
+														? [...prev, classValue.id]
+														: prev.filter((id) => id !== classValue.id),
+												)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterSection title="Enrollment year">
+									{yearOptions.map((year) => (
+										<DataTableFilterOption
+											key={year}
+											label={String(year)}
+											checked={yearFilter.includes(year)}
+											onCheckedChange={(checked) =>
+												setYearFilter((prev) =>
+													checked
+														? [...prev, year]
+														: prev.filter((y) => y !== year),
+												)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterActions>
+									<DataTableFilterResetAction
 										onClick={() => {
 											setClassFilter([]);
 											setYearFilter([]);
 										}}
-									>
-										Reset filters
-									</DropdownMenuItem>
-								</>
-							)}
-						</DataTableFilterMenu>
-						<DataTableColumnVisibility table={table} />
-					</>
+									/>
+								</DataTableFilterActions>
+							</DataTableFilterSheet>
+						}
+					/>
 				}
 			>
 				<DataTableBody table={table} columnCount={columns.length} />

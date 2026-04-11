@@ -3,16 +3,25 @@
 import {
 	type ColumnDef,
 	getCoreRowModel,
+	getSortedRowModel,
+	type SortingState,
 	useReactTable,
+	type VisibilityState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import type { CheckInSessionDto } from "@/app/lib/api";
 import { closeSession } from "@/app/lib/api";
 import {
+	createDatabaseIdColumn,
+	formatTableDateTime,
+} from "@/components/custom/data-table-cells";
+import {
 	DataTableBody,
+	DataTableToolbar,
 	DataTableRowActions,
 	DataTableScaffold,
+	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { TransitionLink } from "@/components/custom/navigation-transition";
 import { Badge } from "@/components/ui/badge";
@@ -21,37 +30,45 @@ import {
 	DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
-function formatDt(s: string) {
-	return new Date(s).toLocaleString();
-}
-
 export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 	const router = useRouter();
 	const [closedIds, setClosedIds] = React.useState<Set<string>>(new Set());
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{ id: "start_time", desc: true },
+	]);
+	const [columnVisibility, setColumnVisibility] =
+		React.useState<VisibilityState>({
+			id: false,
+		});
 
 	const columns = React.useMemo<ColumnDef<CheckInSessionDto>[]>(
 		() => [
+			createDatabaseIdColumn<CheckInSessionDto>(),
 			{
 				accessorKey: "start_time",
-				header: "Start",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Start" />
+				),
 				cell: ({ row }) => (
 					<span className="whitespace-nowrap">
-						{formatDt(row.original.start_time)}
+						{formatTableDateTime(row.original.start_time)}
 					</span>
 				),
 			},
 			{
 				accessorKey: "end_time",
-				header: "End",
+				header: ({ column }) => <SortableHeader column={column} label="End" />,
 				cell: ({ row }) => (
 					<span className="whitespace-nowrap">
-						{formatDt(row.original.end_time)}
+						{formatTableDateTime(row.original.end_time)}
 					</span>
 				),
 			},
 			{
 				accessorKey: "status",
-				header: "Status",
+				header: ({ column }) => (
+					<SortableHeader column={column} label="Status" />
+				),
 				cell: ({ row }) => {
 					const status = closedIds.has(row.original.id)
 						? "closed"
@@ -124,11 +141,23 @@ export function DataTableSessions({ data }: { data: CheckInSessionDto[] }) {
 	const table = useReactTable({
 		data,
 		columns,
+		state: { columnVisibility, sorting },
+		onColumnVisibilityChange: setColumnVisibility,
+		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
+		getSortedRowModel: getSortedRowModel(),
 	});
 
 	return (
-		<DataTableScaffold>
+		<DataTableScaffold
+			toolbarStart={
+				<DataTableToolbar
+					table={table}
+					onSearch={() => {}}
+					showSearch={false}
+				/>
+			}
+		>
 			<DataTableBody
 				table={table}
 				columnCount={columns.length}

@@ -1,6 +1,5 @@
 "use client";
 
-import { IconCircleCheckFilled, IconCircleXFilled } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -19,22 +18,22 @@ import * as React from "react";
 import type { UserDto } from "@/app/lib/api";
 import {
 	DataTableBody,
-	DataTableColumnVisibility,
-	DataTableFilterMenu,
+	DataTableFilterActions,
+	DataTableFilterOption,
 	DataTablePagination,
 	DataTableScaffold,
+	DataTableFilterResetAction,
+	DataTableFilterSection,
+	DataTableFilterSheet,
+	DataTableToolbar,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
-import { SearchForm } from "@/components/custom/search-form";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
-	DropdownMenuCheckboxItem,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+	createDatabaseIdColumn,
+	RegistrationStatusBadge,
+	UserRoleBadge,
+} from "@/components/custom/data-table-cells";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const ROLE_FILTER_VALUES = ["student", "teacher", "admin", "operator"] as const;
 
@@ -71,6 +70,7 @@ const columns: ColumnDef<UserDto>[] = [
 		enableSorting: false,
 		enableHiding: false,
 	},
+	createDatabaseIdColumn<UserDto>(),
 	{
 		accessorKey: "full_name",
 		header: ({ column }) => (
@@ -92,36 +92,22 @@ const columns: ColumnDef<UserDto>[] = [
 	},
 	{
 		accessorKey: "registered",
-		header: "Registration",
-		cell: ({ row }) =>
-			row.original.registered ? (
-				<Badge className="border-green-200 bg-green-50 px-1.5 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-					<IconCircleCheckFilled />
-					Registered
-				</Badge>
-			) : (
-				<Badge className="border-red-200 bg-red-50 px-1.5 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-					<IconCircleXFilled />
-					Unregistered
-				</Badge>
-			),
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Registration" />
+		),
+		cell: ({ row }) => (
+			<RegistrationStatusBadge registered={row.original.registered} />
+		),
 	},
 	{
 		accessorKey: "role",
 		filterFn: includesSomeFilter,
-		header: "Role",
-		cell: ({ row }) => (
-			<Badge
-				variant="outline"
-				className="text-muted-foreground px-1.5 capitalize"
-			>
-				{row.original.role}
-			</Badge>
-		),
+		header: ({ column }) => <SortableHeader column={column} label="Role" />,
+		cell: ({ row }) => <UserRoleBadge role={row.original.role} />,
 	},
 	{
 		accessorKey: "email",
-		header: "Email",
+		header: ({ column }) => <SortableHeader column={column} label="Email" />,
 		cell: ({ row }) => (
 			<span className="text-sm text-muted-foreground">
 				{row.original.email}
@@ -138,7 +124,10 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 	const [data, setData] = React.useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
-		React.useState<VisibilityState>({});
+		React.useState<VisibilityState>({
+			id: false,
+			email: false,
+		});
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		getDefaultColumnFilters,
 	);
@@ -167,7 +156,9 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 		globalFilterFn: (row) => {
 			const q = globalFilter.toLowerCase();
 			return (
+				row.original.id.toLowerCase().includes(q) ||
 				row.original.full_name.toLowerCase().includes(q) ||
+				row.original.role.toLowerCase().includes(q) ||
 				(row.original.school_id ?? "").toLowerCase().includes(q) ||
 				row.original.email.toLowerCase().includes(q)
 			);
@@ -216,34 +207,49 @@ export function DataTableUsers({ data: initialData }: { data: UserDto[] }) {
 			: false;
 	};
 
+	const activeFilterCount = React.useMemo(() => {
+		const roleValues = columnFilters.find((f) => f.id === "role")?.value as
+			| string[]
+			| undefined;
+
+		return (roleValues?.length ?? ROLE_FILTER_VALUES.length) <
+			ROLE_FILTER_VALUES.length
+			? 1
+			: 0;
+	}, [columnFilters]);
+
 	return (
 		<DataTableScaffold
-			toolbarStart={<SearchForm onSearch={(q) => setGlobalFilter(q)} />}
-			toolbarEnd={
-				<>
-					<DataTableFilterMenu>
-						<DropdownMenuGroup>
-							<DropdownMenuLabel>Role</DropdownMenuLabel>
-							{ROLE_FILTER_VALUES.map((role) => (
-								<DropdownMenuCheckboxItem
-									key={role}
-									checked={isChecked("role", role)}
-									onCheckedChange={(c) => toggleFilterValue("role", role, c)}
-								>
-									{role.charAt(0).toUpperCase() + role.slice(1)}s
-								</DropdownMenuCheckboxItem>
-							))}
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							variant="destructive"
-							onClick={() => setColumnFilters(getDefaultColumnFilters())}
+			toolbarStart={
+				<DataTableToolbar
+					table={table}
+					onSearch={(q) => setGlobalFilter(q)}
+					filters={
+						<DataTableFilterSheet
+							title="User filters"
+							description="Refine the user table by role."
+							activeCount={activeFilterCount}
 						>
-							Reset filters
-						</DropdownMenuItem>
-					</DataTableFilterMenu>
-					<DataTableColumnVisibility table={table} />
-				</>
+							<DataTableFilterSection title="Role">
+								{ROLE_FILTER_VALUES.map((role) => (
+									<DataTableFilterOption
+										key={role}
+										label={`${role.charAt(0).toUpperCase() + role.slice(1)}s`}
+										checked={isChecked("role", role)}
+										onCheckedChange={(checked) =>
+											toggleFilterValue("role", role, checked)
+										}
+									/>
+								))}
+							</DataTableFilterSection>
+							<DataTableFilterActions>
+								<DataTableFilterResetAction
+									onClick={() => setColumnFilters(getDefaultColumnFilters())}
+								/>
+							</DataTableFilterActions>
+						</DataTableFilterSheet>
+					}
+				/>
 			}
 		>
 			<DataTableBody table={table} columnCount={columns.length} />

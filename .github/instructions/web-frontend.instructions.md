@@ -289,6 +289,8 @@ Renders a search input but is not connected to any table filtering logic. Dead U
 - When a `Select` stores machine values or IDs but displays human-friendly labels, do not rely on bare `SelectValue`; render the closed-state label explicitly or use a shared label helper
 - Keep dropdown-style controls visually consistent: reuse shared row-action patterns for table menus, keep destructive items explicit, and avoid one-off trigger sizes unless there is a concrete UX reason
 - Live admin tables must use `DataTableScaffold` from `components/custom/data-table-shared` for outer spacing and toolbar/content layout; do not recreate ad hoc `gap`/`px` wrapper shells per table
+- For the standard table search/filter/column-visibility row, use `DataTableToolbar` from `components/custom/data-table-shared` instead of rebuilding the search and right-side controls by hand
+- For standard live-table filters in that toolbar row, use the shared right-side `DataTableFilterSheet` primitives from `components/custom/data-table-shared`; do not build new dropdown filter menus for those pages
 
 ---
 
