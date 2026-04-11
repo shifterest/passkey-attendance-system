@@ -104,13 +104,10 @@ function SemesterFormFields({
 }) {
 	return (
 		<FieldGroup>
-			<Field orientation="horizontal">
-				<FieldContent>
-					<FieldLabel htmlFor="semester-name">Semester name</FieldLabel>
-				</FieldContent>
+			<Field>
+				<FieldLabel htmlFor="semester-name">Semester name</FieldLabel>
 				<Input
 					id="semester-name"
-					className="w-full md:w-72"
 					value={values.name}
 					onChange={(e) => onChange({ ...values, name: e.target.value })}
 					placeholder="AY 2025-2026, 1st Semester"

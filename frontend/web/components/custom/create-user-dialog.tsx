@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import {
 	Select,
 	SelectContent,
@@ -44,7 +45,7 @@ export function CreateUserDialog({
 	const [email, setEmail] = React.useState("");
 	const [schoolId, setSchoolId] = React.useState("");
 	const [program, setProgram] = React.useState("");
-	const [yearLevel, setYearLevel] = React.useState("");
+	const [yearLevel, setYearLevel] = React.useState(1);
 
 	const isStudent = role === "student";
 	const requiresSchoolId = role === "student" || role === "teacher";
@@ -62,7 +63,7 @@ export function CreateUserDialog({
 		fullName.trim() !== "" &&
 		email.trim() !== "" &&
 		(!requiresSchoolId || schoolId.trim() !== "") &&
-		(!isStudent || (program.trim() !== "" && yearLevel !== ""));
+		(!isStudent || (program.trim() !== "" && yearLevel >= 1));
 
 	function reset() {
 		setRole(defaultRole);
@@ -70,7 +71,7 @@ export function CreateUserDialog({
 		setEmail("");
 		setSchoolId("");
 		setProgram("");
-		setYearLevel("");
+		setYearLevel(1);
 	}
 
 	async function handleSubmit() {
@@ -83,7 +84,7 @@ export function CreateUserDialog({
 				email: email.trim(),
 				school_id: schoolId.trim() || null,
 				program: program.trim() || null,
-				year_level: yearLevel ? Number(yearLevel) : null,
+				year_level: yearLevel || null,
 			});
 			reset();
 			setOpen(false);
@@ -124,7 +125,7 @@ export function CreateUserDialog({
 		>
 			<FieldGroup>
 				{allowedRoles.length > 1 && (
-					<Field>
+					<Field orientation="horizontal">
 						<FieldLabel htmlFor="create-user-role">Role</FieldLabel>
 						<Select
 							value={role}
@@ -149,7 +150,7 @@ export function CreateUserDialog({
 						</Select>
 					</Field>
 				)}
-				<FieldSeparator />
+				{allowedRoles.length > 1 && <FieldSeparator />}
 				<Field>
 					<FieldLabel htmlFor="create-user-name">Full name</FieldLabel>
 					<Input
@@ -182,7 +183,7 @@ export function CreateUserDialog({
 				</Field>
 				{isStudent && (
 					<>
-						<Field>
+						<Field orientation="horizontal">
 							<FieldLabel htmlFor="create-user-program">Program</FieldLabel>
 							<Input
 								id="create-user-program"
@@ -191,16 +192,14 @@ export function CreateUserDialog({
 								placeholder="BSCS"
 							/>
 						</Field>
-						<Field>
+						<Field orientation="horizontal">
 							<FieldLabel htmlFor="create-user-year">Year level</FieldLabel>
-							<Input
+							<NumberStepper
 								id="create-user-year"
-								type="number"
+								value={yearLevel}
+								onChange={setYearLevel}
 								min={1}
 								max={6}
-								value={yearLevel}
-								onChange={(e) => setYearLevel(e.target.value)}
-								placeholder="1"
 							/>
 						</Field>
 					</>

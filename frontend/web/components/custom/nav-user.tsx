@@ -99,20 +99,14 @@ export function NavUser() {
 						sideOffset={4}
 					>
 						<DropdownMenuGroup>
-							<DropdownMenuLabel className="p-0 font-normal">
-								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-									{/* <Avatar className="size-8">
-										<AvatarImage src={user.avatar} alt={fullName} />
-										<AvatarFallback className="rounded-lg">CN</AvatarFallback>
-									</Avatar> */}
-									<div className="grid flex-1 text-left text-sm leading-tight">
-										<span className="truncate font-medium">
-											{user?.full_name}
-										</span>
-										<span className="text-muted-foreground truncate text-xs">
-											{user?.email}
-										</span>
-									</div>
+							<DropdownMenuLabel className="font-normal">
+								<div className="grid flex-1 text-left text-sm leading-tight">
+									<span className="truncate font-medium">
+										{user?.full_name}
+									</span>
+									<span className="text-muted-foreground truncate text-xs">
+										{user?.email}
+									</span>
 								</div>
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>

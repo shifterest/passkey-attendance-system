@@ -16,7 +16,7 @@ type NavigationTransitionContextValue = {
 const NavigationTransitionContext =
 	React.createContext<NavigationTransitionContextValue | null>(null);
 
-const SETTLE_DURATION_MS = 180;
+const SETTLE_DURATION_MS = 420;
 const FAILSAFE_DURATION_MS = 8000;
 
 function isModifiedEvent(event: React.MouseEvent<HTMLAnchorElement>) {
@@ -171,7 +171,7 @@ export function NavigationTransitionContent({
 					phase === "pending" &&
 						"duration-[700ms] ease-out blur-[3px] opacity-72 saturate-75 scale-[0.998]",
 					phase === "settling" &&
-						"duration-200 ease-out blur-0 opacity-100 saturate-100 scale-100",
+						"duration-400 ease-out blur-0 opacity-100 saturate-100 scale-100",
 				)}
 			>
 				{children}

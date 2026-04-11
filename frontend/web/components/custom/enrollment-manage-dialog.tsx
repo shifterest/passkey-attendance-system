@@ -1,6 +1,6 @@
 "use client";
 
-import { IconMinus, IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconSearch } from "@tabler/icons-react";
 import * as React from "react";
 import type { ClassDto, UserExtendedDto } from "@/app/lib/api";
 
@@ -14,7 +14,6 @@ import {
 	FormSheetCancelButton,
 } from "@/components/custom/form-sheet";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Combobox,
@@ -37,6 +36,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import {
 	Table,
 	TableBody,
@@ -82,9 +82,6 @@ export function EnrollmentManageDialog({
 	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 	const [submitting, setSubmitting] = React.useState(false);
 	const chipsRef = useComboboxAnchor();
-
-	const clampBlock = (value: number) => Math.max(1, Math.min(100, value));
-	const clampOffset = (value: number) => Math.max(0, value);
 
 	React.useEffect(() => {
 		if (!open) {
@@ -457,39 +454,13 @@ export function EnrollmentManageDialog({
 								capture.
 							</FieldDescription>
 						</FieldContent>
-						<ButtonGroup>
-							<Input
-								id="enrollment-block-size"
-								type="number"
-								min={1}
-								max={100}
-								value={blockSize}
-								onChange={(event) =>
-									setBlockSize(
-										clampBlock(Number(event.currentTarget.value) || 1),
-									)
-								}
-								className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-							/>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon-sm"
-								onClick={() => setBlockSize((value) => clampBlock(value - 1))}
-								disabled={blockSize <= 1}
-							>
-								<IconMinus />
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon-sm"
-								onClick={() => setBlockSize((value) => clampBlock(value + 1))}
-								disabled={blockSize >= 100}
-							>
-								<IconPlus />
-							</Button>
-						</ButtonGroup>
+						<NumberStepper
+							id="enrollment-block-size"
+							value={blockSize}
+							onChange={setBlockSize}
+							min={1}
+							max={100}
+						/>
 					</Field>
 					<FieldSeparator />
 					<Field orientation="horizontal">
@@ -499,36 +470,13 @@ export function EnrollmentManageDialog({
 								Shift the visible range before applying the batch selection.
 							</FieldDescription>
 						</FieldContent>
-						<ButtonGroup>
-							<Input
-								id="enrollment-offset"
-								type="number"
-								min={0}
-								step={10}
-								value={offset}
-								onChange={(event) =>
-									setOffset(clampOffset(Number(event.currentTarget.value) || 0))
-								}
-								className="h-8 w-16 text-center font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-							/>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon-sm"
-								onClick={() => setOffset((value) => clampOffset(value - 10))}
-								disabled={offset <= 0}
-							>
-								<IconMinus />
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon-sm"
-								onClick={() => setOffset((value) => clampOffset(value + 10))}
-							>
-								<IconPlus />
-							</Button>
-						</ButtonGroup>
+						<NumberStepper
+							id="enrollment-offset"
+							value={offset}
+							onChange={setOffset}
+							min={0}
+							step={10}
+						/>
 					</Field>
 					<div className="flex justify-end">
 						<Button
