@@ -94,6 +94,7 @@ final class QrStrings {
 final class HomeStrings {
   static const String appBarTitle = 'Attendance';
   static const String dashboardTitle = 'Dashboard';
+  static const String dashboardShellLabel = 'Student workspace';
   static const String dashboardTab = 'Dashboard';
   static const String checkInTab = 'Check-in';
   static const String historyTab = 'History';
@@ -182,12 +183,46 @@ final class LoginStrings {
 final class TeacherStrings {
   static const String appBarTitle = 'Teacher';
   static const String openSession = 'Open Session';
+  static const String landingTitle = 'Ready to open attendance';
+  static const String landingBody =
+      'Start a live session for normal check-in or switch to the offline flow when connectivity is unreliable.';
+  static const String signedInLabel = 'Signed in as teacher';
+  static const String liveSessionTitle = 'Live session';
+  static const String liveSessionBody =
+      'Open a classroom attendance window and broadcast proximity signals from this phone.';
+  static const String offlineSessionBody =
+      'Create an offline session, broadcast a short-lived nonce, and scan student QR payloads.';
+  static const String sessionFlowTitle = 'What happens next';
+  static const String sessionFlowStepOne =
+      'Open the session and let the server lock the active class from your schedule.';
+  static const String sessionFlowStepTwo =
+      'Keep this phone visible so students can use BLE and, if enabled, NFC proximity.';
+  static const String sessionFlowStepThree =
+      'Review the live roster and resolve any low-assurance attempts before you close.';
   static const String noActiveClass = 'No active class right now';
   static const String sessionAlreadyOpen = 'A session is already open';
   static const String sessionOpened = 'Session opened';
   static const String sessionClosed = 'Session closed';
   static const String closeSession = 'Close Session';
+  static const String closeSessionBody =
+      'Closing ends this attendance window and stops new check-ins for the session.';
   static const String sessionActive = 'Session active';
+  static const String sessionClosedLabel = 'Session closed';
+  static const String sessionSummaryTitle = 'Live attendance window';
+  static const String sessionSummaryBody =
+      'Keep this screen open while students check in. BLE and NFC tokens stay tied to this session.';
+  static const String sessionId = 'Session ID';
+  static const String lastUpdated = 'Last updated';
+  static const String refresh = 'Refresh';
+  static const String openRoster = 'Open roster';
+  static const String tokenReady = 'Ready';
+  static const String tokenWaiting = 'Waiting for token';
+  static const String tokenCopied = 'Copied to clipboard';
+  static const String tokenUnavailableHint =
+      'The server has not returned a token yet. Pull to refresh or wait for the next sync.';
+  static const String bleBroadcasting = 'BLE broadcast available';
+  static const String nfcBroadcasting = 'NFC tap enabled';
+  static const String nfcOff = 'NFC tap disabled';
   static const String bleToken = 'BLE Token';
   static const String bleTokenUnavailable = 'Unavailable';
   static const String nfcToken = 'NFC Token';
@@ -200,6 +235,8 @@ final class TeacherStrings {
   static const String absent = 'absent';
   static const String sessionScreen = 'Live Session';
   static const String loadingToken = 'Loading...';
+  static const String viewRosterHint =
+      'Open the roster to review live attendance evidence and resolve low-assurance attempts.';
   static const String errorClosingSession = 'Failed to close session';
   static const String errorOpeningSession = 'Failed to open session';
 }
@@ -295,16 +332,34 @@ final class HistoryStrings {
 
 final class DashboardStrings {
   static const String title = 'Session Roster';
+  static const String subtitle =
+      'Review live attendance evidence and resolve low-assurance records.';
   static const String errorLoadingRecords = 'Failed to load records';
   static const String noRecords = 'No attendance records yet';
+  static const String noFilteredRecords = 'No records in this view';
   static const String reviewRecord = 'Review Attendance';
+  static const String reviewRecordBody =
+      'Low-assurance attempts can be accepted or rejected after checking the evidence below.';
   static const String student = 'Student';
+  static const String status = 'Status';
   static const String score = 'Score';
   static const String band = 'Band';
+  static const String signals = 'Signals';
+  static const String anomalies = 'Anomalies';
   static const String reasonOptional = 'Reason (optional)';
   static const String approve = 'Approve';
   static const String reject = 'Reject';
   static const String errorApproving = 'Failed to process approval';
+  static const String total = 'Total';
+  static const String needsReview = 'Needs review';
+  static const String accepted = 'Accepted';
+  static const String allFilter = 'All';
+  static const String reviewFilter = 'Review';
+  static const String acceptedFilter = 'Accepted';
+  static const String lowAssuranceHint =
+      'Low-assurance records need explicit teacher action before the session closes.';
+  static const String missingSignal = 'Missing';
+  static const String noAnomalies = 'No anomalies';
   static const String mockGps = 'Mock GPS detected';
   static const String signCountAnomaly = 'Sign count anomaly';
   static const String syncPending = 'Sync pending';

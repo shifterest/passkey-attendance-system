@@ -5,7 +5,7 @@ import { SidebarToggleButton } from "@/components/custom/sidebar-toggle";
 import { Separator } from "@/components/ui/separator";
 
 export function SiteHeader() {
-	const { title, description, actionsRef } = usePageHeaderState();
+	const { title, titleNode, description, actionsRef } = usePageHeaderState();
 
 	return (
 		<header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -16,9 +16,11 @@ export function SiteHeader() {
 					className="mx-2 h-4 data-vertical:self-auto"
 				/>
 				<div className="flex items-baseline gap-2 min-w-0">
-					<h1 className="font-heading heading-tight text-base font-medium whitespace-nowrap">
-						{title}
-					</h1>
+					{titleNode || (
+						<h1 className="font-heading heading-tight text-base font-medium whitespace-nowrap">
+							{title}
+						</h1>
+					)}
 					{description && (
 						<span className="text-sm text-muted-foreground truncate hidden md:inline">
 							{description}

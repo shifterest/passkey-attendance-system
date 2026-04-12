@@ -9,6 +9,7 @@ import {
 	IconUserEdit,
 } from "@tabler/icons-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { ComponentType } from "react";
 import { SortableHeader } from "@/components/custom/data-table-shared";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -90,49 +91,66 @@ export function RegistrationStatusBadge({
 	return badge;
 }
 
+type RoleMeta = {
+	label: string;
+	icon: ComponentType;
+	className: string;
+};
+
+const ROLE_META: Record<string, RoleMeta> = {
+	student: {
+		label: "Student",
+		icon: IconUserEdit,
+		className:
+			"border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+	},
+	teacher: {
+		label: "Teacher",
+		icon: IconChalkboardTeacher,
+		className:
+			"border-emerald-200 bg-emerald-50 px-1.5 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400",
+	},
+	admin: {
+		label: "Admin",
+		icon: IconTool,
+		className:
+			"border-amber-200 bg-amber-50 px-1.5 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400",
+	},
+	operator: {
+		label: "Operator",
+		icon: IconTool,
+		className:
+			"border-slate-200 bg-slate-50 px-1.5 text-slate-700 dark:border-slate-700 dark:bg-slate-900/20 dark:text-slate-300",
+	},
+};
+
+export function getRoleMeta(role: string): RoleMeta {
+	return (
+		ROLE_META[role.toLowerCase()] ?? {
+			label: role,
+			icon: IconUser,
+			className: "",
+		}
+	);
+}
+
 export function UserRoleBadge({ role }: { role: string }) {
-	const normalizedRole = role.toLowerCase();
+	const meta = getRoleMeta(role);
+	const Icon = meta.icon;
 
-	if (normalizedRole === "student") {
+	if (!ROLE_META[role.toLowerCase()]) {
 		return (
-			<Badge className="border-blue-200 bg-blue-50 px-1.5 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-				<IconUserEdit />
-				Student
-			</Badge>
-		);
-	}
-
-	if (normalizedRole === "teacher") {
-		return (
-			<Badge className="border-emerald-200 bg-emerald-50 px-1.5 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-				<IconChalkboardTeacher />
-				Teacher
-			</Badge>
-		);
-	}
-
-	if (normalizedRole === "admin") {
-		return (
-			<Badge className="border-amber-200 bg-amber-50 px-1.5 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-				<IconTool />
-				Admin
-			</Badge>
-		);
-	}
-
-	if (normalizedRole === "operator") {
-		return (
-			<Badge className="border-slate-200 bg-slate-50 px-1.5 text-slate-700 dark:border-slate-700 dark:bg-slate-900/20 dark:text-slate-300">
-				<IconUser />
-				Operator
+			<Badge variant="outline" className="px-1.5 capitalize">
+				<Icon />
+				{meta.label}
 			</Badge>
 		);
 	}
 
 	return (
-		<Badge variant="outline" className="px-1.5 capitalize">
-			<IconUser />
-			{role}
+		<Badge className={meta.className}>
+			<Icon />
+			{meta.label}
 		</Badge>
 	);
 }

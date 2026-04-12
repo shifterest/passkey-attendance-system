@@ -1,6 +1,6 @@
 "use client";
 
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconX } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { createClass, type SemesterDto, type TeacherDto } from "@/app/lib/api";
@@ -9,7 +9,7 @@ import {
 	FormSheetCancelButton,
 } from "@/components/custom/form-sheet";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Field,
 	FieldGroup,
@@ -68,6 +68,7 @@ export function CreateClassDialog({
 	const router = useRouter();
 	const [open, setOpen] = React.useState(false);
 	const [submitting, setSubmitting] = React.useState(false);
+	const [error, setError] = React.useState<string | null>(null);
 	const [teacherId, setTeacherId] = React.useState("");
 	const [semesterId, setSemesterId] = React.useState("");
 	const [courseCode, setCourseCode] = React.useState("");
@@ -99,6 +100,7 @@ export function CreateClassDialog({
 		setCourseCode("");
 		setCourseName("");
 		setSchedule([createScheduleBlock()]);
+		setError(null);
 	}
 
 	function updateBlock(index: number, patch: Partial<ScheduleBlock>) {
@@ -132,6 +134,7 @@ export function CreateClassDialog({
 			(b) => b.days.length > 0 && b.start_time && b.end_time,
 		);
 		setSubmitting(true);
+		setError(null);
 		try {
 			await createClass({
 				teacher_id: teacherId,
@@ -147,6 +150,10 @@ export function CreateClassDialog({
 			reset();
 			setOpen(false);
 			router.refresh();
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : "An unexpected error occurred.";
+			setError(message);
 		} finally {
 			setSubmitting(false);
 		}
@@ -162,6 +169,7 @@ export function CreateClassDialog({
 			trigger={trigger}
 			title="Create class"
 			description="Add a new course with schedule and teacher assignment."
+			error={error}
 			contentClassName="sm:max-w-2xl"
 			footer={
 				<>
@@ -254,22 +262,20 @@ export function CreateClassDialog({
 				<div className="flex flex-col gap-3">
 					<FieldLabel>Schedule</FieldLabel>
 					{schedule.map((block, i) => (
-						<Card key={block.id} size="sm">
-							<CardHeader className="flex-row items-center justify-between">
-								<CardTitle>Block {i + 1}</CardTitle>
-								{schedule.length > 1 && (
-									<Button
-										variant="ghost"
-										size="icon-xs"
-										onClick={() =>
-											setSchedule((p) => p.filter((_, j) => j !== i))
-										}
-									>
-										<IconTrash />
-									</Button>
-								)}
-							</CardHeader>
-							<CardContent className="flex flex-col gap-3">
+						<Card key={block.id} size="sm" className="relative">
+							{schedule.length > 1 && (
+								<Button
+									variant="ghost"
+									size="icon-xs"
+									className="absolute top-2 right-2"
+									onClick={() =>
+										setSchedule((p) => p.filter((_, j) => j !== i))
+									}
+								>
+									<IconX />
+								</Button>
+							)}
+							<CardContent className="flex flex-col gap-3 pt-4">
 								<div className="grid grid-cols-7 gap-1">
 									{DAYS.map((day) => (
 										<Button

@@ -10,8 +10,8 @@ import {
 	type UserDto,
 } from "@/app/lib/api";
 import { getSearchPlaceholder } from "@/app/lib/navigation";
+import { UserRoleBadge } from "@/components/custom/data-table-cells";
 import { useNavigationTransition } from "@/components/custom/navigation-transition";
-import { Badge } from "@/components/ui/badge";
 import {
 	Command,
 	CommandDialog,
@@ -164,9 +164,9 @@ export function CommandMenu() {
 										onSelect={() => navigate(userHref(u.role))}
 									>
 										<span className="truncate">{u.full_name}</span>
-										<Badge variant="outline" className="ml-auto capitalize">
-											{u.role}
-										</Badge>
+										<div className="ml-auto">
+											<UserRoleBadge role={u.role} />
+										</div>
 									</CommandItem>
 								))}
 							</CommandGroup>

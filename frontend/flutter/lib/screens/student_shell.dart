@@ -41,6 +41,12 @@ class _StudentShellState extends State<StudentShell> {
     final theme = Theme.of(context);
     final immersive = _selectedIndex == 1;
     final isDark = immersive || theme.brightness == Brightness.dark;
+    final navBackground = immersive
+        ? const Color(0xFF0D1015)
+        : theme.colorScheme.surfaceContainer;
+    final navBorder = immersive
+        ? Colors.white.withValues(alpha: 0.08)
+        : theme.colorScheme.outlineVariant.withValues(alpha: 0.6);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
@@ -78,10 +84,10 @@ class _StudentShellState extends State<StudentShell> {
         ),
         bottomNavigationBar: NavigationBarTheme(
           data: NavigationBarThemeData(
-            backgroundColor: immersive ? Colors.black : null,
+            backgroundColor: Colors.transparent,
             indicatorColor: immersive
                 ? Colors.white.withValues(alpha: 0.12)
-                : null,
+                : theme.colorScheme.primary.withValues(alpha: 0.12),
             labelTextStyle: WidgetStateProperty.resolveWith((states) {
               final selected = states.contains(WidgetState.selected);
               return theme.textTheme.labelMedium?.copyWith(
@@ -95,30 +101,52 @@ class _StudentShellState extends State<StudentShell> {
               return IconThemeData(
                 color: immersive
                     ? (selected ? Colors.white : Colors.white70)
-                    : null,
+                    : (selected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant),
               );
             }),
           ),
-          child: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _selectTab,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard_rounded),
-                label: HomeStrings.dashboardTab,
+          child: Container(
+            color: immersive ? Colors.black : theme.colorScheme.surface,
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: navBackground,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: navBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: immersive ? 0.24 : 0.06,
+                    ),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.how_to_reg_outlined),
-                selectedIcon: Icon(Icons.how_to_reg_rounded),
-                label: HomeStrings.checkInTab,
+              child: NavigationBar(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: _selectTab,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined),
+                    selectedIcon: Icon(Icons.dashboard_rounded),
+                    label: HomeStrings.dashboardTab,
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.how_to_reg_outlined),
+                    selectedIcon: Icon(Icons.how_to_reg_rounded),
+                    label: HomeStrings.checkInTab,
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.history_outlined),
+                    selectedIcon: Icon(Icons.history_rounded),
+                    label: HomeStrings.historyTab,
+                  ),
+                ],
               ),
-              NavigationDestination(
-                icon: Icon(Icons.history_outlined),
-                selectedIcon: Icon(Icons.history_rounded),
-                label: HomeStrings.historyTab,
-              ),
-            ],
+            ),
           ),
         ),
       ),

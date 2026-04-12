@@ -297,33 +297,6 @@ function PolicyMetric({
 	);
 }
 
-function PolicySummaryCard({
-	title,
-	value,
-	description,
-	caption,
-}: {
-	title: string;
-	value: string;
-	description: string;
-	caption: string;
-}) {
-	return (
-		<Card size="sm" className="border border-border/70 shadow-none">
-			<CardHeader className="gap-3 border-b">
-				<CardTitle>{title}</CardTitle>
-				<CardDescription>{description}</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-2">
-				<div className="font-heading text-3xl font-medium text-foreground">
-					{value}
-				</div>
-				<p className="text-sm text-muted-foreground">{caption}</p>
-			</CardContent>
-		</Card>
-	);
-}
-
 function PolicySliderField({
 	title,
 	description,
@@ -1114,52 +1087,6 @@ export function DataTablePolicies({
 					) : null
 				}
 			/>
-			<div className="grid gap-4 xl:grid-cols-3">
-				<PolicySummaryCard
-					title="System default"
-					value={
-						systemPolicies.length > 0
-							? String(systemPolicies.length)
-							: "Missing"
-					}
-					description="The global fallback used when no teacher or class-specific rule exists."
-					caption={
-						systemPolicies.length > 0
-							? `${systemPolicies[0].standard_assurance_threshold}/${systemPolicies[0].high_assurance_threshold} threshold baseline is currently active.`
-							: "Create one baseline so every class inherits a predictable fallback."
-					}
-				/>
-				<PolicySummaryCard
-					title={
-						currentUser.role === "teacher" ? "Your default" : "Teacher defaults"
-					}
-					value={
-						currentUser.role === "teacher"
-							? teacherDefaultForCurrentUser
-								? "Ready"
-								: "Missing"
-							: String(teacherPolicies.length)
-					}
-					description="Teacher-owned baselines sit between the system default and direct class overrides."
-					caption={
-						currentUser.role === "teacher"
-							? teacherDefaultForCurrentUser
-								? `Classes without an override fall back to ${teacherDefaultForCurrentUser.standard_assurance_threshold}/${teacherDefaultForCurrentUser.high_assurance_threshold}.`
-								: "Create your teacher default once, then override only the classes that really need it."
-							: `${teacherPolicies.length} teacher-managed fallback policies are visible in this workspace.`
-					}
-				/>
-				<PolicySummaryCard
-					title="Class overrides"
-					value={String(classPolicies.length)}
-					description="Direct overrides replace the default chain for one specific class."
-					caption={
-						currentUser.role === "teacher"
-							? `${classPolicies.filter((policy) => policy.created_by === currentUser.id).length} of your classes currently diverge from the default fallback.`
-							: `${classPolicies.length} classes across the workspace have an explicit override.`
-					}
-				/>
-			</div>
 			<PolicyPlayground values={playgroundValues} />
 			<div className="space-y-4">
 				<div>

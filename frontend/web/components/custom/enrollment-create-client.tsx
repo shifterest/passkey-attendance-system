@@ -16,6 +16,7 @@ import {
 	DEFAULT_TABLE_PAGE_SIZE_OPTIONS,
 	getStoredPageSize,
 } from "@/components/custom/data-table-shared";
+import { SetPageHeader } from "@/components/custom/page-header-context";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -47,6 +48,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import {
 	Select,
 	SelectContent,
@@ -73,6 +75,24 @@ function sortBySchoolId(a: UserExtendedDto, b: UserExtendedDto) {
 	});
 }
 
+const headerBreadcrumb = (
+	<Breadcrumb>
+		<BreadcrumbList>
+			<BreadcrumbItem>
+				<BreadcrumbLink render={<Link href="/enrollments" />}>
+					Enrollments
+				</BreadcrumbLink>
+			</BreadcrumbItem>
+			<BreadcrumbSeparator />
+			<BreadcrumbItem>
+				<BreadcrumbPage className="font-heading text-base font-medium">
+					Create
+				</BreadcrumbPage>
+			</BreadcrumbItem>
+		</BreadcrumbList>
+	</Breadcrumb>
+);
+
 export function EnrollmentCreateClient({
 	classes,
 	students,
@@ -89,6 +109,8 @@ export function EnrollmentCreateClient({
 	const [submitting, setSubmitting] = React.useState(false);
 	const [pageIndex, setPageIndex] = React.useState(0);
 	const [pageSize, setPageSize] = React.useState(getStoredPageSize);
+	const [blockSize, setBlockSize] = React.useState(50);
+	const [offset, setOffset] = React.useState(0);
 	const chipsRef = useComboboxAnchor();
 
 	const classOptions = React.useMemo(
@@ -173,6 +195,16 @@ export function EnrollmentCreateClient({
 		});
 	};
 
+	const selectRange = (start: number, count: number) => {
+		const boundedStart = Math.max(start, 0);
+		const boundedCount = Math.max(count, 1);
+		const range = filteredStudents.slice(
+			boundedStart,
+			boundedStart + boundedCount,
+		);
+		setSelectedIds(new Set(range.map((student) => student.id)));
+	};
+
 	const toggleYearFilter = (year: number, checked: boolean) => {
 		setYearFilter((prev) => {
 			if (prev.length === 0) {
@@ -237,28 +269,11 @@ export function EnrollmentCreateClient({
 
 	return (
 		<>
-			<Breadcrumb>
-				<BreadcrumbList>
-					<BreadcrumbItem>
-						<BreadcrumbLink render={<Link href="/enrollments" />}>
-							Enrollments
-						</BreadcrumbLink>
-					</BreadcrumbItem>
-					<BreadcrumbSeparator />
-					<BreadcrumbItem>
-						<BreadcrumbPage>Create</BreadcrumbPage>
-					</BreadcrumbItem>
-				</BreadcrumbList>
-			</Breadcrumb>
-
-			<div>
-				<h1 className="text-2xl font-bold tracking-tight">
-					Create enrollments
-				</h1>
-				<p className="text-sm text-muted-foreground">
-					Select classes and students, then enroll in batch.
-				</p>
-			</div>
+			<SetPageHeader
+				title="Enrollments — Create"
+				titleNode={headerBreadcrumb}
+				description="Select classes and students, then enroll in batch."
+			/>
 
 			<FieldGroup className="max-w-4xl">
 				<Field orientation="horizontal">
@@ -470,6 +485,43 @@ export function EnrollmentCreateClient({
 							Next
 						</Button>
 					</div>
+				</div>
+
+				<FieldSeparator />
+
+				<div className="flex flex-wrap items-end gap-4">
+					<Field orientation="horizontal" className="gap-2">
+						<FieldLabel htmlFor="enrollment-block-size" className="text-xs">
+							Block size
+						</FieldLabel>
+						<NumberStepper
+							id="enrollment-block-size"
+							value={blockSize}
+							onChange={setBlockSize}
+							min={1}
+							max={filteredStudents.length || 100}
+						/>
+					</Field>
+					<Field orientation="horizontal" className="gap-2">
+						<FieldLabel htmlFor="enrollment-offset" className="text-xs">
+							Offset
+						</FieldLabel>
+						<NumberStepper
+							id="enrollment-offset"
+							value={offset}
+							onChange={setOffset}
+							min={0}
+							step={10}
+						/>
+					</Field>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => selectRange(offset, blockSize)}
+					>
+						Select range
+					</Button>
 				</div>
 			</div>
 

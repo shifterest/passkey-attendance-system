@@ -40,6 +40,7 @@ export function CreateUserDialog({
 	const router = useRouter();
 	const [open, setOpen] = React.useState(false);
 	const [submitting, setSubmitting] = React.useState(false);
+	const [error, setError] = React.useState<string | null>(null);
 	const [role, setRole] = React.useState(defaultRole);
 	const [fullName, setFullName] = React.useState("");
 	const [email, setEmail] = React.useState("");
@@ -72,11 +73,13 @@ export function CreateUserDialog({
 		setSchoolId("");
 		setProgram("");
 		setYearLevel(1);
+		setError(null);
 	}
 
 	async function handleSubmit() {
 		if (!canSubmit) return;
 		setSubmitting(true);
+		setError(null);
 		try {
 			await createUser({
 				role,
@@ -89,6 +92,10 @@ export function CreateUserDialog({
 			reset();
 			setOpen(false);
 			router.refresh();
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : "An unexpected error occurred.";
+			setError(message);
 		} finally {
 			setSubmitting(false);
 		}
@@ -108,6 +115,7 @@ export function CreateUserDialog({
 					? `Add a new ${role} account to the system.`
 					: "Add a new user account to the system."
 			}
+			error={error}
 			contentClassName="sm:max-w-xl"
 			footer={
 				<>

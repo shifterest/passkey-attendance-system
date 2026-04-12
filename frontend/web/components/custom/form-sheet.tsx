@@ -23,6 +23,7 @@ type FormSheetProps = {
 	trigger?: React.ReactNode;
 	children: React.ReactNode;
 	footer?: React.ReactNode;
+	error?: string | null;
 	contentClassName?: string;
 	bodyClassName?: string;
 	side?: "top" | "right" | "bottom" | "left";
@@ -36,6 +37,7 @@ export function FormSheet({
 	trigger,
 	children,
 	footer,
+	error,
 	contentClassName,
 	bodyClassName,
 	side = "right",
@@ -62,6 +64,11 @@ export function FormSheet({
 				<ScrollArea className="min-h-0 flex-1">
 					<div className={cn("space-y-6 p-6", bodyClassName)}>{children}</div>
 				</ScrollArea>
+				{error ? (
+					<div className="border-t bg-destructive/10 px-6 py-3 text-sm text-destructive">
+						{error}
+					</div>
+				) : null}
 				{footer ? (
 					<SheetFooter className="border-t">{footer}</SheetFooter>
 				) : null}
