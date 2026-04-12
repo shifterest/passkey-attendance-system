@@ -177,43 +177,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> {
     return '${value.substring(0, 10)}...';
   }
 
-  List<Widget> _anomalyIcons(Map<String, dynamic> record) {
-    final icons = <Widget>[];
-    final methods = record['verification_methods'] as Map<String, dynamic>?;
-
-    if (methods != null) {
-      final gps = methods['gps'] as Map<String, dynamic>?;
-      if (gps != null && gps['mock'] == true) {
-        icons.add(
-          const Tooltip(
-            message: DashboardStrings.mockGps,
-            child: Icon(Icons.gps_off, size: 16, color: Colors.red),
-          ),
-        );
-      }
-    }
-
-    if (record['sign_count_anomaly'] == true) {
-      icons.add(
-        const Tooltip(
-          message: DashboardStrings.signCountAnomaly,
-          child: Icon(Icons.warning, size: 16, color: Colors.amber),
-        ),
-      );
-    }
-
-    if (record['sync_pending'] == true) {
-      icons.add(
-        const Tooltip(
-          message: DashboardStrings.syncPending,
-          child: Icon(Icons.cloud_off, size: 16, color: Colors.orange),
-        ),
-      );
-    }
-
-    return icons;
-  }
-
   Future<void> _showApprovalSheet(Map<String, dynamic> record) async {
     final recordId = record['id'] as String?;
     if (recordId == null) return;

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/session_actions.dart';
 import 'package:passkey_attendance_system/services/session_api.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
