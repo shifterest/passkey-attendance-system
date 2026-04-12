@@ -70,6 +70,7 @@ export const navigation = {
 export function getPageTitle(pathname: string): string {
 	if (pathname === "/account") return "Account";
 	if (pathname === "/settings") return "Settings";
+	if (pathname === "/policies") return "Policies";
 	const infoItem = navigation.information.find((item) => item.url === pathname);
 	if (infoItem) return infoItem.title;
 
