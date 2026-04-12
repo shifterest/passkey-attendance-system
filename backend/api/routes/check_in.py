@@ -136,11 +136,7 @@ def check_in_initiate(
     if session.event_id:
         event = db.query(Event).filter(Event.id == session.event_id).first()
 
-    user_credential = (
-        db.query(Credential)
-        .filter(Credential.user_id == user.id)
-        .first()
-    )
+    user_credential = db.query(Credential).filter(Credential.user_id == user.id).first()
     if user_credential is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -350,7 +346,9 @@ def check_in_verify(
             status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
         )
     challenge = (
-        challenge_bytes.decode() if isinstance(challenge_bytes, bytes) else challenge_bytes
+        challenge_bytes.decode()
+        if isinstance(challenge_bytes, bytes)
+        else challenge_bytes
     )
     issued_at_ms = load_issued_at_ms(issued_at_ms_key, Messages.AUTH_NO_PENDING)
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -455,9 +453,7 @@ def check_in_verify(
             AuditEvents.DEVICE_SIGNATURE_FAILURE,
             current_user.id,
             user.id,
-            DeviceSignatureFailureDetail(
-                credential_id=user_credential.id
-            ).model_dump(),
+            DeviceSignatureFailureDetail(credential_id=user_credential.id).model_dump(),
             db,
         )
         db.commit()
@@ -468,9 +464,7 @@ def check_in_verify(
         AttendanceRecordVerificationMethods.DEVICE.value,
     ]
     if response_data.bluetooth_rssi_readings:
-        readings = [
-            r for r in response_data.bluetooth_rssi_readings if -127 <= r <= 20
-        ]
+        readings = [r for r in response_data.bluetooth_rssi_readings if -127 <= r <= 20]
         if readings and response_data.ble_token is not None:
             expected_token_raw = redis_client.getdel(
                 f"check_in_ble_token:{user.id}:{session.id}"
@@ -494,9 +488,7 @@ def check_in_verify(
                 )
         elif readings:
             logger.warning(
-                Logs.BLE_TOKEN_MISMATCH.format(
-                    user_id=user.id, session_id=session.id
-                )
+                Logs.BLE_TOKEN_MISMATCH.format(user_id=user.id, session_id=session.id)
             )
     if response_data.nfc_token is not None:
         expected_nfc_raw = redis_client.getdel(
@@ -507,14 +499,10 @@ def check_in_verify(
             expected_nfc_token is not None
             and response_data.nfc_token == expected_nfc_token
         ):
-            verification_methods.append(
-                AttendanceRecordVerificationMethods.NFC.value
-            )
+            verification_methods.append(AttendanceRecordVerificationMethods.NFC.value)
         else:
             logger.warning(
-                Logs.NFC_TOKEN_MISMATCH.format(
-                    user_id=user.id, session_id=session.id
-                )
+                Logs.NFC_TOKEN_MISMATCH.format(user_id=user.id, session_id=session.id)
             )
     gps_is_mock = bool(response_data.gps_is_mock)
     gps_in_geofence = None
@@ -532,12 +520,9 @@ def check_in_verify(
             settings.school_geofence_radius_m,
         )
         if gps_in_geofence:
-            verification_methods.append(
-                AttendanceRecordVerificationMethods.GPS.value
-            )
+            verification_methods.append(AttendanceRecordVerificationMethods.GPS.value)
     play_integrity_enabled = (
-        settings.outbound_integrity_checks_enabled
-        and settings.play_integrity_enabled
+        settings.outbound_integrity_checks_enabled and settings.play_integrity_enabled
     )
     integrity_vouched = play_integrity_enabled and has_valid_vouch(
         user_credential.credential_id

@@ -9,14 +9,24 @@ NFC = AttendanceRecordVerificationMethods.NFC.value
 
 class TestNfcScoring:
     def test_nfc_scores_five_when_vouched(self):
-        assert assurance_score_from_verification_methods([NFC], integrity_vouched=True) == 5
+        assert (
+            assurance_score_from_verification_methods([NFC], integrity_vouched=True)
+            == 5
+        )
 
     def test_nfc_scores_five_when_absent(self):
-        assert assurance_score_from_verification_methods([NFC], integrity_vouched=False) == 5
+        assert (
+            assurance_score_from_verification_methods([NFC], integrity_vouched=False)
+            == 5
+        )
 
     def test_nfc_not_affected_by_integrity_vouched(self):
-        score_vouched = assurance_score_from_verification_methods([NFC], integrity_vouched=True)
-        score_absent = assurance_score_from_verification_methods([NFC], integrity_vouched=False)
+        score_vouched = assurance_score_from_verification_methods(
+            [NFC], integrity_vouched=True
+        )
+        score_absent = assurance_score_from_verification_methods(
+            [NFC], integrity_vouched=False
+        )
         assert score_vouched == score_absent
 
     def test_nfc_adds_to_other_methods(self):

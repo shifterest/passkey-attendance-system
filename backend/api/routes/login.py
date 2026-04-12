@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from api.config import settings
 from api.contracts.device import DeviceBindingFlow
-from api.helpers.base64url import encode_base64url
+from api.helpers.base64url import decode_base64url, encode_base64url
 from api.helpers.credential import normalize_credential_id_base64url
 from api.helpers.device_payload import build_device_payload
 from api.redis import redis_client
@@ -34,7 +34,7 @@ from api.services.auth_service import (
 )
 from api.strings import AuditEvents, Logs, Messages
 from database.connection import get_db
-from database.models import LoginSession, User
+from database.models import Credential, LoginSession, User
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -43,7 +43,10 @@ from webauthn import (
     verify_authentication_response,
 )
 from webauthn.helpers.exceptions import WebAuthnException
-from webauthn.helpers.structs import UserVerificationRequirement
+from webauthn.helpers.structs import (
+    PublicKeyCredentialDescriptor,
+    UserVerificationRequirement,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -58,10 +61,25 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
 
+    user_credentials = (
+        db.query(Credential).filter(Credential.user_id == user.id).all()
+    )
+    if not user_credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.AUTH_NO_CREDENTIAL,
+        )
+
     options = generate_authentication_options(
         rp_id=settings.rp_id,
         timeout=settings.challenge_timeout * 1000,
         user_verification=UserVerificationRequirement.REQUIRED,
+        allow_credentials=[
+            PublicKeyCredentialDescriptor(
+                id=decode_base64url(c.credential_id),
+            )
+            for c in user_credentials
+        ],
     )
     issued_at_ms = issued_at_ms_now()
 

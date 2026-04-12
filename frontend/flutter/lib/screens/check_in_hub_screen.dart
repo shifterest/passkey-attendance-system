@@ -39,8 +39,9 @@ class CheckInHubScreen extends StatefulWidget {
 
 class _CheckInHubScreenState extends State<CheckInHubScreen>
     with SingleTickerProviderStateMixin {
-  static final _teacherServiceGuid =
-      Guid('0000fff0-0000-1000-8000-00805f9b34fb');
+  static final _teacherServiceGuid = Guid(
+    '0000fff0-0000-1000-8000-00805f9b34fb',
+  );
   late final Future<String?> _userIdFuture;
   String? _ongoingClass;
   Map<String, dynamic>? _lastCheckIn;
@@ -381,7 +382,8 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       CheckInSignalVisualState.idle => CheckInStrings.stageIdleTitle,
       CheckInSignalVisualState.ready => CheckInStrings.stageReadyTitle,
       CheckInSignalVisualState.detected => CheckInStrings.stageDetectedTitle,
-      CheckInSignalVisualState.checkingIn => CheckInStrings.stageCheckingInTitle,
+      CheckInSignalVisualState.checkingIn =>
+        CheckInStrings.stageCheckingInTitle,
       CheckInSignalVisualState.success => CheckInStrings.stageSuccessTitle,
     };
   }
@@ -594,9 +596,9 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     final canTap =
         !_isCheckingIn &&
         (_hasFreshSuccess ||
-        _detectedBleToken != null ||
-        (_canCheckIn && _blePermissionGranted && !_bluetoothReady) ||
-        (_canCheckIn && !_blePermissionGranted));
+            _detectedBleToken != null ||
+            (_canCheckIn && _blePermissionGranted && !_bluetoothReady) ||
+            (_canCheckIn && !_blePermissionGranted));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),

@@ -29,8 +29,9 @@ class OfflineCheckInScreen extends StatefulWidget {
 }
 
 class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
-  static final _teacherServiceGuid =
-      Guid('0000fff0-0000-1000-8000-00805f9b34fb');
+  static final _teacherServiceGuid = Guid(
+    '0000fff0-0000-1000-8000-00805f9b34fb',
+  );
   bool _scanning = true;
   String? _sessionId;
   String? _nonce;
