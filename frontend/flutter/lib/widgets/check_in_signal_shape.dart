@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:material_shapes/material_shapes.dart';
 
-enum CheckInSignalVisualState { idle, ready, detected, success }
+enum CheckInSignalVisualState { idle, ready, detected, checkingIn, success }
 
 class CheckInSignalShape extends StatefulWidget {
   const CheckInSignalShape({
@@ -28,19 +28,19 @@ class CheckInSignalShape extends StatefulWidget {
 
 class _CheckInSignalShapeState extends State<CheckInSignalShape>
     with SingleTickerProviderStateMixin {
-  static const _shapeSequence = <String>[
-    'softBloom',
-    'bloom',
-    'puffy',
-    'diamond',
-    'gem',
-    'sevenSidedCookie',
+  static final _shapeSequence = <RoundedPolygon>[
+    MaterialShapes.flower,
+    MaterialShapes.sunny,
+    MaterialShapes.puffy,
+    MaterialShapes.diamond,
+    MaterialShapes.gem,
+    MaterialShapes.cookie7Sided,
   ];
 
   final Random _random = Random();
   late final AnimationController _rotationController;
   Timer? _shapeTimer;
-  String _shapeName = 'circle';
+  RoundedPolygon _currentShape = MaterialShapes.circle;
 
   @override
   void initState() {
@@ -69,18 +69,15 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
     _shapeTimer?.cancel();
     switch (widget.visualState) {
       case CheckInSignalVisualState.idle:
-        _shapeName = 'circle';
-        _rotationController
-          ..stop()
-          ..value = 0;
       case CheckInSignalVisualState.success:
-        _shapeName = 'circle';
+        _currentShape = MaterialShapes.circle;
         _rotationController
           ..stop()
           ..value = 0;
       case CheckInSignalVisualState.ready:
         if (forceReset) {
-          _shapeName = _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          _currentShape =
+              _shapeSequence[_random.nextInt(_shapeSequence.length)];
         }
         _rotationController
           ..duration = const Duration(seconds: 22)
@@ -88,12 +85,14 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
         _shapeTimer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
           if (!mounted) return;
           setState(() {
-            _shapeName = _shapeSequence[_random.nextInt(_shapeSequence.length)];
+            _currentShape =
+                _shapeSequence[_random.nextInt(_shapeSequence.length)];
           });
         });
       case CheckInSignalVisualState.detected:
         if (forceReset) {
-          _shapeName = _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          _currentShape =
+              _shapeSequence[_random.nextInt(_shapeSequence.length)];
         }
         _rotationController
           ..duration = const Duration(seconds: 14)
@@ -101,16 +100,31 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
         _shapeTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
           if (!mounted) return;
           setState(() {
-            _shapeName = _shapeSequence[_random.nextInt(_shapeSequence.length)];
+            _currentShape =
+                _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          });
+        });
+      case CheckInSignalVisualState.checkingIn:
+        if (forceReset) {
+          _currentShape =
+              _shapeSequence[_random.nextInt(_shapeSequence.length)];
+        }
+        _rotationController
+          ..duration = const Duration(seconds: 8)
+          ..repeat();
+        _shapeTimer = Timer.periodic(const Duration(milliseconds: 800), (_) {
+          if (!mounted) return;
+          setState(() {
+            _currentShape =
+                _shapeSequence[_random.nextInt(_shapeSequence.length)];
           });
         });
     }
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
-  Widget _buildShape() {
+  @override
+  Widget build(BuildContext context) {
     final color = widget.color;
     final size = widget.size;
     final gradient = LinearGradient(
@@ -127,73 +141,21 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
       offset: const Offset(0, 16),
     );
 
-    return switch (_shapeName) {
-      'softBloom' => MaterialShapes.softBloom(
-        size: size,
-        color: color,
+    final shapeWidget = AnimatedContainer(
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(
         gradient: gradient,
-        shadow: shadow,
+        shadows: [shadow],
+        shape: MaterialShapeBorder(shape: _currentShape),
       ),
-      'bloom' => MaterialShapes.bloom(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-      'puffy' => MaterialShapes.puffy(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-      'diamond' => MaterialShapes.diamond(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-      'gem' => MaterialShapes.gem(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-      'sevenSidedCookie' => MaterialShapes.sevenSidedCookie(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-      _ => MaterialShapes.circle(
-        size: size,
-        color: color,
-        gradient: gradient,
-        shadow: shadow,
-      ),
-    };
-  }
+    );
 
-  @override
-  Widget build(BuildContext context) {
     final child = RotationTransition(
       turns: _rotationController,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 520),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(scale: animation, child: child),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey(
-            '${widget.visualState.name}:$_shapeName:${widget.size.round()}',
-          ),
-          child: _buildShape(),
-        ),
-      ),
+      child: shapeWidget,
     );
 
     return AnimatedScale(

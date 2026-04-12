@@ -5,8 +5,14 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:passkey_attendance_system/services/auth_api.dart';
+import 'package:passkey_attendance_system/services/nfc_service.dart';
+import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/passkey.dart';
+import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/services/student_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
@@ -45,10 +51,14 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   int _selectedTab = 0;
   int? _strongestRssi;
   String? _detectedBleToken;
+  final List<int> _accumulatedRssiReadings = [];
   bool _bluetoothReady = false;
   bool _bleSupported = false;
   bool _blePermissionGranted = true;
   bool _scanCycleRunning = false;
+  bool _isCheckingIn = false;
+  String? _checkInError;
+  bool _nfcListening = false;
   late final TabController _tabController;
 
   @override
@@ -62,6 +72,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     _loadLastCheckIn();
     if (widget.active) {
       _syncPassiveScan();
+      _syncNfcListener();
     }
   }
 
@@ -70,6 +81,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.active != widget.active) {
       _syncPassiveScan();
+      _syncNfcListener();
     }
   }
 
@@ -79,6 +91,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     _tabController.dispose();
     SessionStore.sessionRevision.removeListener(_handleSessionRevision);
     _stopPassiveScan();
+    _stopNfcListener();
     super.dispose();
   }
 
@@ -90,8 +103,10 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     setState(() => _selectedTab = nextIndex);
     if (nextIndex == 0) {
       _syncPassiveScan();
+      _syncNfcListener();
     } else {
       _stopPassiveScan();
+      _stopNfcListener();
     }
   }
 
@@ -99,6 +114,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     _loadStudentDetails();
     _loadLastCheckIn();
     _syncPassiveScan();
+    _syncNfcListener();
   }
 
   Future<void> _loadLastCheckIn() async {
@@ -116,6 +132,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
         setState(() => _ongoingClass = data['ongoing_class'] as String?);
       }
       await _syncPassiveScan();
+      _syncNfcListener();
     } catch (_) {}
   }
 
@@ -199,6 +216,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
         if (bytes == null || bytes.isEmpty) continue;
         final token = utf8.decode(bytes, allowMalformed: true).trim();
         if (token.isEmpty) continue;
+        _accumulatedRssiReadings.add(result.rssi);
         if (strongestRssi == null || result.rssi > strongestRssi) {
           strongestRssi = result.rssi;
           strongestToken = token;
@@ -234,6 +252,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
           setState(() {
             _detectedBleToken = null;
             _strongestRssi = null;
+            _accumulatedRssiReadings.clear();
           });
         }
       }
@@ -265,6 +284,9 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   bool get _shouldSenseBle => widget.active && _selectedTab == 0 && _canCheckIn;
 
   CheckInSignalVisualState get _visualState {
+    if (_isCheckingIn) {
+      return CheckInSignalVisualState.checkingIn;
+    }
     if (_hasFreshSuccess) {
       return CheckInSignalVisualState.success;
     }
@@ -292,6 +314,9 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   }
 
   Color get _stageColor {
+    if (_isCheckingIn) {
+      return const Color(0xFF4AA4FF);
+    }
     if (_hasFreshSuccess) {
       return switch (_lastCheckIn?['band'] as String?) {
         'high' => const Color(0xFF35C66B),
@@ -320,6 +345,9 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   }
 
   double get _stageSize {
+    if (_isCheckingIn) {
+      return 232;
+    }
     if (_hasFreshSuccess) {
       return 192;
     }
@@ -353,11 +381,15 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       CheckInSignalVisualState.idle => CheckInStrings.stageIdleTitle,
       CheckInSignalVisualState.ready => CheckInStrings.stageReadyTitle,
       CheckInSignalVisualState.detected => CheckInStrings.stageDetectedTitle,
+      CheckInSignalVisualState.checkingIn => CheckInStrings.stageCheckingInTitle,
       CheckInSignalVisualState.success => CheckInStrings.stageSuccessTitle,
     };
   }
 
   String get _stageBody {
+    if (_checkInError != null) {
+      return _checkInError!;
+    }
     if (!_canCheckIn) {
       return CheckInStrings.stageIdleBody;
     }
@@ -371,6 +403,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       CheckInSignalVisualState.idle => CheckInStrings.stageIdleBody,
       CheckInSignalVisualState.ready => CheckInStrings.stageReadyBody,
       CheckInSignalVisualState.detected => CheckInStrings.stageDetectedBody,
+      CheckInSignalVisualState.checkingIn => CheckInStrings.stageCheckingInBody,
       CheckInSignalVisualState.success => CheckInStrings.stageSuccessBody,
     };
   }
@@ -392,18 +425,113 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       await _syncPassiveScan();
       return;
     }
-    if (_detectedBleToken != null || _hasFreshSuccess) {
-      await _launchCheckIn(userId);
+    if (_hasFreshSuccess) {
+      await _performCheckIn(userId);
+      return;
+    }
+    if (_detectedBleToken != null) {
+      await _performCheckIn(userId);
     }
   }
 
-  Future<void> _launchCheckIn(String userId) async {
-    if (!_canCheckIn) {
+  Future<void> _performCheckIn(String userId, {String? nfcToken}) async {
+    if (_isCheckingIn) return;
+    setState(() {
+      _isCheckingIn = true;
+      _checkInError = null;
+    });
+
+    try {
+      final optionsJson = await AuthApi.checkInInitiate(userId);
+      final sessionId = optionsJson['session_id'];
+      if (sessionId is! String || sessionId.isEmpty) {
+        throw Exception(AuthStrings.errorMissingSessionId);
+      }
+
+      final gpsPosition = await _collectGpsPosition();
+
+      final rssiReadings = List<int>.from(_accumulatedRssiReadings);
+      final bleToken = _detectedBleToken;
+
+      final credentialJson = await passkey.checkIn(
+        optionsJson,
+        userId,
+        sessionId,
+        rssiReadings,
+        bleToken: bleToken,
+        gpsLatitude: gpsPosition?.latitude,
+        gpsLongitude: gpsPosition?.longitude,
+        gpsIsMock: gpsPosition?.isMocked,
+        nfcToken: nfcToken,
+      );
+
+      final result = await AuthApi.checkInVerify(credentialJson);
+      await SessionStore.saveLastCheckIn(
+        status: result['status'] as String? ?? 'unknown',
+        band: result['assurance_band_recorded'] as String? ?? 'unknown',
+        score: result['assurance_score'] as int? ?? 0,
+      );
+      _accumulatedRssiReadings.clear();
+      await _loadLastCheckIn();
+      unawaited(submitPlayIntegrityVouch());
+    } on PasskeyAuthCancelledException {
+      // User cancelled biometric — silently return to detected state
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _checkInError = e.toString());
+    } finally {
+      if (mounted) setState(() => _isCheckingIn = false);
+    }
+  }
+
+  Future<Position?> _collectGpsPosition() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return null;
+    }
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _syncNfcListener() async {
+    if (!widget.active || _selectedTab != 0 || !_canCheckIn) {
+      _stopNfcListener();
       return;
     }
-    await context.push('/authenticate?user_id=${Uri.encodeComponent(userId)}');
-    await _loadLastCheckIn();
-    await _syncPassiveScan();
+    if (_nfcListening) return;
+    if (!NfcService.isSupported) return;
+    final available = await NfcService.isAvailable();
+    if (!available) return;
+    _nfcListening = true;
+    _listenForNfc();
+  }
+
+  Future<void> _listenForNfc() async {
+    while (_nfcListening && mounted) {
+      final token = await NfcService.readToken();
+      if (!_nfcListening || !mounted) break;
+      if (token != null && token.isNotEmpty) {
+        final userId = await SessionStore.getUserId();
+        if (userId != null && userId.isNotEmpty && _canCheckIn) {
+          await _performCheckIn(userId, nfcToken: token);
+        }
+      }
+    }
+  }
+
+  void _stopNfcListener() {
+    _nfcListening = false;
   }
 
   ThemeData _immersiveTheme() {
@@ -464,10 +592,11 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   Widget _buildNormalTab(BuildContext context, String userId) {
     final theme = Theme.of(context);
     final canTap =
-        _hasFreshSuccess ||
+        !_isCheckingIn &&
+        (_hasFreshSuccess ||
         _detectedBleToken != null ||
         (_canCheckIn && _blePermissionGranted && !_bluetoothReady) ||
-        (_canCheckIn && !_blePermissionGranted);
+        (_canCheckIn && !_blePermissionGranted));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),

@@ -319,6 +319,9 @@ final class CheckInStrings {
   static const String stageSuccessTitle = 'Check-in recorded';
   static const String stageSuccessBody =
       'Your latest result is held here. Tap the shape again if you want another attempt.';
+  static const String stageCheckingInTitle = 'Checking in…';
+  static const String stageCheckingInBody =
+      'Verifying your identity and proximity — hold tight.';
   static const String signalClose = 'Close range';
   static const String signalModerate = 'Moderate range';
   static const String signalFar = 'Far range';

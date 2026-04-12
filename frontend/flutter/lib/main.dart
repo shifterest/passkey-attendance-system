@@ -78,7 +78,6 @@ final _router = GoRouter(
         final userId = state.uri.queryParameters['user_id'];
         final login = state.uri.queryParameters['login'] == 'true';
         final webLoginToken = state.uri.queryParameters['web_login_token'];
-        final nfcToken = state.uri.queryParameters['nfc_token'];
         if (userId == null || userId.isEmpty) {
           return _transitionPage(state, const LoginScreen());
         }
@@ -88,7 +87,6 @@ final _router = GoRouter(
             userId: userId,
             login: login,
             webLoginToken: webLoginToken,
-            nfcToken: nfcToken,
           ),
         );
       },
