@@ -64,6 +64,7 @@ class UserStudentResponse(UserBase):
 
     id: str
     ongoing_class: str | None = None
+    has_active_session: bool = False
     in_class: bool
     records: int
     flagged: int
@@ -471,8 +472,6 @@ class LoginResponseBase(BaseModel):
 
     user_id: str
     credential: dict
-    device_signature: str
-    device_public_key: str
 
 
 class LoginSessionBase(BaseModel):

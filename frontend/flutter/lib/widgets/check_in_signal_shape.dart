@@ -27,25 +27,32 @@ class CheckInSignalShape extends StatefulWidget {
 }
 
 class _CheckInSignalShapeState extends State<CheckInSignalShape>
-    with SingleTickerProviderStateMixin {
-  static final _shapeSequence = <RoundedPolygon>[
-    MaterialShapes.flower,
-    MaterialShapes.sunny,
-    MaterialShapes.puffy,
-    MaterialShapes.diamond,
-    MaterialShapes.gem,
-    MaterialShapes.cookie7Sided,
+    with TickerProviderStateMixin {
+  static final _shapePool = <RoundedPolygon>[
+    for (final shape in MaterialShapes.all)
+      if (!identical(shape, MaterialShapes.circle)) shape,
   ];
 
+  static const _recentHistorySize = 5;
+
   final Random _random = Random();
+  final List<int> _recentIndices = [];
   late final AnimationController _rotationController;
+  late final AnimationController _morphController;
   Timer? _shapeTimer;
-  RoundedPolygon _currentShape = MaterialShapes.circle;
+  RoundedPolygon _fromShape = MaterialShapes.circle;
+  RoundedPolygon _toShape = MaterialShapes.circle;
+  Morph? _currentMorph;
 
   @override
   void initState() {
     super.initState();
     _rotationController = AnimationController(vsync: this);
+    _morphController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _morphController.addListener(_onMorphTick);
     _syncState(forceReset: true);
   }
 
@@ -61,8 +68,39 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
   @override
   void dispose() {
     _shapeTimer?.cancel();
+    _morphController.removeListener(_onMorphTick);
+    _morphController.dispose();
     _rotationController.dispose();
     super.dispose();
+  }
+
+  void _onMorphTick() {
+    setState(() {});
+  }
+
+  RoundedPolygon _pickNextShape() {
+    final available = <int>[];
+    for (var i = 0; i < _shapePool.length; i++) {
+      if (!_recentIndices.contains(i)) {
+        available.add(i);
+      }
+    }
+    if (available.isEmpty) {
+      available.addAll(List.generate(_shapePool.length, (i) => i));
+    }
+    final chosen = available[_random.nextInt(available.length)];
+    _recentIndices.add(chosen);
+    if (_recentIndices.length > _recentHistorySize) {
+      _recentIndices.removeAt(0);
+    }
+    return _shapePool[chosen];
+  }
+
+  void _changeShape(RoundedPolygon newShape) {
+    _fromShape = _toShape;
+    _toShape = newShape;
+    _currentMorph = Morph(_fromShape, _toShape);
+    _morphController.forward(from: 0);
   }
 
   void _syncState({required bool forceReset}) {
@@ -70,57 +108,57 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
     switch (widget.visualState) {
       case CheckInSignalVisualState.idle:
       case CheckInSignalVisualState.success:
-        _currentShape = MaterialShapes.circle;
+        _changeShape(MaterialShapes.circle);
         _rotationController
           ..stop()
           ..value = 0;
       case CheckInSignalVisualState.ready:
         if (forceReset) {
-          _currentShape =
-              _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          _changeShape(_pickNextShape());
         }
         _rotationController
           ..duration = const Duration(seconds: 22)
           ..repeat();
         _shapeTimer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
           if (!mounted) return;
-          setState(() {
-            _currentShape =
-                _shapeSequence[_random.nextInt(_shapeSequence.length)];
-          });
+          _changeShape(_pickNextShape());
         });
       case CheckInSignalVisualState.detected:
         if (forceReset) {
-          _currentShape =
-              _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          _changeShape(_pickNextShape());
         }
         _rotationController
           ..duration = const Duration(seconds: 14)
           ..repeat();
         _shapeTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
           if (!mounted) return;
-          setState(() {
-            _currentShape =
-                _shapeSequence[_random.nextInt(_shapeSequence.length)];
-          });
+          _changeShape(_pickNextShape());
         });
       case CheckInSignalVisualState.checkingIn:
         if (forceReset) {
-          _currentShape =
-              _shapeSequence[_random.nextInt(_shapeSequence.length)];
+          _changeShape(_pickNextShape());
         }
         _rotationController
           ..duration = const Duration(seconds: 8)
           ..repeat();
         _shapeTimer = Timer.periodic(const Duration(milliseconds: 800), (_) {
           if (!mounted) return;
-          setState(() {
-            _currentShape =
-                _shapeSequence[_random.nextInt(_shapeSequence.length)];
-          });
+          _changeShape(_pickNextShape());
         });
     }
-    if (mounted) setState(() {});
+  }
+
+  Path _currentPath() {
+    final morph = _currentMorph;
+    if (morph == null) {
+      return _toShape.toPath();
+    }
+    final t = Curves.easeOutCubic.transform(_morphController.value);
+    return morph.toPath(
+      progress: t,
+      rotationPivotX: 0.5,
+      rotationPivotY: 0.5,
+    );
   }
 
   @override
@@ -135,21 +173,20 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
         Color.lerp(color, Colors.white, 0.18) ?? color,
       ],
     );
-    final shadow = BoxShadow(
-      color: color.withValues(alpha: 0.26),
-      blurRadius: 32,
-      offset: const Offset(0, 16),
-    );
+    final shadowColor = color.withValues(alpha: 0.26);
+    final path = _currentPath();
 
     final shapeWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 520),
       curve: Curves.easeOutCubic,
       width: size,
       height: size,
-      decoration: ShapeDecoration(
-        gradient: gradient,
-        shadows: [shadow],
-        shape: MaterialShapeBorder(shape: _currentShape),
+      child: CustomPaint(
+        painter: _MorphShapePainter(
+          path: path,
+          gradient: gradient,
+          shadowColor: shadowColor,
+        ),
       ),
     );
 
@@ -173,4 +210,42 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
       ),
     );
   }
+}
+
+class _MorphShapePainter extends CustomPainter {
+  _MorphShapePainter({
+    required this.path,
+    required this.gradient,
+    required this.shadowColor,
+  });
+
+  final Path path;
+  final LinearGradient gradient;
+  final Color shadowColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final matrix = Matrix4.identity()
+      ..scale(size.width, size.height);
+    final scaled = path.transform(matrix.storage);
+
+    final shadowPaint = Paint()
+      ..color = shadowColor
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16);
+    canvas.save();
+    canvas.translate(0, 16);
+    canvas.drawPath(scaled, shadowPaint);
+    canvas.restore();
+
+    final rect = Offset.zero & size;
+    final fillPaint = Paint()
+      ..shader = gradient.createShader(rect);
+    canvas.drawPath(scaled, fillPaint);
+  }
+
+  @override
+  bool shouldRepaint(_MorphShapePainter oldDelegate) =>
+      !identical(path, oldDelegate.path) ||
+      gradient != oldDelegate.gradient ||
+      shadowColor != oldDelegate.shadowColor;
 }

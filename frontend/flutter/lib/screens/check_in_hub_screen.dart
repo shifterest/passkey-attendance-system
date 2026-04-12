@@ -43,7 +43,7 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     '0000fff0-0000-1000-8000-00805f9b34fb',
   );
   late final Future<String?> _userIdFuture;
-  String? _ongoingClass;
+  bool _hasActiveSession = false;
   Map<String, dynamic>? _lastCheckIn;
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   Timer? _scanRestartTimer;
@@ -130,14 +130,16 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       if (userId == null || userId.isEmpty) return;
       final data = await StudentApi.getStudentDetails(userId);
       if (mounted) {
-        setState(() => _ongoingClass = data['ongoing_class'] as String?);
+        setState(() {
+          _hasActiveSession = data['has_active_session'] as bool? ?? false;
+        });
       }
       await _syncPassiveScan();
       _syncNfcListener();
     } catch (_) {}
   }
 
-  bool get _canCheckIn => _ongoingClass != null && _ongoingClass!.isNotEmpty;
+  bool get _canCheckIn => _hasActiveSession;
 
   bool get _hasFreshSuccess {
     final savedAt = DateTime.tryParse(

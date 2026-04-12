@@ -255,20 +255,10 @@ Future<Map<String, dynamic>> login(
 
     final response = await authenticator.authenticate(request);
     final credential = response.toJson();
-    final deviceBinding = await _createDeviceBinding(
-      flow: DeviceBindingFlow.login,
-      userId: userId,
-      sessionId: null,
-      credentialId: _extractCredentialId(credential),
-      challenge: _extractChallenge(optionsJson),
-      issuedAtMs: _extractIssuedAtMs(optionsJson),
-    );
 
     return {
       'user_id': userId,
       'credential': credential,
-      'device_signature': deviceBinding['device_signature'],
-      'device_public_key': deviceBinding['device_public_key'],
     };
   } catch (e) {
     if (_isCancellationError(e)) {

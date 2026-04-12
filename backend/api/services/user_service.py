@@ -77,8 +77,22 @@ def get_student_details(user_id: str, db: Session):
                 in_class = True
                 break
 
+    enrolled_class_ids = [ce.class_id for ce in classes]
+    has_active_session = False
+    if enrolled_class_ids:
+        has_active_session = (
+            db.query(CheckInSession)
+            .filter(CheckInSession.class_id.in_(enrolled_class_ids))
+            .filter(CheckInSession.start_time <= now)
+            .filter(CheckInSession.end_time >= now)
+            .filter(CheckInSession.status != "closed")
+            .first()
+            is not None
+        )
+
     return {
         "ongoing_class": ongoing_class,
+        "has_active_session": has_active_session,
         "enrollments": enrollments,
         "in_class": in_class,
         "records": records,

@@ -151,48 +151,6 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
                 detail=Messages.INVALID_CHALLENGE_DATA,
             )
 
-        if response_data.device_public_key != user_credential.device_public_key:
-            log_audit_event(
-                AuditEvents.DEVICE_KEY_MISMATCH,
-                user.id,
-                user.id,
-                DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
-                db,
-            )
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
-            )
-
-        challenge = encode_base64url(challenge_bytes)
-        device_payload = build_device_payload(
-            flow=DeviceBindingFlow.LOGIN,
-            user_id=user.id,
-            session_id=None,
-            credential_id=normalize_credential_id_base64url(response_data.credential),
-            challenge=challenge,
-            issued_at_ms=issued_at_ms,
-        )
-        try:
-            verify_device_signature(
-                device_public_key=user_credential.device_public_key,
-                device_signature=response_data.device_signature,
-                payload=device_payload,
-            )
-        except HTTPException:
-            log_audit_event(
-                AuditEvents.DEVICE_SIGNATURE_FAILURE,
-                user.id,
-                user.id,
-                DeviceSignatureFailureDetail(
-                    credential_id=user_credential.id
-                ).model_dump(),
-                db,
-            )
-            db.commit()
-            raise
-
         user_credential.sign_count = authentication_verification.new_sign_count
         if (
             authentication_verification.new_sign_count > 0
