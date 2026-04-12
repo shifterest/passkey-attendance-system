@@ -1,6 +1,11 @@
 "use client";
 
-import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+	IconDeviceFloppy,
+	IconPencil,
+	IconPlus,
+	IconTrash,
+} from "@tabler/icons-react";
 import * as React from "react";
 import {
 	type ClassDto,
@@ -45,11 +50,11 @@ import {
 	FieldContent,
 	FieldDescription,
 	FieldGroup,
-	FieldSeparator,
 	FieldTitle,
 } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { NumberStepper } from "@/components/ui/number-stepper";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
@@ -59,6 +64,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { getSelectLabel } from "@/lib/select-label";
@@ -387,7 +393,7 @@ function PolicyFormFields({
 					formatValue={(value) => `≥${value}`}
 				/>
 			</div>
-			<FieldSeparator>Attendance window</FieldSeparator>
+			<Separator />
 			<div className="grid gap-6 xl:grid-cols-2">
 				<PolicySliderField
 					title="Present cutoff"
@@ -408,16 +414,24 @@ function PolicyFormFields({
 					formatValue={(value) => `${value} min`}
 				/>
 			</div>
-			<FieldSeparator>Retry budget</FieldSeparator>
-			<PolicySliderField
-				title="Max check-ins per window"
-				description="Limits how many retries a student gets before the current attendance window is exhausted."
-				value={values.max_check_ins}
-				min={1}
-				max={5}
-				onChange={(value) => onChange("max_check_ins", value)}
-				formatValue={(value) => `${value}`}
-			/>
+			<Separator />
+			<Field className="gap-4">
+				<div className="flex items-start justify-between gap-3">
+					<FieldContent>
+						<FieldTitle>Max check-ins per window</FieldTitle>
+						<FieldDescription>
+							Limits how many retries a student gets before the current
+							attendance window is exhausted.
+						</FieldDescription>
+					</FieldContent>
+					<NumberStepper
+						value={values.max_check_ins}
+						min={1}
+						max={5}
+						onChange={(value) => onChange("max_check_ins", value)}
+					/>
+				</div>
+			</Field>
 			<PolicyWindowPreview values={values} />
 		</FieldGroup>
 	);
@@ -449,126 +463,140 @@ function PolicyPlayground({ values }: { values: PolicyFormValues }) {
 				: "Auto-accepted";
 
 	return (
-		<Accordion>
-			<AccordionItem value="playground">
-				<AccordionTrigger>
-					<div>
-						<div className="font-medium text-foreground">Policy playground</div>
-						<div className="mt-1 text-sm font-normal text-muted-foreground">
-							Toggle proximity signals to see how the assurance score and band
-							respond.
+		<Card size="sm" className="border border-border/70 shadow-none">
+			<Accordion>
+				<AccordionItem value="playground">
+					<AccordionTrigger className="px-4 py-4">
+						<div>
+							<CardTitle>Policy playground</CardTitle>
+							<CardDescription className="mt-1 font-normal">
+								Toggle proximity signals to see how the assurance score and band
+								respond.
+							</CardDescription>
 						</div>
-					</div>
-				</AccordionTrigger>
-				<AccordionContent>
-					<div className="space-y-6">
-						<div className="grid gap-3 lg:grid-cols-3">
-							<PolicyMetric
-								label="Score"
-								value={`${score}`}
-								hint={`Sum of active proximity weights${vouched ? " (integrity vouched)" : " (no integrity vouch)"}.`}
-							/>
-							<PolicyMetric
-								label="Band"
-								value={band}
-								hint={`Standard begins at ${values.standard_assurance_threshold}; high begins at ${values.high_assurance_threshold}.`}
-							/>
-							<PolicyMetric
-								label="Teacher action"
-								value={reviewState}
-								hint="Low band attempts stay held; standard and high proceed automatically."
-							/>
-						</div>
-						<div className="grid gap-6 lg:grid-cols-3">
-							<div className="space-y-3">
-								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-									Integrity
+					</AccordionTrigger>
+					<AccordionContent className="px-4 pb-4">
+						<div className="space-y-6">
+							<div className="grid gap-3 lg:grid-cols-3">
+								<PolicyMetric
+									label="Score"
+									value={`${score}`}
+									hint={`Sum of active proximity weights${vouched ? " (integrity vouched)" : " (no integrity vouch)"}.`}
+								/>
+								<PolicyMetric
+									label="Band"
+									value={band}
+									hint={`Standard begins at ${values.standard_assurance_threshold}; high begins at ${values.high_assurance_threshold}.`}
+								/>
+								<PolicyMetric
+									label="Teacher action"
+									value={reviewState}
+									hint="Low band attempts stay held; standard and high proceed automatically."
+								/>
+							</div>
+							<div className="grid gap-6 lg:grid-cols-3">
+								<div className="space-y-3">
+									<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+										Integrity
+									</div>
+									<div className="flex items-center justify-between rounded-lg border p-3">
+										<Label htmlFor="pg-vouched">Play Integrity vouch</Label>
+										<Switch
+											id="pg-vouched"
+											checked={vouched}
+											onCheckedChange={setVouched}
+										/>
+									</div>
 								</div>
-								<div className="flex items-center justify-between rounded-lg border p-3">
-									<Label htmlFor="pg-vouched">Play Integrity vouch</Label>
-									<Switch
-										id="pg-vouched"
-										checked={vouched}
-										onCheckedChange={setVouched}
-									/>
+								<div className="space-y-3">
+									<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+										Proximity
+									</div>
+									<div className="space-y-2 rounded-lg border p-3">
+										<Label>BLE</Label>
+										<RadioGroup
+											value={ble}
+											onValueChange={(v) =>
+												setBle(v as "none" | "weak" | "medium" | "strong")
+											}
+											className="flex gap-4"
+										>
+											{(
+												[
+													["none", "None"],
+													["weak", "Weak"],
+													["medium", "Medium"],
+													["strong", "Strong"],
+												] as const
+											).map(([val, label]) => (
+												<div key={val} className="flex items-center gap-1.5">
+													<RadioGroupItem value={val} id={`pg-ble-${val}`} />
+													<Label
+														htmlFor={`pg-ble-${val}`}
+														className="font-normal"
+													>
+														{label}
+													</Label>
+												</div>
+											))}
+										</RadioGroup>
+									</div>
+									<div className="flex items-center justify-between rounded-lg border p-3">
+										<Label htmlFor="pg-gps">GPS</Label>
+										<Switch
+											id="pg-gps"
+											checked={gps}
+											onCheckedChange={setGps}
+										/>
+									</div>
+									<div className="flex items-center justify-between rounded-lg border p-3">
+										<Label htmlFor="pg-network">School network</Label>
+										<Switch
+											id="pg-network"
+											checked={network}
+											onCheckedChange={setNetwork}
+										/>
+									</div>
+									<div className="flex items-center justify-between rounded-lg border p-3">
+										<Label htmlFor="pg-nfc">NFC tap</Label>
+										<Switch
+											id="pg-nfc"
+											checked={nfc}
+											onCheckedChange={setNfc}
+										/>
+									</div>
+								</div>
+								<div className="space-y-3">
+									<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+										Identity
+									</div>
+									<div className="rounded-lg border border-dashed p-3">
+										<p className="text-sm text-muted-foreground">
+											Passkey and device key are authentication gates, not
+											additive score terms. Offline QR scores +4 but excludes
+											other proximity signals.
+										</p>
+									</div>
 								</div>
 							</div>
-							<div className="space-y-3">
-								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-									Proximity
-								</div>
-								<div className="space-y-2 rounded-lg border p-3">
-									<Label>BLE</Label>
-									<RadioGroup
-										value={ble}
-										onValueChange={(v) =>
-											setBle(v as "none" | "weak" | "medium" | "strong")
-										}
-										className="flex gap-4"
-									>
-										{(
-											[
-												["none", "None"],
-												["weak", "Weak"],
-												["medium", "Medium"],
-												["strong", "Strong"],
-											] as const
-										).map(([val, label]) => (
-											<div key={val} className="flex items-center gap-1.5">
-												<RadioGroupItem value={val} id={`pg-ble-${val}`} />
-												<Label
-													htmlFor={`pg-ble-${val}`}
-													className="font-normal"
-												>
-													{label}
-												</Label>
-											</div>
-										))}
-									</RadioGroup>
-								</div>
-								<div className="flex items-center justify-between rounded-lg border p-3">
-									<Label htmlFor="pg-gps">GPS</Label>
-									<Switch id="pg-gps" checked={gps} onCheckedChange={setGps} />
-								</div>
-								<div className="flex items-center justify-between rounded-lg border p-3">
-									<Label htmlFor="pg-network">School network</Label>
-									<Switch
-										id="pg-network"
-										checked={network}
-										onCheckedChange={setNetwork}
-									/>
-								</div>
-								<div className="flex items-center justify-between rounded-lg border p-3">
-									<Label htmlFor="pg-nfc">NFC tap</Label>
-									<Switch id="pg-nfc" checked={nfc} onCheckedChange={setNfc} />
-								</div>
-							</div>
-							<div className="space-y-3">
-								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-									Identity
-								</div>
-								<div className="rounded-lg border border-dashed p-3">
-									<p className="text-sm text-muted-foreground">
-										Passkey and device key are authentication gates, not
-										additive score terms. Offline QR scores +4 but excludes
-										other proximity signals.
-									</p>
-								</div>
-							</div>
 						</div>
-					</div>
-				</AccordionContent>
-			</AccordionItem>
-		</Accordion>
+					</AccordionContent>
+				</AccordionItem>
+			</Accordion>
+		</Card>
 	);
 }
 
 function InlineSystemDefaultEditor({
 	policy,
 	onRefresh,
+	onDirtyChange,
+	onSave,
 }: {
 	policy: ClassPolicyDto | null;
 	onRefresh: () => Promise<void>;
+	onDirtyChange: (dirty: boolean) => void;
+	onSave: React.RefObject<(() => Promise<void>) | null>;
 }) {
 	const [values, setValues] = React.useState<PolicyFormValues>(() =>
 		toPolicyFormValues(policy),
@@ -591,55 +619,34 @@ function InlineSystemDefaultEditor({
 		);
 	}, [policy, values]);
 
-	async function handleSave() {
-		if (submitting) return;
-		setSubmitting(true);
-		try {
-			if (policy) {
-				await updatePolicy(policy.id, values);
-			} else {
-				await createPolicy({ class_id: null, ...values });
+	React.useEffect(() => {
+		onDirtyChange(isDirty);
+	}, [isDirty, onDirtyChange]);
+
+	React.useEffect(() => {
+		onSave.current = async () => {
+			if (submitting) return;
+			setSubmitting(true);
+			try {
+				if (policy) {
+					await updatePolicy(policy.id, values);
+				} else {
+					await createPolicy({ class_id: null, ...values });
+				}
+				await onRefresh();
+			} finally {
+				setSubmitting(false);
 			}
-			await onRefresh();
-		} finally {
-			setSubmitting(false);
-		}
-	}
+		};
+	});
 
 	return (
-		<Card size="sm" className="border border-border/70 shadow-none">
-			<CardHeader className="border-b">
-				<div className="flex flex-wrap items-start justify-between gap-3">
-					<div className="space-y-2">
-						<Badge variant="outline">System default</Badge>
-						<CardTitle>Global fallback</CardTitle>
-						<CardDescription>
-							Applies whenever neither a teacher default nor a class override is
-							present.
-						</CardDescription>
-					</div>
-					<LoadingButton
-						size="sm"
-						onClick={handleSave}
-						disabled={!isDirty || submitting}
-						loading={submitting}
-						loadingText="Saving…"
-					>
-						Save
-					</LoadingButton>
-				</div>
-			</CardHeader>
-			<CardContent>
-				<PolicyFormFields
-					values={values}
-					onChange={(field, value) =>
-						setValues((current) =>
-							applyPolicyFieldChange(current, field, value),
-						)
-					}
-				/>
-			</CardContent>
-		</Card>
+		<PolicyFormFields
+			values={values}
+			onChange={(field, value) =>
+				setValues((current) => applyPolicyFieldChange(current, field, value))
+			}
+		/>
 	);
 }
 
@@ -834,7 +841,7 @@ function CreatePolicySheet({
 						</Select>
 					</Field>
 				) : null}
-				<FieldSeparator>Thresholds and timing</FieldSeparator>
+				<Separator />
 				<PolicyFormFields
 					values={values}
 					onChange={(field, value) =>
@@ -1190,13 +1197,36 @@ export function DataTablePolicies({
 		? "Create override"
 		: "Create policy";
 
+	const isAdmin = currentUser.role !== "teacher";
+	const [systemDirty, setSystemDirty] = React.useState(false);
+	const saveRef = React.useRef<(() => Promise<void>) | null>(null);
+	const [saving, setSaving] = React.useState(false);
+
 	return (
-		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+		<div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6 lg:px-6">
 			<SetPageHeader
 				title="Policies"
 				description="Assurance thresholds and session window configuration."
 				actions={
-					canCreatePolicy ? (
+					isAdmin ? (
+						<LoadingButton
+							size="sm"
+							disabled={!systemDirty || saving}
+							loading={saving}
+							loadingText="Saving…"
+							onClick={async () => {
+								setSaving(true);
+								try {
+									await saveRef.current?.();
+								} finally {
+									setSaving(false);
+								}
+							}}
+						>
+							<IconDeviceFloppy data-icon="inline-start" />
+							Save
+						</LoadingButton>
+					) : canCreatePolicy ? (
 						<CreatePolicySheet
 							currentUser={currentUser}
 							policies={policies}
@@ -1213,106 +1243,106 @@ export function DataTablePolicies({
 				}
 			/>
 			<PolicyPlayground values={playgroundValues} />
-			<div className="space-y-4">
-				<div>
-					<h2 className="font-heading text-lg font-medium text-foreground">
-						System default
-					</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Keep one clear baseline so classes always fall back to a known
-						policy.
-					</p>
-				</div>
-				<div className="grid gap-4">
-					{currentUser.role !== "teacher" ? (
-						<InlineSystemDefaultEditor
-							policy={systemPolicies[0] ?? null}
-							onRefresh={onRefresh}
-						/>
-					) : systemPolicies.length > 0 ? (
-						systemPolicies.map((policy) => (
-							<PolicyCard
-								key={policy.id}
-								policy={policy}
-								classMap={classMap}
-								teacherMap={teacherMap}
-								currentUser={currentUser}
-								onRefresh={onRefresh}
-							/>
-						))
-					) : (
-						<PolicyEmptyState
-							title="No system default yet"
-							description="Create the platform-wide fallback before layering teacher-specific defaults or class overrides."
-						/>
-					)}
-				</div>
-			</div>
-			{currentUser.role === "teacher" && (
-				<div className="space-y-4">
-					<div>
-						<h2 className="font-heading text-lg font-medium text-foreground">
-							{currentUser.role === "teacher"
-								? "Teacher default"
-								: "Teacher defaults"}
-						</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
-							Teacher-owned baselines keep routine class policy consistent
-							without forcing every class to carry an override.
-						</p>
-					</div>
-					<div className="grid gap-4 xl:grid-cols-2">
-						{teacherPolicies.length > 0 ? (
-							teacherPolicies.map((policy) => (
-								<PolicyCard
-									key={policy.id}
-									policy={policy}
-									classMap={classMap}
-									teacherMap={teacherMap}
-									currentUser={currentUser}
-									onRefresh={onRefresh}
+			{isAdmin ? (
+				<InlineSystemDefaultEditor
+					policy={systemPolicies[0] ?? null}
+					onRefresh={onRefresh}
+					onDirtyChange={setSystemDirty}
+					onSave={saveRef}
+				/>
+			) : (
+				<>
+					<div className="space-y-4">
+						<div>
+							<h2 className="font-heading text-lg font-medium text-foreground">
+								System default
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Keep one clear baseline so classes always fall back to a known
+								policy.
+							</p>
+						</div>
+						<div className="grid gap-4">
+							{systemPolicies.length > 0 ? (
+								systemPolicies.map((policy) => (
+									<PolicyCard
+										key={policy.id}
+										policy={policy}
+										classMap={classMap}
+										teacherMap={teacherMap}
+										currentUser={currentUser}
+										onRefresh={onRefresh}
+									/>
+								))
+							) : (
+								<PolicyEmptyState
+									title="No system default yet"
+									description="Create the platform-wide fallback before layering teacher-specific defaults or class overrides."
 								/>
-							))
-						) : (
-							<PolicyEmptyState
-								title="No teacher defaults yet"
-								description="Teacher defaults are optional, but they keep repeated class policy changes from turning into manual override sprawl."
-							/>
-						)}
+							)}
+						</div>
 					</div>
-				</div>
-			)}
-			{currentUser.role === "teacher" && (
-				<div className="space-y-4">
-					<div>
-						<h2 className="font-heading text-lg font-medium text-foreground">
-							Class overrides
-						</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
-							Use direct overrides only when one class truly needs a different
-							timing or assurance policy than its default fallback.
-						</p>
-					</div>
-					<div className="grid gap-4 xl:grid-cols-2">
-						{classPolicies.length > 0 ? (
-							classPolicies.map((policy) => (
-								<PolicyCard
-									key={policy.id}
-									policy={policy}
-									classMap={classMap}
-									teacherMap={teacherMap}
-									currentUser={currentUser}
-									onRefresh={onRefresh}
+					<div className="space-y-4">
+						<div>
+							<h2 className="font-heading text-lg font-medium text-foreground">
+								Teacher default
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Teacher-owned baselines keep routine class policy consistent
+								without forcing every class to carry an override.
+							</p>
+						</div>
+						<div className="grid gap-4 xl:grid-cols-2">
+							{teacherPolicies.length > 0 ? (
+								teacherPolicies.map((policy) => (
+									<PolicyCard
+										key={policy.id}
+										policy={policy}
+										classMap={classMap}
+										teacherMap={teacherMap}
+										currentUser={currentUser}
+										onRefresh={onRefresh}
+									/>
+								))
+							) : (
+								<PolicyEmptyState
+									title="No teacher defaults yet"
+									description="Teacher defaults are optional, but they keep repeated class policy changes from turning into manual override sprawl."
 								/>
-							))
-						) : (
-							<PolicyEmptyState
-								title="No class overrides yet"
-								description="That is usually a healthy sign. Keep overrides rare and let the fallback chain do most of the work."
-							/>
-						)}
+							)}
+						</div>
 					</div>
-				</div>
+					<div className="space-y-4">
+						<div>
+							<h2 className="font-heading text-lg font-medium text-foreground">
+								Class overrides
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Use direct overrides only when one class truly needs a different
+								timing or assurance policy than its default fallback.
+							</p>
+						</div>
+						<div className="grid gap-4 xl:grid-cols-2">
+							{classPolicies.length > 0 ? (
+								classPolicies.map((policy) => (
+									<PolicyCard
+										key={policy.id}
+										policy={policy}
+										classMap={classMap}
+										teacherMap={teacherMap}
+										currentUser={currentUser}
+										onRefresh={onRefresh}
+									/>
+								))
+							) : (
+								<PolicyEmptyState
+									title="No class overrides yet"
+									description="That is usually a healthy sign. Keep overrides rare and let the fallback chain do most of the work."
+								/>
+							)}
+						</div>
+					</div>
+				</>
 			)}
 		</div>
 	);
