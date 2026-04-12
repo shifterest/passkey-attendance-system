@@ -14,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String? _userId;
   String? _deviceId;
+  String? _role;
   bool _piVouchExpiresSoon = false;
 
   @override
@@ -46,6 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _userId = userId;
       _deviceId = deviceId;
+      _role = SessionStore.getRole();
       _piVouchExpiresSoon = piVouchExpiresSoon;
     });
   }
@@ -75,6 +77,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final deviceIdLabel = _deviceId == null
         ? '—'
         : '${_deviceId!.substring(0, 8)}...';
+    final roleLabel = _role == null
+        ? '—'
+        : '${_role![0].toUpperCase()}${_role!.substring(1)}';
 
     return Scaffold(
       appBar: AppBar(title: const Text(HomeStrings.settingsTitle)),
@@ -89,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 6),
               Text('${HomeStrings.deviceIdLabel}: $deviceIdLabel'),
               const SizedBox(height: 6),
-              const Text(HomeStrings.studentRoleLabel),
+              Text(roleLabel),
             ],
           ),
           const SizedBox(height: 16),

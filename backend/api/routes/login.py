@@ -203,7 +203,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
         db.add(new_session)
         db.commit()
 
-        login_response = create_login_session(new_session)
+        login_response = create_login_session(new_session, user.role)
 
         logger.info(
             Logs.LOGIN_SUCCESSFUL.format(full_name=user.full_name, user_id=user.id)
@@ -430,7 +430,7 @@ def web_login_verify(
     db.add(new_session)
     db.commit()
 
-    login_response = create_login_session(new_session)
+    login_response = create_login_session(new_session, user.role)
 
     session_data = login_response.model_dump()
     session_data["created_at"] = session_data["created_at"].isoformat()

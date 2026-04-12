@@ -35,7 +35,7 @@ def _as_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-def create_login_session(session: LoginSession):
+def create_login_session(session: LoginSession, role: str):
     expires_at = _as_utc(session.expires_at)
     created_at = _as_utc(session.created_at)
     expires_delta = expires_at - datetime.now(timezone.utc)
@@ -60,6 +60,7 @@ def create_login_session(session: LoginSession):
     return LoginSessionBase(
         user_id=session.user_id,
         session_token=token,
+        role=role,
         client_type=session.client_type,
         created_at=created_at,
         expires_at=expires_at,

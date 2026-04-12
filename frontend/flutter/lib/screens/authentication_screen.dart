@@ -12,7 +12,6 @@ import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
 import 'package:passkey_attendance_system/services/passkey.dart';
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
-import 'package:passkey_attendance_system/services/user_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/bottom_heavy_state.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -282,21 +281,19 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
       });
       final sessionToken = webLoginResponse['session_token'];
       final expiresIn = webLoginResponse['expires_in'];
+      final role = webLoginResponse['role'];
       if (sessionToken is String &&
           sessionToken.isNotEmpty &&
           expiresIn is int) {
         await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
-        try {
-          final userMap = await UserApi().getUser(widget.userId);
-          final role = userMap['role'];
-          if (role is String) await SessionStore.saveRole(role);
-        } catch (_) {}
+        if (role is String) await SessionStore.saveRole(role);
       }
       unawaited(submitPlayIntegrityVouch());
     } else if (widget.login) {
       final loginResponse = await AuthApi.loginVerify(credentialJson);
       final sessionToken = loginResponse['session_token'];
       final expiresIn = loginResponse['expires_in'];
+      final role = loginResponse['role'];
       if (sessionToken is! String || sessionToken.isEmpty) {
         throw Exception(AuthStrings.errorMissingSessionToken);
       }
@@ -304,11 +301,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
         throw Exception(AuthStrings.errorMissingSessionExpiry);
       }
       await SessionStore.saveSession(widget.userId, sessionToken, expiresIn);
-      try {
-        final userMap = await UserApi().getUser(widget.userId);
-        final role = userMap['role'];
-        if (role is String) await SessionStore.saveRole(role);
-      } catch (_) {}
+      if (role is String) await SessionStore.saveRole(role);
       unawaited(submitPlayIntegrityVouch());
     } else {
       final result = await AuthApi.checkInVerify(credentialJson);
