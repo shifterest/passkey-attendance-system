@@ -96,6 +96,8 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
 
     options_json = json.loads(options_to_json(options))
     options_json["issued_at_ms"] = issued_at_ms
+    for cred in options_json.get("allowCredentials", []):
+        cred.setdefault("transports", ["internal"])
     return options_json
 
 
