@@ -3,6 +3,7 @@
 import {
 	IconDotsVertical,
 	IconLogout,
+	IconScale,
 	IconSettings,
 	IconUserCircle,
 } from "@tabler/icons-react";
@@ -120,6 +121,15 @@ export function NavUser() {
 							>
 								<IconUserCircle />
 								Account
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									transition?.beginNavigation();
+									router.push("/policies");
+								}}
+							>
+								<IconScale />
+								Policies
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {

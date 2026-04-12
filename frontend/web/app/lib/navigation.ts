@@ -33,7 +33,7 @@ export const navigation = {
 		{ title: "Dashboard", url: "/dashboard", icon: "dashboard" },
 		{ title: "Logs", url: "/logs", icon: "logs" },
 	] satisfies NavItem[],
-	management: [
+	people: [
 		{
 			name: "Users",
 			url: "/users",
@@ -52,11 +52,12 @@ export const navigation = {
 				{ title: "Admins", url: "/admins", icon: "admins" },
 			],
 		},
+	] satisfies NavGroup[],
+	academics: [
 		{ name: "Semesters", url: "/semesters", icon: "semesters" },
 		{ name: "Classes", url: "/classes", icon: "classes" },
 		{ name: "Enrollments", url: "/enrollments", icon: "enrollments" },
 		{ name: "Records", url: "/records", icon: "records" },
-		{ name: "Policies", url: "/policies", icon: "policies" },
 	] satisfies NavGroup[],
 	organizations: orgEventsEnabled
 		? ([
@@ -73,7 +74,8 @@ export function getPageTitle(pathname: string): string {
 	if (infoItem) return infoItem.title;
 
 	for (const group of [
-		...navigation.management,
+		...navigation.people,
+		...navigation.academics,
 		...navigation.organizations,
 	] as NavGroup[]) {
 		if (group.url === pathname) return group.name;

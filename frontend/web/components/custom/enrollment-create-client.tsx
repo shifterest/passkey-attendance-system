@@ -1,6 +1,15 @@
 "use client";
 
-import { IconSearch } from "@tabler/icons-react";
+import {
+	type ColumnDef,
+	getCoreRowModel,
+	getFilteredRowModel,
+	getPaginationRowModel,
+	getSortedRowModel,
+	type SortingState,
+	useReactTable,
+	type VisibilityState,
+} from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -10,11 +19,15 @@ import {
 	type UserExtendedDto,
 } from "@/app/lib/api";
 import {
+	DataTableBody,
 	DataTableFilterOption,
 	DataTableFilterSection,
 	DataTableFilterSheet,
-	DEFAULT_TABLE_PAGE_SIZE_OPTIONS,
+	DataTablePagination,
+	DataTableScaffold,
+	DataTableToolbar,
 	getStoredPageSize,
+	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { SetPageHeader } from "@/components/custom/page-header-context";
 import {
@@ -38,6 +51,7 @@ import {
 	ComboboxList,
 	useComboboxAnchor,
 } from "@/components/ui/combobox";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
 	Field,
 	FieldContent,
@@ -46,34 +60,73 @@ import {
 	FieldLabel,
 	FieldSeparator,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { NumberStepper } from "@/components/ui/number-stepper";
-import {
-	Select,
-	SelectContent,
-	SelectGroup,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 
-function sortBySchoolId(a: UserExtendedDto, b: UserExtendedDto) {
-	const aId = a.school_id ?? "";
-	const bId = b.school_id ?? "";
-	return aId.localeCompare(bId, undefined, {
-		numeric: true,
-		sensitivity: "base",
-	});
-}
+const studentColumns: ColumnDef<UserExtendedDto>[] = [
+	{
+		id: "select",
+		header: ({ table }) => (
+			<div className="flex w-8 items-center justify-center">
+				<Checkbox
+					checked={table.getIsAllPageRowsSelected()}
+					indeterminate={
+						table.getIsSomePageRowsSelected() &&
+						!table.getIsAllPageRowsSelected()
+					}
+					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+					aria-label="Select all"
+				/>
+			</div>
+		),
+		cell: ({ row }) => (
+			<div className="flex w-8 items-center justify-center">
+				<Checkbox
+					checked={row.getIsSelected()}
+					onCheckedChange={(value) => row.toggleSelected(!!value)}
+					aria-label="Select row"
+				/>
+			</div>
+		),
+		enableSorting: false,
+		enableHiding: false,
+	},
+	{
+		accessorKey: "full_name",
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Full name" />
+		),
+		enableHiding: false,
+	},
+	{
+		accessorKey: "school_id",
+		header: ({ column }) => (
+			<SortableHeader column={column} label="School ID" />
+		),
+		cell: ({ row }) => (
+			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
+		),
+	},
+	{
+		accessorKey: "program",
+		header: ({ column }) => <SortableHeader column={column} label="Program" />,
+		cell: ({ row }) => row.original.program ?? "—",
+	},
+	{
+		accessorKey: "enrollment_year",
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Enrollment year" />
+		),
+		cell: ({ row }) => row.original.enrollment_year ?? "—",
+	},
+	{
+		accessorKey: "year_level",
+		header: ({ column }) => (
+			<SortableHeader column={column} label="Year level" />
+		),
+		cell: ({ row }) => row.original.year_level ?? "—",
+	},
+];
 
 const headerBreadcrumb = (
 	<Breadcrumb>
@@ -102,16 +155,22 @@ export function EnrollmentCreateClient({
 }) {
 	const router = useRouter();
 	const [classIds, setClassIds] = React.useState<string[]>([]);
-	const [query, setQuery] = React.useState("");
-	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
-	const [programFilter, setProgramFilter] = React.useState<string[]>([]);
-	const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 	const [submitting, setSubmitting] = React.useState(false);
-	const [pageIndex, setPageIndex] = React.useState(0);
-	const [pageSize, setPageSize] = React.useState(getStoredPageSize);
 	const [blockSize, setBlockSize] = React.useState(50);
 	const [offset, setOffset] = React.useState(0);
 	const chipsRef = useComboboxAnchor();
+
+	const [sorting, setSorting] = React.useState<SortingState>([]);
+	const [columnVisibility, setColumnVisibility] =
+		React.useState<VisibilityState>({});
+	const [rowSelection, setRowSelection] = React.useState({});
+	const [globalFilter, setGlobalFilter] = React.useState("");
+	const [pagination, setPagination] = React.useState({
+		pageIndex: 0,
+		pageSize: getStoredPageSize(),
+	});
+	const [yearFilter, setYearFilter] = React.useState<number[]>([]);
+	const [programFilter, setProgramFilter] = React.useState<string[]>([]);
 
 	const classOptions = React.useMemo(
 		() =>
@@ -122,88 +181,78 @@ export function EnrollmentCreateClient({
 		[classes],
 	);
 
-	const yearOptions = React.useMemo(() => {
-		const values = new Set<number>();
-		for (const student of students) {
-			if (student.enrollment_year != null) values.add(student.enrollment_year);
-		}
-		return Array.from(values).sort((a, b) => a - b);
-	}, [students]);
+	const yearOptions = React.useMemo(
+		() =>
+			[
+				...new Set(
+					students
+						.map((s) => s.enrollment_year)
+						.filter((y): y is number => y != null),
+				),
+			].sort((a, b) => a - b),
+		[students],
+	);
 
-	const programOptions = React.useMemo(() => {
-		const values = new Set<string>();
-		for (const student of students) {
-			if (student.program) values.add(student.program);
-		}
-		return Array.from(values).sort();
-	}, [students]);
+	const programOptions = React.useMemo(
+		() =>
+			[
+				...new Set(
+					students.map((s) => s.program).filter((p): p is string => p != null),
+				),
+			].sort(),
+		[students],
+	);
 
-	const filteredStudents = React.useMemo(() => {
-		const loweredQuery = query.trim().toLowerCase();
-		return students
-			.filter((student) => {
+	const filteredData = React.useMemo(
+		() =>
+			students.filter((s) => {
 				if (
 					yearFilter.length > 0 &&
-					(student.enrollment_year == null ||
-						!yearFilter.includes(student.enrollment_year))
+					(s.enrollment_year == null || !yearFilter.includes(s.enrollment_year))
 				)
 					return false;
 				if (
 					programFilter.length > 0 &&
-					(!student.program || !programFilter.includes(student.program))
+					(!s.program || !programFilter.includes(s.program))
 				)
 					return false;
-				if (!loweredQuery) return true;
-				return (
-					student.full_name.toLowerCase().includes(loweredQuery) ||
-					(student.school_id ?? "").toLowerCase().includes(loweredQuery) ||
-					student.email.toLowerCase().includes(loweredQuery)
-				);
-			})
-			.sort(sortBySchoolId);
-	}, [students, query, yearFilter, programFilter]);
-
-	const pageCount = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-	const clampedPageIndex = Math.min(pageIndex, pageCount - 1);
-	const pagedStudents = filteredStudents.slice(
-		clampedPageIndex * pageSize,
-		clampedPageIndex * pageSize + pageSize,
+				return true;
+			}),
+		[students, yearFilter, programFilter],
 	);
 
-	const allPageSelected =
-		pagedStudents.length > 0 &&
-		pagedStudents.every((s) => selectedIds.has(s.id));
-	const somePageSelected = pagedStudents.some((s) => selectedIds.has(s.id));
+	const table = useReactTable({
+		data: filteredData,
+		columns: studentColumns,
+		state: {
+			sorting,
+			columnVisibility,
+			rowSelection,
+			pagination,
+			globalFilter,
+		},
+		globalFilterFn: (row) => {
+			const query = globalFilter.toLowerCase();
+			return (
+				row.original.full_name.toLowerCase().includes(query) ||
+				(row.original.school_id ?? "").toLowerCase().includes(query) ||
+				row.original.email.toLowerCase().includes(query) ||
+				(row.original.program ?? "").toLowerCase().includes(query)
+			);
+		},
+		getRowId: (row) => row.id,
+		enableRowSelection: true,
+		onRowSelectionChange: setRowSelection,
+		onSortingChange: setSorting,
+		onColumnVisibilityChange: setColumnVisibility,
+		onPaginationChange: setPagination,
+		getCoreRowModel: getCoreRowModel(),
+		getFilteredRowModel: getFilteredRowModel(),
+		getPaginationRowModel: getPaginationRowModel(),
+		getSortedRowModel: getSortedRowModel(),
+	});
 
-	const toggleStudent = (studentId: string, checked: boolean) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			if (checked) next.add(studentId);
-			else next.delete(studentId);
-			return next;
-		});
-	};
-
-	const toggleSelectPage = (checked: boolean) => {
-		setSelectedIds((prev) => {
-			const next = new Set(prev);
-			for (const student of pagedStudents) {
-				if (checked) next.add(student.id);
-				else next.delete(student.id);
-			}
-			return next;
-		});
-	};
-
-	const selectRange = (start: number, count: number) => {
-		const boundedStart = Math.max(start, 0);
-		const boundedCount = Math.max(count, 1);
-		const range = filteredStudents.slice(
-			boundedStart,
-			boundedStart + boundedCount,
-		);
-		setSelectedIds(new Set(range.map((student) => student.id)));
-	};
+	const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
 	const toggleYearFilter = (year: number, checked: boolean) => {
 		setYearFilter((prev) => {
@@ -237,10 +286,28 @@ export function EnrollmentCreateClient({
 		});
 	};
 
+	const selectRange = () => {
+		const allRows = table.getFilteredRowModel().rows;
+		const boundedOffset = Math.max(offset, 0);
+		const boundedSize = Math.max(blockSize, 1);
+		const slice = allRows.slice(boundedOffset, boundedOffset + boundedSize);
+		const next: Record<string, boolean> = {};
+		for (const row of slice) {
+			next[row.id] = true;
+		}
+		setRowSelection(next);
+	};
+
+	const activeFilterCount =
+		(yearFilter.length > 0 ? 1 : 0) + (programFilter.length > 0 ? 1 : 0);
+
 	const handleSubmit = async () => {
-		if (classIds.length === 0 || selectedIds.size === 0 || submitting) return;
+		if (classIds.length === 0 || selectedCount === 0 || submitting) return;
 		setSubmitting(true);
 		try {
+			const selectedIds = table
+				.getFilteredSelectedRowModel()
+				.rows.map((r) => r.id);
 			for (const classId of classIds) {
 				for (const studentId of selectedIds) {
 					try {
@@ -260,8 +327,6 @@ export function EnrollmentCreateClient({
 		}
 	};
 
-	const activeFilterCount =
-		(yearFilter.length > 0 ? 1 : 0) + (programFilter.length > 0 ? 1 : 0);
 	const classSummary =
 		classIds.length === 0
 			? "No classes selected"
@@ -272,10 +337,20 @@ export function EnrollmentCreateClient({
 			<SetPageHeader
 				title="Enrollments — Create"
 				titleNode={headerBreadcrumb}
-				description="Select classes and students, then enroll in batch."
+				actions={
+					<LoadingButton
+						size="sm"
+						onClick={handleSubmit}
+						disabled={classIds.length === 0 || selectedCount === 0}
+						loading={submitting}
+						loadingText="Creating…"
+					>
+						Create enrollments
+					</LoadingButton>
+				}
 			/>
 
-			<FieldGroup className="max-w-4xl">
+			<FieldGroup className="max-w-4xl px-4 lg:px-6">
 				<Field orientation="horizontal">
 					<FieldContent>
 						<FieldLabel>Classes</FieldLabel>
@@ -310,246 +385,102 @@ export function EnrollmentCreateClient({
 				</Field>
 			</FieldGroup>
 
-			<FieldSeparator className="max-w-4xl" />
+			<FieldSeparator className="mx-4 max-w-4xl lg:mx-6" />
 
-			<div className="flex flex-col gap-3">
-				<div className="flex items-center gap-2">
-					<div className="relative flex-1">
-						<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50" />
-						<Input
-							value={query}
-							onChange={(e) => {
-								setQuery(e.currentTarget.value);
-								setPageIndex(0);
-							}}
-							placeholder="Search by name, school ID, or email"
-							className="pl-8"
-						/>
-					</div>
-					<DataTableFilterSheet
-						title="Student filters"
-						description="Refine the visible student list by enrollment year and program."
-						contentClassName="sm:max-w-lg"
-						activeCount={activeFilterCount}
-						onReset={() => {
-							setYearFilter([]);
-							setProgramFilter([]);
-							setPageIndex(0);
-						}}
-					>
-						{yearOptions.length > 1 && (
-							<DataTableFilterSection title="Enrollment year">
-								{yearOptions.map((year) => (
-									<DataTableFilterOption
-										key={year}
-										label={String(year)}
-										checked={
-											yearFilter.length === 0 || yearFilter.includes(year)
-										}
-										onCheckedChange={(checked) =>
-											toggleYearFilter(year, checked)
-										}
-									/>
-								))}
-							</DataTableFilterSection>
-						)}
-						{programOptions.length > 1 && (
-							<DataTableFilterSection title="Program">
-								{programOptions.map((program) => (
-									<DataTableFilterOption
-										key={program}
-										label={program}
-										checked={
-											programFilter.length === 0 ||
-											programFilter.includes(program)
-										}
-										onCheckedChange={(checked) =>
-											toggleProgramFilter(program, checked)
-										}
-									/>
-								))}
-							</DataTableFilterSection>
-						)}
-					</DataTableFilterSheet>
-				</div>
+			<DataTableScaffold
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(query) => setGlobalFilter(query)}
+						filters={
+							<DataTableFilterSheet
+								title="Student filters"
+								description="Refine the visible student list by enrollment year and program."
+								contentClassName="sm:max-w-lg"
+								activeCount={activeFilterCount}
+								onReset={() => {
+									setYearFilter([]);
+									setProgramFilter([]);
+								}}
+							>
+								{yearOptions.length > 1 ? (
+									<DataTableFilterSection title="Enrollment year">
+										{yearOptions.map((year) => (
+											<DataTableFilterOption
+												key={year}
+												label={String(year)}
+												checked={
+													yearFilter.length === 0 || yearFilter.includes(year)
+												}
+												onCheckedChange={(checked) =>
+													toggleYearFilter(year, checked)
+												}
+											/>
+										))}
+									</DataTableFilterSection>
+								) : null}
+								{programOptions.length > 1 ? (
+									<DataTableFilterSection title="Program">
+										{programOptions.map((program) => (
+											<DataTableFilterOption
+												key={program}
+												label={program}
+												checked={
+													programFilter.length === 0 ||
+													programFilter.includes(program)
+												}
+												onCheckedChange={(checked) =>
+													toggleProgramFilter(program, checked)
+												}
+											/>
+										))}
+									</DataTableFilterSection>
+								) : null}
+							</DataTableFilterSheet>
+						}
+					/>
+				}
+			>
+				<DataTableBody table={table} columnCount={studentColumns.length} />
+				<DataTablePagination
+					table={table}
+					selectionActions={
+						<DropdownMenuItem onClick={() => table.resetRowSelection()}>
+							Clear selection
+						</DropdownMenuItem>
+					}
+				/>
+			</DataTableScaffold>
 
-				<div className="text-sm text-muted-foreground">
-					{filteredStudents.length} visible · {selectedIds.size} selected
-				</div>
-
-				<div className="overflow-hidden rounded-md border">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-12">
-									<div className="flex items-center justify-center">
-										<Checkbox
-											checked={allPageSelected}
-											indeterminate={somePageSelected && !allPageSelected}
-											onCheckedChange={(checked) => toggleSelectPage(!!checked)}
-											aria-label="Select page students"
-										/>
-									</div>
-								</TableHead>
-								<TableHead>Student</TableHead>
-								<TableHead>School ID</TableHead>
-								<TableHead>Program</TableHead>
-								<TableHead>Enrollment year</TableHead>
-								<TableHead>Year level</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{pagedStudents.length === 0 ? (
-								<TableRow>
-									<TableCell
-										colSpan={6}
-										className="py-6 text-center text-sm text-muted-foreground"
-									>
-										No students match the current filters.
-									</TableCell>
-								</TableRow>
-							) : (
-								pagedStudents.map((student) => (
-									<TableRow key={student.id}>
-										<TableCell>
-											<div className="flex items-center justify-center">
-												<Checkbox
-													checked={selectedIds.has(student.id)}
-													onCheckedChange={(checked) =>
-														toggleStudent(student.id, !!checked)
-													}
-													aria-label={`Select ${student.full_name}`}
-												/>
-											</div>
-										</TableCell>
-										<TableCell>
-											<span className="font-medium">{student.full_name}</span>
-										</TableCell>
-										<TableCell className="font-mono text-xs">
-											{student.school_id ?? "-"}
-										</TableCell>
-										<TableCell>{student.program ?? "—"}</TableCell>
-										<TableCell>{student.enrollment_year ?? "—"}</TableCell>
-										<TableCell>{student.year_level ?? "—"}</TableCell>
-									</TableRow>
-								))
-							)}
-						</TableBody>
-					</Table>
-				</div>
-
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<span>Rows per page</span>
-						<Select
-							value={String(pageSize)}
-							onValueChange={(v) => {
-								setPageSize(Number(v));
-								setPageIndex(0);
-							}}
-						>
-							<SelectTrigger className="h-8 w-16">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectGroup>
-									{DEFAULT_TABLE_PAGE_SIZE_OPTIONS.map((size) => (
-										<SelectItem key={size} value={String(size)}>
-											{size}
-										</SelectItem>
-									))}
-								</SelectGroup>
-							</SelectContent>
-						</Select>
-					</div>
-					<div className="flex items-center gap-2">
-						<span className="text-sm text-muted-foreground">
-							Page {clampedPageIndex + 1} of {pageCount}
-						</span>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={clampedPageIndex === 0}
-							onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
-						>
-							Previous
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={clampedPageIndex >= pageCount - 1}
-							onClick={() =>
-								setPageIndex((i) => Math.min(pageCount - 1, i + 1))
-							}
-						>
-							Next
-						</Button>
-					</div>
-				</div>
-
-				<FieldSeparator />
-
-				<div className="flex flex-wrap items-end gap-4">
-					<Field orientation="horizontal" className="gap-2">
-						<FieldLabel htmlFor="enrollment-block-size" className="text-xs">
-							Block size
-						</FieldLabel>
-						<NumberStepper
-							id="enrollment-block-size"
-							value={blockSize}
-							onChange={setBlockSize}
-							min={1}
-							max={filteredStudents.length || 100}
-						/>
-					</Field>
-					<Field orientation="horizontal" className="gap-2">
-						<FieldLabel htmlFor="enrollment-offset" className="text-xs">
-							Offset
-						</FieldLabel>
-						<NumberStepper
-							id="enrollment-offset"
-							value={offset}
-							onChange={setOffset}
-							min={0}
-							step={10}
-						/>
-					</Field>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						onClick={() => selectRange(offset, blockSize)}
-					>
-						Select range
-					</Button>
-				</div>
+			<div className="flex flex-wrap items-end gap-4 px-4 lg:px-6">
+				<Field orientation="horizontal" className="gap-2">
+					<FieldLabel htmlFor="enrollment-block-size" className="text-xs">
+						Block size
+					</FieldLabel>
+					<NumberStepper
+						id="enrollment-block-size"
+						value={blockSize}
+						onChange={setBlockSize}
+						min={1}
+						max={filteredData.length || 100}
+					/>
+				</Field>
+				<Field orientation="horizontal" className="gap-2">
+					<FieldLabel htmlFor="enrollment-offset" className="text-xs">
+						Offset
+					</FieldLabel>
+					<NumberStepper
+						id="enrollment-offset"
+						value={offset}
+						onChange={setOffset}
+						min={0}
+						step={10}
+					/>
+				</Field>
+				<Button type="button" variant="outline" size="sm" onClick={selectRange}>
+					Select range
+				</Button>
 			</div>
-
-			{selectedIds.size > 0 && (
-				<div className="sticky bottom-0 flex items-center justify-between rounded-lg border bg-background px-4 py-3 shadow-sm">
-					<div className="flex items-center gap-4">
-						<span className="text-sm font-medium">
-							{selectedIds.size} student{selectedIds.size > 1 ? "s" : ""}{" "}
-							selected
-						</span>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setSelectedIds(new Set())}
-						>
-							Clear
-						</Button>
-					</div>
-					<LoadingButton
-						onClick={handleSubmit}
-						disabled={classIds.length === 0}
-						loading={submitting}
-						loadingText="Creating…"
-					>
-						Create enrollments
-					</LoadingButton>
-				</div>
-			)}
 		</>
 	);
 }
