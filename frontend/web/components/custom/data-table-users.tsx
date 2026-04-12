@@ -1,5 +1,6 @@
 "use client";
 
+import { IconQrcode, IconUserMinus } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -10,12 +11,21 @@ import {
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
+	type Row,
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import * as React from "react";
-import type { UserDto } from "@/app/lib/api";
+import { useState } from "react";
+import {
+	getUser,
+	type RegistrationSessionDto,
+	type UserDto,
+	unregisterUser,
+} from "@/app/lib/api";
+import { getRegistrationSession } from "@/app/lib/webauthn";
 import {
 	createDatabaseIdColumn,
 	RegistrationStatusBadge,
@@ -27,12 +37,15 @@ import {
 	DataTableFilterSection,
 	DataTableFilterSheet,
 	DataTablePagination,
+	DataTableRowActions,
 	DataTableScaffold,
 	DataTableToolbar,
 	getStoredPageSize,
 	SortableHeader,
 } from "@/components/custom/data-table-shared";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { RegistrationQrDialog } from "./registration-qr-dialog";
 
 const ALL_ROLE_FILTER_VALUES = [
 	"student",
@@ -47,80 +60,119 @@ const includesSomeFilter: FilterFn<UserDto> = (row, columnId, filterValue) => {
 	return filterValue.includes(row.getValue(columnId));
 };
 
-const columns: ColumnDef<UserDto>[] = [
-	{
-		id: "select",
-		header: ({ table }) => (
-			<div className="flex w-8 items-center justify-center">
-				<Checkbox
-					checked={table.getIsAllPageRowsSelected()}
-					indeterminate={
-						table.getIsSomePageRowsSelected() &&
-						!table.getIsAllPageRowsSelected()
-					}
-					onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-					aria-label="Select all"
+function columns(
+	setRegistrationQrDialogState: (row: Row<UserDto>) => void,
+	onUnregister: (userId: string) => Promise<void>,
+): ColumnDef<UserDto>[] {
+	return [
+		{
+			id: "select",
+			header: ({ table }) => (
+				<div className="flex w-8 items-center justify-center">
+					<Checkbox
+						checked={table.getIsAllPageRowsSelected()}
+						indeterminate={
+							table.getIsSomePageRowsSelected() &&
+							!table.getIsAllPageRowsSelected()
+						}
+						onCheckedChange={(value) =>
+							table.toggleAllPageRowsSelected(!!value)
+						}
+						aria-label="Select all"
+					/>
+				</div>
+			),
+			cell: ({ row }) => (
+				<div className="flex w-8 items-center justify-center">
+					<Checkbox
+						checked={row.getIsSelected()}
+						onCheckedChange={(value) => row.toggleSelected(!!value)}
+						aria-label="Select row"
+					/>
+				</div>
+			),
+			enableSorting: false,
+			enableHiding: false,
+		},
+		createDatabaseIdColumn<UserDto>(),
+		{
+			accessorKey: "full_name",
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Full name" />
+			),
+			enableHiding: false,
+			cell: ({ row }) => (
+				<span className="font-medium">{row.original.full_name}</span>
+			),
+		},
+		{
+			accessorKey: "school_id",
+			header: ({ column }) => (
+				<SortableHeader column={column} label="School ID" />
+			),
+			cell: ({ row }) => (
+				<span className="font-mono text-sm">
+					{row.original.school_id ?? "—"}
+				</span>
+			),
+		},
+		{
+			accessorKey: "registered",
+			filterFn: includesSomeFilter,
+			header: ({ column }) => (
+				<SortableHeader column={column} label="Registered" />
+			),
+			cell: ({ row }) => (
+				<RegistrationStatusBadge
+					registered={row.original.registered}
+					onUnregisteredClick={() => setRegistrationQrDialogState(row)}
 				/>
-			</div>
-		),
-		cell: ({ row }) => (
-			<div className="flex w-8 items-center justify-center">
-				<Checkbox
-					checked={row.getIsSelected()}
-					onCheckedChange={(value) => row.toggleSelected(!!value)}
-					aria-label="Select row"
-				/>
-			</div>
-		),
-		enableSorting: false,
-		enableHiding: false,
-	},
-	createDatabaseIdColumn<UserDto>(),
-	{
-		accessorKey: "full_name",
-		header: ({ column }) => (
-			<SortableHeader column={column} label="Full name" />
-		),
-		enableHiding: false,
-		cell: ({ row }) => (
-			<span className="font-medium">{row.original.full_name}</span>
-		),
-	},
-	{
-		accessorKey: "school_id",
-		header: ({ column }) => (
-			<SortableHeader column={column} label="School ID" />
-		),
-		cell: ({ row }) => (
-			<span className="font-mono text-sm">{row.original.school_id ?? "—"}</span>
-		),
-	},
-	{
-		accessorKey: "registered",
-		filterFn: includesSomeFilter,
-		header: ({ column }) => (
-			<SortableHeader column={column} label="Registered" />
-		),
-		cell: ({ row }) => (
-			<RegistrationStatusBadge registered={row.original.registered} />
-		),
-	},
-	{
-		accessorKey: "role",
-		filterFn: includesSomeFilter,
-		header: ({ column }) => <SortableHeader column={column} label="Role" />,
-		cell: ({ row }) => <UserRoleBadge role={row.original.role} />,
-	},
-	{
-		accessorKey: "email",
-		header: ({ column }) => <SortableHeader column={column} label="Email" />,
-		cell: ({ row }) => (
-			<span className="text-sm text-muted-foreground">
-				{row.original.email}
-			</span>
-		),
-	},
-];
+			),
+		},
+		{
+			accessorKey: "role",
+			filterFn: includesSomeFilter,
+			header: ({ column }) => <SortableHeader column={column} label="Role" />,
+			cell: ({ row }) => <UserRoleBadge role={row.original.role} />,
+		},
+		{
+			accessorKey: "email",
+			header: ({ column }) => <SortableHeader column={column} label="Email" />,
+			cell: ({ row }) => (
+				<span className="text-sm text-muted-foreground">
+					{row.original.email}
+				</span>
+			),
+		},
+		{
+			id: "actions",
+			cell: ({ row }) => (
+				<DataTableRowActions contentClassName="w-64">
+					{row.original.registered ? (
+						<DropdownMenuItem
+							onClick={async () => {
+								await onUnregister(row.original.id);
+							}}
+							variant="destructive"
+						>
+							<IconUserMinus />
+							Unregister
+						</DropdownMenuItem>
+					) : (
+						<DropdownMenuItem
+							onClick={async () => {
+								setRegistrationQrDialogState(row);
+							}}
+						>
+							<IconQrcode />
+							Generate registration QR
+						</DropdownMenuItem>
+					)}
+				</DataTableRowActions>
+			),
+		},
+	];
+}
 
 const getDefaultColumnFilters = (
 	roleValues: readonly string[],
@@ -136,6 +188,15 @@ export function DataTableUsers({
 	data: UserDto[];
 	roleFilterValues?: readonly string[];
 }) {
+	const router = useRouter();
+
+	const [open, setOpen] = useState(false);
+	const [session, setSession] = useState<RegistrationSessionDto | null>(null);
+	const [fullName, setFullName] = useState<string | undefined>(undefined);
+	const [registrationUserId, setRegistrationUserId] = useState<string | null>(
+		null,
+	);
+
 	const [data, setData] = React.useState(initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -157,9 +218,65 @@ export function DataTableUsers({
 		setData(initialData);
 	}, [initialData]);
 
+	const closeRegistrationQrDialog = React.useCallback(() => {
+		setOpen(false);
+		setSession(null);
+		setFullName(undefined);
+		setRegistrationUserId(null);
+	}, []);
+
+	const setRegistrationQrDialogState = async (row: Row<UserDto>) => {
+		if (open) {
+			closeRegistrationQrDialog();
+			return;
+		}
+		setSession(await getRegistrationSession(row.original.id));
+		setFullName(row.original.full_name);
+		setRegistrationUserId(row.original.id);
+		setOpen(true);
+	};
+
+	const setRegistrationQrDialogOpenState = React.useCallback(
+		(nextOpen: boolean) => {
+			if (nextOpen) {
+				setOpen(true);
+				return;
+			}
+			closeRegistrationQrDialog();
+		},
+		[closeRegistrationQrDialog],
+	);
+
+	React.useEffect(() => {
+		if (!open || registrationUserId === null) return;
+
+		const intervalId = window.setInterval(async () => {
+			try {
+				const latestUser = await getUser(registrationUserId);
+				if (!latestUser.registered) return;
+				setRegistrationQrDialogOpenState(false);
+				router.refresh();
+			} catch {
+				return;
+			}
+		}, 2000);
+
+		return () => {
+			window.clearInterval(intervalId);
+		};
+	}, [open, registrationUserId, router, setRegistrationQrDialogOpenState]);
+
+	const handleUnregister = React.useCallback(
+		async (userId: string) => {
+			await unregisterUser(userId);
+			router.refresh();
+		},
+		[router],
+	);
+
 	const table = useReactTable({
 		data,
-		columns,
+		columns: columns(setRegistrationQrDialogState, handleUnregister),
 		state: {
 			sorting,
 			columnVisibility,
@@ -241,55 +358,77 @@ export function DataTableUsers({
 	}, [columnFilters, roleFilterValues.length]);
 
 	return (
-		<DataTableScaffold
-			toolbarStart={
-				<DataTableToolbar
-					table={table}
-					onSearch={(q) => setGlobalFilter(q)}
-					filters={
-						<DataTableFilterSheet
-							title="User filters"
-							description="Refine the user table by role and registered state."
-							activeCount={activeFilterCount}
-							onReset={() =>
-								setColumnFilters(getDefaultColumnFilters(roleFilterValues))
+		<>
+			<RegistrationQrDialog
+				open={open}
+				onOpenChange={setRegistrationQrDialogOpenState}
+				session={session}
+				fullName={fullName}
+				onExpired={
+					registrationUserId
+						? async () => {
+								const newSession =
+									await getRegistrationSession(registrationUserId);
+								setSession(newSession);
 							}
-						>
-							<DataTableFilterSection title="Role">
-								{roleFilterValues.map((role) => (
+						: undefined
+				}
+			/>
+			<DataTableScaffold
+				toolbarStart={
+					<DataTableToolbar
+						table={table}
+						onSearch={(q) => setGlobalFilter(q)}
+						filters={
+							<DataTableFilterSheet
+								title="User filters"
+								description="Refine the user table by role and registered state."
+								activeCount={activeFilterCount}
+								onReset={() =>
+									setColumnFilters(getDefaultColumnFilters(roleFilterValues))
+								}
+							>
+								<DataTableFilterSection title="Role">
+									{roleFilterValues.map((role) => (
+										<DataTableFilterOption
+											key={role}
+											label={`${role.charAt(0).toUpperCase() + role.slice(1)}s`}
+											checked={isChecked("role", role)}
+											onCheckedChange={(checked) =>
+												toggleFilterValue("role", role, checked)
+											}
+										/>
+									))}
+								</DataTableFilterSection>
+								<DataTableFilterSection title="Registered">
 									<DataTableFilterOption
-										key={role}
-										label={`${role.charAt(0).toUpperCase() + role.slice(1)}s`}
-										checked={isChecked("role", role)}
+										label="Registered"
+										checked={isChecked("registered", true)}
 										onCheckedChange={(checked) =>
-											toggleFilterValue("role", role, checked)
+											toggleFilterValue("registered", true, checked)
 										}
 									/>
-								))}
-							</DataTableFilterSection>
-							<DataTableFilterSection title="Registered">
-								<DataTableFilterOption
-									label="Registered"
-									checked={isChecked("registered", true)}
-									onCheckedChange={(checked) =>
-										toggleFilterValue("registered", true, checked)
-									}
-								/>
-								<DataTableFilterOption
-									label="Unregistered"
-									checked={isChecked("registered", false)}
-									onCheckedChange={(checked) =>
-										toggleFilterValue("registered", false, checked)
-									}
-								/>
-							</DataTableFilterSection>
-						</DataTableFilterSheet>
+									<DataTableFilterOption
+										label="Unregistered"
+										checked={isChecked("registered", false)}
+										onCheckedChange={(checked) =>
+											toggleFilterValue("registered", false, checked)
+										}
+									/>
+								</DataTableFilterSection>
+							</DataTableFilterSheet>
+						}
+					/>
+				}
+			>
+				<DataTableBody
+					table={table}
+					columnCount={
+						columns(setRegistrationQrDialogState, handleUnregister).length
 					}
 				/>
-			}
-		>
-			<DataTableBody table={table} columnCount={columns.length} />
-			<DataTablePagination table={table} />
-		</DataTableScaffold>
+				<DataTablePagination table={table} />
+			</DataTableScaffold>
+		</>
 	);
 }

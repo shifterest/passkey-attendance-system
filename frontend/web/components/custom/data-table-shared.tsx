@@ -12,6 +12,7 @@ import {
 	IconSelector,
 	IconSortAscending,
 	IconSortDescending,
+	IconX,
 } from "@tabler/icons-react";
 import {
 	type Column,
@@ -372,6 +373,7 @@ export function DataTablePagination<TData>({
 							{selectionActions}
 							{selectionActions ? <DropdownMenuSeparator /> : null}
 							<DropdownMenuItem onClick={() => table.resetRowSelection()}>
+								<IconX data-icon="inline-start" />
 								Clear selection
 							</DropdownMenuItem>
 						</DropdownMenuContent>

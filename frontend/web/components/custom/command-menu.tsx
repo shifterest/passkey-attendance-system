@@ -164,9 +164,9 @@ export function CommandMenu() {
 										onSelect={() => navigate(userHref(u.role))}
 									>
 										<span className="truncate">{u.full_name}</span>
-										<div className="ml-auto">
+										<span data-slot="command-shortcut" className="ml-auto">
 											<UserRoleBadge role={u.role} />
-										</div>
+										</span>
 									</CommandItem>
 								))}
 							</CommandGroup>

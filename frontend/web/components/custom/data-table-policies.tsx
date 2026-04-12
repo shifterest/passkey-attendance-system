@@ -462,60 +462,6 @@ function PolicyPlayground({ values }: { values: PolicyFormValues }) {
 				</AccordionTrigger>
 				<AccordionContent>
 					<div className="space-y-6">
-						<div className="grid gap-x-6 gap-y-4 xl:grid-cols-2">
-							<div className="flex items-center justify-between rounded-lg border p-3">
-								<Label htmlFor="pg-vouched">
-									Integrity vouch (Play Integrity)
-								</Label>
-								<Switch
-									id="pg-vouched"
-									checked={vouched}
-									onCheckedChange={setVouched}
-								/>
-							</div>
-							<div className="space-y-2 rounded-lg border p-3">
-								<Label>BLE proximity</Label>
-								<RadioGroup
-									value={ble}
-									onValueChange={(v) =>
-										setBle(v as "none" | "weak" | "medium" | "strong")
-									}
-									className="flex gap-4"
-								>
-									{(
-										[
-											["none", "None"],
-											["weak", "Weak"],
-											["medium", "Medium"],
-											["strong", "Strong"],
-										] as const
-									).map(([val, label]) => (
-										<div key={val} className="flex items-center gap-1.5">
-											<RadioGroupItem value={val} id={`pg-ble-${val}`} />
-											<Label htmlFor={`pg-ble-${val}`} className="font-normal">
-												{label}
-											</Label>
-										</div>
-									))}
-								</RadioGroup>
-							</div>
-							<div className="flex items-center justify-between rounded-lg border p-3">
-								<Label htmlFor="pg-gps">GPS</Label>
-								<Switch id="pg-gps" checked={gps} onCheckedChange={setGps} />
-							</div>
-							<div className="flex items-center justify-between rounded-lg border p-3">
-								<Label htmlFor="pg-network">School network</Label>
-								<Switch
-									id="pg-network"
-									checked={network}
-									onCheckedChange={setNetwork}
-								/>
-							</div>
-							<div className="flex items-center justify-between rounded-lg border p-3">
-								<Label htmlFor="pg-nfc">NFC tap</Label>
-								<Switch id="pg-nfc" checked={nfc} onCheckedChange={setNfc} />
-							</div>
-						</div>
 						<div className="grid gap-3 lg:grid-cols-3">
 							<PolicyMetric
 								label="Score"
@@ -533,10 +479,167 @@ function PolicyPlayground({ values }: { values: PolicyFormValues }) {
 								hint="Low band attempts stay held; standard and high proceed automatically."
 							/>
 						</div>
+						<div className="grid gap-6 lg:grid-cols-3">
+							<div className="space-y-3">
+								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+									Integrity
+								</div>
+								<div className="flex items-center justify-between rounded-lg border p-3">
+									<Label htmlFor="pg-vouched">Play Integrity vouch</Label>
+									<Switch
+										id="pg-vouched"
+										checked={vouched}
+										onCheckedChange={setVouched}
+									/>
+								</div>
+							</div>
+							<div className="space-y-3">
+								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+									Proximity
+								</div>
+								<div className="space-y-2 rounded-lg border p-3">
+									<Label>BLE</Label>
+									<RadioGroup
+										value={ble}
+										onValueChange={(v) =>
+											setBle(v as "none" | "weak" | "medium" | "strong")
+										}
+										className="flex gap-4"
+									>
+										{(
+											[
+												["none", "None"],
+												["weak", "Weak"],
+												["medium", "Medium"],
+												["strong", "Strong"],
+											] as const
+										).map(([val, label]) => (
+											<div key={val} className="flex items-center gap-1.5">
+												<RadioGroupItem value={val} id={`pg-ble-${val}`} />
+												<Label
+													htmlFor={`pg-ble-${val}`}
+													className="font-normal"
+												>
+													{label}
+												</Label>
+											</div>
+										))}
+									</RadioGroup>
+								</div>
+								<div className="flex items-center justify-between rounded-lg border p-3">
+									<Label htmlFor="pg-gps">GPS</Label>
+									<Switch id="pg-gps" checked={gps} onCheckedChange={setGps} />
+								</div>
+								<div className="flex items-center justify-between rounded-lg border p-3">
+									<Label htmlFor="pg-network">School network</Label>
+									<Switch
+										id="pg-network"
+										checked={network}
+										onCheckedChange={setNetwork}
+									/>
+								</div>
+								<div className="flex items-center justify-between rounded-lg border p-3">
+									<Label htmlFor="pg-nfc">NFC tap</Label>
+									<Switch id="pg-nfc" checked={nfc} onCheckedChange={setNfc} />
+								</div>
+							</div>
+							<div className="space-y-3">
+								<div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+									Identity
+								</div>
+								<div className="rounded-lg border border-dashed p-3">
+									<p className="text-sm text-muted-foreground">
+										Passkey and device key are authentication gates, not
+										additive score terms. Offline QR scores +4 but excludes
+										other proximity signals.
+									</p>
+								</div>
+							</div>
+						</div>
 					</div>
 				</AccordionContent>
 			</AccordionItem>
 		</Accordion>
+	);
+}
+
+function InlineSystemDefaultEditor({
+	policy,
+	onRefresh,
+}: {
+	policy: ClassPolicyDto | null;
+	onRefresh: () => Promise<void>;
+}) {
+	const [values, setValues] = React.useState<PolicyFormValues>(() =>
+		toPolicyFormValues(policy),
+	);
+	const [submitting, setSubmitting] = React.useState(false);
+
+	React.useEffect(() => {
+		setValues(toPolicyFormValues(policy));
+	}, [policy]);
+
+	const isDirty = React.useMemo(() => {
+		const current = toPolicyFormValues(policy);
+		return (
+			values.standard_assurance_threshold !==
+				current.standard_assurance_threshold ||
+			values.high_assurance_threshold !== current.high_assurance_threshold ||
+			values.present_cutoff_minutes !== current.present_cutoff_minutes ||
+			values.late_cutoff_minutes !== current.late_cutoff_minutes ||
+			values.max_check_ins !== current.max_check_ins
+		);
+	}, [policy, values]);
+
+	async function handleSave() {
+		if (submitting) return;
+		setSubmitting(true);
+		try {
+			if (policy) {
+				await updatePolicy(policy.id, values);
+			} else {
+				await createPolicy({ class_id: null, ...values });
+			}
+			await onRefresh();
+		} finally {
+			setSubmitting(false);
+		}
+	}
+
+	return (
+		<Card size="sm" className="border border-border/70 shadow-none">
+			<CardHeader className="border-b">
+				<div className="flex flex-wrap items-start justify-between gap-3">
+					<div className="space-y-2">
+						<Badge variant="outline">System default</Badge>
+						<CardTitle>Global fallback</CardTitle>
+						<CardDescription>
+							Applies whenever neither a teacher default nor a class override is
+							present.
+						</CardDescription>
+					</div>
+					<LoadingButton
+						size="sm"
+						onClick={handleSave}
+						disabled={!isDirty || submitting}
+						loading={submitting}
+						loadingText="Saving…"
+					>
+						Save
+					</LoadingButton>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<PolicyFormFields
+					values={values}
+					onChange={(field, value) =>
+						setValues((current) =>
+							applyPolicyFieldChange(current, field, value),
+						)
+					}
+				/>
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -1075,21 +1178,17 @@ export function DataTablePolicies({
 			return !teacherDefaultExists || classOverrideCount < classes.length;
 		}
 
-		return systemPolicies.length === 0;
+		return false;
 	}, [
 		classPolicies,
 		classes.length,
 		currentUser.id,
 		currentUser.role,
-		systemPolicies.length,
 		teacherPolicies,
 	]);
-	const createLabel =
-		currentUser.role === "teacher"
-			? teacherDefaultForCurrentUser
-				? "Create override"
-				: "Create policy"
-			: "Create default";
+	const createLabel = teacherDefaultForCurrentUser
+		? "Create override"
+		: "Create policy";
 
 	return (
 		<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -1125,7 +1224,12 @@ export function DataTablePolicies({
 					</p>
 				</div>
 				<div className="grid gap-4">
-					{systemPolicies.length > 0 ? (
+					{currentUser.role !== "teacher" ? (
+						<InlineSystemDefaultEditor
+							policy={systemPolicies[0] ?? null}
+							onRefresh={onRefresh}
+						/>
+					) : systemPolicies.length > 0 ? (
 						systemPolicies.map((policy) => (
 							<PolicyCard
 								key={policy.id}

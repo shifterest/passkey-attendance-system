@@ -1,6 +1,12 @@
 "use client";
 
-import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+	IconCircleCheck,
+	IconCircleX,
+	IconPencil,
+	IconPlus,
+	IconTrash,
+} from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -12,7 +18,7 @@ import {
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
-import { type ReactElement, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	createSemester,
 	deleteSemester,
@@ -45,7 +51,6 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -215,14 +220,15 @@ function CreateSemesterDialog({
 
 function EditSemesterDialog({
 	semester,
-	trigger,
+	open,
+	onOpenChange,
 	onUpdated,
 }: {
 	semester: SemesterDto;
-	trigger: ReactElement;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	onUpdated: (semester: SemesterDto) => void;
 }) {
-	const [open, setOpen] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [values, setValues] = useState<SemesterFormState>({
 		name: semester.name,
@@ -236,7 +242,7 @@ function EditSemesterDialog({
 		try {
 			const updated = await updateSemester(semester.id, values);
 			onUpdated(updated);
-			setOpen(false);
+			onOpenChange(false);
 		} finally {
 			setSubmitting(false);
 		}
@@ -245,8 +251,7 @@ function EditSemesterDialog({
 	return (
 		<FormSheet
 			open={open}
-			onOpenChange={setOpen}
-			trigger={trigger}
+			onOpenChange={onOpenChange}
 			title="Edit semester"
 			description="Update term dates and active status without leaving the table."
 			contentClassName="sm:max-w-2xl"
@@ -273,14 +278,15 @@ function EditSemesterDialog({
 
 function DeleteSemesterDialog({
 	semester,
-	trigger,
+	open,
+	onOpenChange,
 	onDeleted,
 }: {
 	semester: SemesterDto;
-	trigger: ReactElement;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
 	onDeleted: (semesterId: string) => void;
 }) {
-	const [open, setOpen] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 
 	async function handleDelete() {
@@ -288,15 +294,14 @@ function DeleteSemesterDialog({
 		try {
 			await deleteSemester(semester.id);
 			onDeleted(semester.id);
-			setOpen(false);
+			onOpenChange(false);
 		} finally {
 			setSubmitting(false);
 		}
 	}
 
 	return (
-		<AlertDialog open={open} onOpenChange={setOpen}>
-			<AlertDialogTrigger render={trigger} />
+		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
 					<AlertDialogTitle>Delete semester</AlertDialogTitle>
@@ -317,6 +322,51 @@ function DeleteSemesterDialog({
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
+	);
+}
+
+function SemesterRowActions({
+	semester,
+	onUpdated,
+	onDeleted,
+}: {
+	semester: SemesterDto;
+	onUpdated: (semester: SemesterDto) => void;
+	onDeleted: (semesterId: string) => void;
+}) {
+	const [editOpen, setEditOpen] = useState(false);
+	const [deleteOpen, setDeleteOpen] = useState(false);
+
+	return (
+		<>
+			<DataTableRowActions>
+				<DropdownMenuGroup>
+					<DropdownMenuItem onClick={() => setEditOpen(true)}>
+						<IconPencil data-icon="inline-start" />
+						Edit
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						variant="destructive"
+						onClick={() => setDeleteOpen(true)}
+					>
+						<IconTrash data-icon="inline-start" />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+			</DataTableRowActions>
+			<EditSemesterDialog
+				semester={semester}
+				open={editOpen}
+				onOpenChange={setEditOpen}
+				onUpdated={onUpdated}
+			/>
+			<DeleteSemesterDialog
+				semester={semester}
+				open={deleteOpen}
+				onOpenChange={setDeleteOpen}
+				onDeleted={onDeleted}
+			/>
+		</>
 	);
 }
 
@@ -350,6 +400,11 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				),
 				cell: ({ row }) => (
 					<Badge variant={row.original.is_active ? "default" : "outline"}>
+						{row.original.is_active ? (
+							<IconCircleCheck data-icon="inline-start" />
+						) : (
+							<IconCircleX data-icon="inline-start" />
+						)}
 						{row.original.is_active ? "Active" : "Inactive"}
 					</Badge>
 				),
@@ -379,41 +434,17 @@ export function DataTableSemesters({ data }: { data: SemesterDto[] }) {
 				enableSorting: false,
 				header: "Actions",
 				cell: ({ row }) => (
-					<DataTableRowActions>
-						<DropdownMenuGroup>
-							<EditSemesterDialog
-								semester={row.original}
-								trigger={
-									<DropdownMenuItem
-										onSelect={(event) => event.preventDefault()}
-									>
-										<IconPencil data-icon="inline-start" />
-										Edit
-									</DropdownMenuItem>
-								}
-								onUpdated={(semester) =>
-									setRows((current) => mergeSemesterRows(current, semester))
-								}
-							/>
-							<DeleteSemesterDialog
-								semester={row.original}
-								trigger={
-									<DropdownMenuItem
-										variant="destructive"
-										onSelect={(event) => event.preventDefault()}
-									>
-										<IconTrash data-icon="inline-start" />
-										Delete
-									</DropdownMenuItem>
-								}
-								onDeleted={(semesterId) =>
-									setRows((current) =>
-										current.filter((item) => item.id !== semesterId),
-									)
-								}
-							/>
-						</DropdownMenuGroup>
-					</DataTableRowActions>
+					<SemesterRowActions
+						semester={row.original}
+						onUpdated={(semester) =>
+							setRows((current) => mergeSemesterRows(current, semester))
+						}
+						onDeleted={(semesterId) =>
+							setRows((current) =>
+								current.filter((item) => item.id !== semesterId),
+							)
+						}
+					/>
 				),
 			},
 		],

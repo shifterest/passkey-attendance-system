@@ -29,13 +29,13 @@ import {
 import { getSelectLabel } from "@/lib/select-label";
 
 const DAYS = [
-	{ key: "Sun", label: "S" },
-	{ key: "Mon", label: "M" },
-	{ key: "Tue", label: "T" },
-	{ key: "Wed", label: "W" },
-	{ key: "Thu", label: "T" },
-	{ key: "Fri", label: "F" },
-	{ key: "Sat", label: "S" },
+	{ key: "Sunday", label: "S" },
+	{ key: "Monday", label: "M" },
+	{ key: "Tuesday", label: "T" },
+	{ key: "Wednesday", label: "W" },
+	{ key: "Thursday", label: "T" },
+	{ key: "Friday", label: "F" },
+	{ key: "Saturday", label: "S" },
 ];
 
 interface ScheduleBlock {

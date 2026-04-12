@@ -1,5 +1,6 @@
 "use client";
 
+import { IconPlus, IconStack2, IconX } from "@tabler/icons-react";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -54,7 +55,6 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
 	Field,
-	FieldContent,
 	FieldDescription,
 	FieldGroup,
 	FieldLabel,
@@ -350,19 +350,18 @@ export function EnrollmentCreateClient({
 						loading={submitting}
 						loadingText="Creating…"
 					>
-						Create enrollments
+						<IconPlus data-icon="inline-start" />
+						Create
 					</LoadingButton>
 				}
 			/>
 
 			<FieldGroup className="px-4 lg:px-6">
-				<Field orientation="horizontal">
-					<FieldContent>
-						<FieldLabel>Classes</FieldLabel>
-						<FieldDescription>
-							Select one or more classes for this enrollment batch.
-						</FieldDescription>
-					</FieldContent>
+				<Field>
+					<FieldLabel>Classes</FieldLabel>
+					<FieldDescription>
+						Select one or more classes for this enrollment batch.
+					</FieldDescription>
 					<div className="w-full space-y-2">
 						<Combobox multiple value={classIds} onValueChange={setClassIds}>
 							<ComboboxChips ref={chipsRef}>
@@ -400,6 +399,7 @@ export function EnrollmentCreateClient({
 						extraActions={
 							<Popover>
 								<PopoverTrigger render={<Button variant="outline" size="sm" />}>
+									<IconStack2 data-icon="inline-start" />
 									Batch select
 								</PopoverTrigger>
 								<PopoverContent align="end" className="w-56">
@@ -500,6 +500,7 @@ export function EnrollmentCreateClient({
 					table={table}
 					selectionActions={
 						<DropdownMenuItem onClick={() => table.resetRowSelection()}>
+							<IconX data-icon="inline-start" />
 							Clear selection
 						</DropdownMenuItem>
 					}
