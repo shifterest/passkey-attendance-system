@@ -56,7 +56,7 @@ from webauthn import (
     options_to_json,
     verify_authentication_response,
 )
-from webauthn.helpers.exceptions import InvalidAuthenticationResponse
+from webauthn.helpers.exceptions import WebAuthnException
 from webauthn.helpers.structs import UserVerificationRequirement
 
 logger = logging.getLogger(__name__)
@@ -655,7 +655,7 @@ def check_in_verify(
             )
         redis_client.set(sig_cache_key, "1", ex=settings.challenge_timeout)
         return new_record
-    except InvalidAuthenticationResponse as e:
+    except WebAuthnException as e:
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED

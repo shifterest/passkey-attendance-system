@@ -39,7 +39,7 @@ from webauthn import (
     options_to_json,
     verify_registration_response,
 )
-from webauthn.helpers.exceptions import InvalidRegistrationResponse
+from webauthn.helpers.exceptions import WebAuthnException
 from webauthn.helpers.structs import (
     AttestationConveyancePreference,
     AttestationFormat,
@@ -257,7 +257,7 @@ def register_verify(
             )
         )
         return new_credential
-    except InvalidRegistrationResponse as e:
+    except WebAuthnException as e:
         logger.error(Logs.REGISTER_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

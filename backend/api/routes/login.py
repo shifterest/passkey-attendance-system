@@ -42,7 +42,7 @@ from webauthn import (
     options_to_json,
     verify_authentication_response,
 )
-from webauthn.helpers.exceptions import InvalidAuthenticationResponse
+from webauthn.helpers.exceptions import WebAuthnException
 from webauthn.helpers.structs import UserVerificationRequirement
 
 logger = logging.getLogger(__name__)
@@ -209,7 +209,7 @@ def login_verify(response_data: LoginResponseBase, db: Session = Depends(get_db)
             Logs.LOGIN_SUCCESSFUL.format(full_name=user.full_name, user_id=user.id)
         )
         return login_response
-    except InvalidAuthenticationResponse as e:
+    except WebAuthnException as e:
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
@@ -353,7 +353,7 @@ def web_login_verify(
             credential_public_key=bytes.fromhex(user_credential.public_key),
             credential_current_sign_count=user_sign_count,
         )
-    except InvalidAuthenticationResponse as e:
+    except WebAuthnException as e:
         logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
