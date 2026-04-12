@@ -13,6 +13,7 @@ final class ApiPaths {
       '/auth/play-integrity/vouch-status';
   static const String offlineSync = '/sessions/offline-sync';
   static String sessionsOpenTeacher() => '/sessions/open/teacher';
+  static String teacherActiveSession() => '/sessions/active/teacher';
   static String sessionClose(String id) => '/sessions/$id/close';
   static String sessionBleToken(String id) => '/sessions/$id/ble-token';
   static String sessionNfcToken(String id) => '/sessions/$id/nfc-token';
@@ -239,6 +240,15 @@ final class TeacherStrings {
       'Open the roster to review live attendance evidence and resolve low-assurance attempts.';
   static const String errorClosingSession = 'Failed to close session';
   static const String errorOpeningSession = 'Failed to open session';
+  static const String errorBlePermissions =
+      'Bluetooth permissions are required to open a session. Please grant access and try again.';
+  static const String resumeSession = 'Resume Session';
+  static const String activeSessionHint =
+      'A session is currently open. Resume it or close it before starting a new one.';
+  static const String leaveSessionHint =
+      'The session will remain open. Students can still check in. Close the session first to end attendance.';
+  static const String stay = 'Stay';
+  static const String leave = 'Leave';
 }
 
 final class OfflineStrings {

@@ -93,6 +93,22 @@ class SessionApi {
     throw Exception('Invalid response from server');
   }
 
+  static Future<Map<String, dynamic>?> getActiveTeacherSession() async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    try {
+      dynamic response = await client.get(
+        ApiPaths.teacherActiveSession(),
+        {},
+        extraHeaders: headers,
+      );
+      if (response is Map<String, dynamic>) return response;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<Map<String, dynamic>> approveRecord(
     String recordId,
     bool approve,

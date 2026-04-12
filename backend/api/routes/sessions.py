@@ -109,6 +109,34 @@ def get_session(
     return session
 
 
+@router.get("/active/teacher", response_model=CheckInSessionResponse)
+def get_active_teacher_session(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("teacher")),
+):
+    now = datetime.now(timezone.utc)
+    teacher_class_ids = [
+        c.id
+        for c in db.query(Class).filter(Class.teacher_id == current_user.id).all()
+    ]
+    if not teacher_class_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+        )
+    active_session = (
+        db.query(CheckInSession)
+        .filter(CheckInSession.class_id.in_(teacher_class_ids))
+        .filter(CheckInSession.status != "closed")
+        .filter(CheckInSession.end_time >= now)
+        .first()
+    )
+    if active_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=Messages.SESSION_NOT_FOUND
+        )
+    return active_session
+
+
 @router.post("/open/teacher", response_model=CheckInSessionResponse)
 def open_teacher_session(
     open_data: OpenTeacherSessionRequest,

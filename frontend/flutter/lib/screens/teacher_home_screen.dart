@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/session_actions.dart';
@@ -6,6 +9,7 @@ import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/theme/app_theme.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -17,15 +21,48 @@ class TeacherHomeScreen extends StatefulWidget {
 class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   bool _isLoading = false;
   bool _isLoggingOut = false;
+  String? _activeSessionId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveSession();
+  }
+
+  Future<void> _loadActiveSession() async {
+    final session = await SessionApi.getActiveTeacherSession();
+    if (mounted) {
+      setState(() => _activeSessionId = session?['id'] as String?);
+    }
+  }
 
   Future<void> _openSession(String userId) async {
+    if (!kIsWeb && Platform.isAndroid) {
+      final statuses = await [
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+      ].request();
+      final denied = statuses.values.any(
+        (s) => s == PermissionStatus.denied || s == PermissionStatus.permanentlyDenied,
+      );
+      if (denied) {
+        if (!mounted) return;
+        await showErrorDialog(
+          context,
+          TeacherStrings.errorBlePermissions,
+        );
+        return;
+      }
+    }
     setState(() => _isLoading = true);
     try {
       final session = await SessionApi.openTeacherSession(userId);
       final sessionId = session['id'];
       if (!mounted) return;
       if (sessionId is String) {
-        context.push('/teacher/session/$sessionId');
+        await context.push('/teacher/session/$sessionId');
+        _loadActiveSession();
       }
     } catch (e) {
       if (!mounted) return;
@@ -176,12 +213,32 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (_activeSessionId != null) ...[
+                _TeacherActionCard(
+                  icon: Icons.sensors_rounded,
+                  title: TeacherStrings.resumeSession,
+                  body: TeacherStrings.activeSessionHint,
+                  action: FilledButton.icon(
+                    onPressed: () async {
+                      await context.push(
+                        '/teacher/session/$_activeSessionId',
+                      );
+                      _loadActiveSession();
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text(TeacherStrings.resumeSession),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               _TeacherActionCard(
                 icon: Icons.play_circle_fill_rounded,
                 title: TeacherStrings.liveSessionTitle,
                 body: TeacherStrings.liveSessionBody,
                 action: FilledButton.icon(
-                  onPressed: _isLoading ? null : () => _openSession(userId),
+                  onPressed: (_isLoading || _activeSessionId != null)
+                      ? null
+                      : () => _openSession(userId),
                   icon: _isLoading
                       ? const SizedBox(
                           width: 18,

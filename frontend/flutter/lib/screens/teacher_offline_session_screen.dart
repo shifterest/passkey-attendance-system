@@ -36,8 +36,8 @@ class _TeacherOfflineSessionScreenState
     super.dispose();
   }
 
-  void _loadCachedClasses() {
-    final classes = ClassCacheService.getCachedClasses();
+  Future<void> _loadCachedClasses() async {
+    final classes = await ClassCacheService.getCachedClasses();
     if (mounted) {
       setState(() => _cachedClasses = classes);
     }

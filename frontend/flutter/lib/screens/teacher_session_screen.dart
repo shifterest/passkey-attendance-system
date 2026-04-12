@@ -188,9 +188,32 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
               ? TeacherStrings.nfcBroadcasting
               : TeacherStrings.nfcOff);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(TeacherStrings.sessionScreen),
+    return PopScope(
+      canPop: _isClosed,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text(TeacherStrings.sessionActive),
+            content: const Text(TeacherStrings.leaveSessionHint),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(TeacherStrings.stay),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(TeacherStrings.leave),
+              ),
+            ],
+          ),
+        );
+        if ((confirmed ?? false) && context.mounted) context.pop();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(TeacherStrings.sessionScreen),
         actions: [
           IconButton(
             tooltip: TeacherStrings.refresh,
@@ -476,6 +499,7 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }
