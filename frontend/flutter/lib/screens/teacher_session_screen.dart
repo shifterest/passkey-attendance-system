@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:passkey_attendance_system/services/ble_advertiser_service.dart';
 import 'package:passkey_attendance_system/services/nfc_hce_service.dart';
 import 'package:passkey_attendance_system/services/session_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
@@ -49,6 +50,7 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
     _bleRefreshTimer?.cancel();
     _recordRefreshTimer?.cancel();
     NfcHceService.stop();
+    BleAdvertiserService.stop();
     super.dispose();
   }
 
@@ -57,6 +59,10 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
       final data = await SessionApi.getBleToken(widget.sessionId);
       final token = data['ble_token'];
       if (token is String && mounted) {
+        if (_bleToken != null) {
+          await BleAdvertiserService.stop();
+        }
+        await BleAdvertiserService.startToken(token);
         setState(() => _bleToken = token);
       }
     } catch (_) {}
@@ -153,6 +159,7 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
     if (_isClosing) return;
     setState(() => _isClosing = true);
     try {
+      await BleAdvertiserService.stop();
       await SessionApi.closeSession(widget.sessionId);
       if (!mounted) return;
       setState(() => _isClosed = true);
@@ -214,292 +221,292 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(TeacherStrings.sessionScreen),
-        actions: [
-          IconButton(
-            tooltip: TeacherStrings.refresh,
-            onPressed: _isRefreshing
-                ? null
-                : () => _refreshAll(includeNfc: _nfcEnabled),
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => _refreshAll(includeNfc: _nfcEnabled),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          children: [
-            Card(
-              color: colorScheme.primaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.onPrimaryContainer.withValues(
-                              alpha: 0.1,
-                            ),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                color: sessionStatusColor,
-                                size: 10,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _isClosed
-                                    ? TeacherStrings.sessionClosedLabel
-                                    : TeacherStrings.sessionActive,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: colorScheme.onPrimaryContainer,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          _shortId(widget.sessionId),
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: colorScheme.onPrimaryContainer.withValues(
-                              alpha: 0.85,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      TeacherStrings.sessionSummaryTitle,
-                      style: AppTheme.variable(
-                        theme.textTheme.headlineSmall,
-                        weight: 700,
-                        width: 134,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      TeacherStrings.sessionSummaryBody,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.onPrimaryContainer.withValues(
-                          alpha: 0.9,
-                        ),
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _SessionMetricCard(
-                          label: TeacherStrings.checkedIn,
-                          value: '$_checkInCount',
-                          icon: Icons.people_alt_rounded,
-                        ),
-                        _SessionMetricCard(
-                          label: TeacherStrings.lastUpdated,
-                          value: _formatTimestamp(_lastUpdatedAt),
-                          icon: Icons.schedule_rounded,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _TokenPanel(
-              title: TeacherStrings.bleToken,
-              subtitle: TeacherStrings.bleBroadcasting,
-              statusLabel: bleStatus,
-              token: _bleToken,
-              fallbackLabel: TeacherStrings.tokenUnavailableHint,
-              onCopy: _bleToken == null ? null : () => _copyToken(_bleToken!),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                TeacherStrings.nfcEnabled,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                nfcStatus,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _nfcEnabled,
-                          onChanged: !NfcHceService.isSupported || _isClosed
-                              ? null
-                              : _toggleNfc,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _StatusPill(
-                      label: NfcHceService.isSupported
-                          ? nfcStatus
-                          : TeacherStrings.nfcNotSupported,
-                      color: NfcHceService.isSupported && _nfcEnabled
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.outline,
-                    ),
-                    if (_nfcEnabled) ...[
-                      const SizedBox(height: 12),
-                      _TokenPanel(
-                        title: TeacherStrings.nfcToken,
-                        subtitle: TeacherStrings.nfcBroadcasting,
-                        statusLabel: _nfcToken == null
-                            ? TeacherStrings.tokenWaiting
-                            : TeacherStrings.tokenReady,
-                        token: _nfcToken,
-                        fallbackLabel: TeacherStrings.tokenUnavailableHint,
-                        compact: true,
-                        onCopy: _nfcToken == null
-                            ? null
-                            : () => _copyToken(_nfcToken!),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      TeacherStrings.openRoster,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      TeacherStrings.viewRosterHint,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              context.push(
-                                '/teacher/session/${widget.sessionId}/roster',
-                              );
-                            },
-                            icon: const Icon(Icons.list_alt_rounded),
-                            label: const Text(TeacherStrings.openRoster),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _isRefreshing
-                                ? null
-                                : () => _refreshAll(includeNfc: _nfcEnabled),
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text(TeacherStrings.refresh),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      TeacherStrings.closeSession,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      TeacherStrings.closeSessionBody,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isClosed || _isClosing
-                            ? null
-                            : _closeSession,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colorScheme.error,
-                          foregroundColor: colorScheme.onError,
-                        ),
-                        icon: _isClosing
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.stop_circle_rounded),
-                        label: const Text(TeacherStrings.closeSession),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          actions: [
+            IconButton(
+              tooltip: TeacherStrings.refresh,
+              onPressed: _isRefreshing
+                  ? null
+                  : () => _refreshAll(includeNfc: _nfcEnabled),
+              icon: _isRefreshing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
             ),
           ],
         ),
+        body: RefreshIndicator(
+          onRefresh: () => _refreshAll(includeNfc: _nfcEnabled),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: [
+              Card(
+                color: colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.onPrimaryContainer.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  color: sessionStatusColor,
+                                  size: 10,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isClosed
+                                      ? TeacherStrings.sessionClosedLabel
+                                      : TeacherStrings.sessionActive,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: colorScheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            _shortId(widget.sessionId),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colorScheme.onPrimaryContainer.withValues(
+                                alpha: 0.85,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        TeacherStrings.sessionSummaryTitle,
+                        style: AppTheme.variable(
+                          theme.textTheme.headlineSmall,
+                          weight: 700,
+                          width: 134,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        TeacherStrings.sessionSummaryBody,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onPrimaryContainer.withValues(
+                            alpha: 0.9,
+                          ),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _SessionMetricCard(
+                            label: TeacherStrings.checkedIn,
+                            value: '$_checkInCount',
+                            icon: Icons.people_alt_rounded,
+                          ),
+                          _SessionMetricCard(
+                            label: TeacherStrings.lastUpdated,
+                            value: _formatTimestamp(_lastUpdatedAt),
+                            icon: Icons.schedule_rounded,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _TokenPanel(
+                title: TeacherStrings.bleToken,
+                subtitle: TeacherStrings.bleBroadcasting,
+                statusLabel: bleStatus,
+                token: _bleToken,
+                fallbackLabel: TeacherStrings.tokenUnavailableHint,
+                onCopy: _bleToken == null ? null : () => _copyToken(_bleToken!),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  TeacherStrings.nfcEnabled,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  nfcStatus,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _nfcEnabled,
+                            onChanged: !NfcHceService.isSupported || _isClosed
+                                ? null
+                                : _toggleNfc,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _StatusPill(
+                        label: NfcHceService.isSupported
+                            ? nfcStatus
+                            : TeacherStrings.nfcNotSupported,
+                        color: NfcHceService.isSupported && _nfcEnabled
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline,
+                      ),
+                      if (_nfcEnabled) ...[
+                        const SizedBox(height: 12),
+                        _TokenPanel(
+                          title: TeacherStrings.nfcToken,
+                          subtitle: TeacherStrings.nfcBroadcasting,
+                          statusLabel: _nfcToken == null
+                              ? TeacherStrings.tokenWaiting
+                              : TeacherStrings.tokenReady,
+                          token: _nfcToken,
+                          fallbackLabel: TeacherStrings.tokenUnavailableHint,
+                          compact: true,
+                          onCopy: _nfcToken == null
+                              ? null
+                              : () => _copyToken(_nfcToken!),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        TeacherStrings.openRoster,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        TeacherStrings.viewRosterHint,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                context.push(
+                                  '/teacher/session/${widget.sessionId}/roster',
+                                );
+                              },
+                              icon: const Icon(Icons.list_alt_rounded),
+                              label: const Text(TeacherStrings.openRoster),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _isRefreshing
+                                  ? null
+                                  : () => _refreshAll(includeNfc: _nfcEnabled),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text(TeacherStrings.refresh),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        TeacherStrings.closeSession,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        TeacherStrings.closeSessionBody,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _isClosed || _isClosing
+                              ? null
+                              : _closeSession,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.error,
+                            foregroundColor: colorScheme.onError,
+                          ),
+                          icon: _isClosing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.stop_circle_rounded),
+                          label: const Text(TeacherStrings.closeSession),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
     );
   }
 }

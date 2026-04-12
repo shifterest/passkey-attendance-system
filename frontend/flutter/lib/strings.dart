@@ -14,6 +14,7 @@ final class ApiPaths {
   static const String offlineSync = '/sessions/offline-sync';
   static String sessionsOpenTeacher() => '/sessions/open/teacher';
   static String teacherActiveSession() => '/sessions/active/teacher';
+  static String teacherClasses(String teacherId) => '/users/$teacherId/classes';
   static String sessionClose(String id) => '/sessions/$id/close';
   static String sessionBleToken(String id) => '/sessions/$id/ble-token';
   static String sessionNfcToken(String id) => '/sessions/$id/nfc-token';

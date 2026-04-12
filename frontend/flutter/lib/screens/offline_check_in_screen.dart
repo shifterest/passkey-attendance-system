@@ -29,6 +29,8 @@ class OfflineCheckInScreen extends StatefulWidget {
 }
 
 class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
+  static final _teacherServiceGuid =
+      Guid('0000fff0-0000-1000-8000-00805f9b34fb');
   bool _scanning = true;
   String? _sessionId;
   String? _nonce;
@@ -73,9 +75,18 @@ class _OfflineCheckInScreenState extends State<OfflineCheckInScreen> {
 
     FlutterBluePlus.scanResults.listen((results) {
       for (final r in results) {
-        final localName = r.advertisementData.advName;
-        if (localName.startsWith('pas_offline:')) {
-          final parts = localName.split(':');
+        final serviceData = r.advertisementData.serviceData;
+        List<int>? bytes;
+        for (final entry in serviceData.entries) {
+          if (entry.key == _teacherServiceGuid) {
+            bytes = entry.value;
+            break;
+          }
+        }
+        if (bytes == null || bytes.isEmpty) continue;
+        final payload = utf8.decode(bytes, allowMalformed: true).trim();
+        if (payload.startsWith('pas_offline:')) {
+          final parts = payload.split(':');
           if (parts.length == 3) {
             FlutterBluePlus.stopScan();
             _scanTimeout?.cancel();

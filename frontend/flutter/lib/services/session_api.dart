@@ -12,6 +12,18 @@ class SessionApi {
     return {'X-Session-Token': sessionToken};
   }
 
+  static Future<List<dynamic>> getTeacherClasses(String teacherId) async {
+    ApiClient client = ApiClient(Config.apiBaseUrl);
+    final headers = await _sessionHeaders();
+    dynamic response = await client.get(
+      ApiPaths.teacherClasses(teacherId),
+      {},
+      extraHeaders: headers,
+    );
+    if (response is List) return response;
+    throw Exception('Invalid response from server');
+  }
+
   static Future<Map<String, dynamic>> openTeacherSession(
     String teacherId,
   ) async {

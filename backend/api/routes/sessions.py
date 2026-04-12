@@ -116,8 +116,7 @@ def get_active_teacher_session(
 ):
     now = datetime.now(timezone.utc)
     teacher_class_ids = [
-        c.id
-        for c in db.query(Class).filter(Class.teacher_id == current_user.id).all()
+        c.id for c in db.query(Class).filter(Class.teacher_id == current_user.id).all()
     ]
     if not teacher_class_ids:
         raise HTTPException(

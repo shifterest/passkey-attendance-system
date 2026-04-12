@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -68,6 +69,8 @@ Future<bool> _showBluetoothDialog(BuildContext context) async {
 }
 
 class _AuthenticationScreenState extends State<AuthenticationScreen> {
+  static final _teacherServiceGuid =
+      Guid('0000fff0-0000-1000-8000-00805f9b34fb');
   bool _isAuthenticating = false;
   String _status = '';
   String? _error;
@@ -132,14 +135,21 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     final readingsByToken = <String, List<int>>{};
     final subscription = FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
-        final advName = result.advertisementData.advName;
-        if (advName.isEmpty) {
-          continue;
+        final serviceData = result.advertisementData.serviceData;
+        List<int>? bytes;
+        for (final entry in serviceData.entries) {
+          if (entry.key == _teacherServiceGuid) {
+            bytes = entry.value;
+            break;
+          }
         }
-        readingsByToken.putIfAbsent(advName, () => <int>[]).add(result.rssi);
+        if (bytes == null || bytes.isEmpty) continue;
+        final token = utf8.decode(bytes, allowMalformed: true).trim();
+        if (token.isEmpty) continue;
+        readingsByToken.putIfAbsent(token, () => <int>[]).add(result.rssi);
         if (strongestRssi == null || result.rssi > strongestRssi!) {
           strongestRssi = result.rssi;
-          bleToken = advName;
+          bleToken = token;
         }
       }
     });

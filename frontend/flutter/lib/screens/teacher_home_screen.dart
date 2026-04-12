@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:passkey_attendance_system/services/class_cache_service.dart';
 import 'package:passkey_attendance_system/services/session_actions.dart';
 import 'package:passkey_attendance_system/services/session_api.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
@@ -27,6 +28,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   void initState() {
     super.initState();
     _loadActiveSession();
+    _cacheTeacherClasses();
+  }
+
+  Future<void> _cacheTeacherClasses() async {
+    try {
+      final userId = await SessionStore.getUserId();
+      if (userId == null || userId.isEmpty) return;
+      final classes = await SessionApi.getTeacherClasses(userId);
+      for (final c in classes) {
+        final classId = c['id'] as String?;
+        final schedule = c['schedule'];
+        if (classId != null) {
+          await ClassCacheService.cacheClassData(classId, schedule, []);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadActiveSession() async {
@@ -44,14 +61,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         Permission.bluetoothScan,
       ].request();
       final denied = statuses.values.any(
-        (s) => s == PermissionStatus.denied || s == PermissionStatus.permanentlyDenied,
+        (s) =>
+            s == PermissionStatus.denied ||
+            s == PermissionStatus.permanentlyDenied,
       );
       if (denied) {
         if (!mounted) return;
-        await showErrorDialog(
-          context,
-          TeacherStrings.errorBlePermissions,
-        );
+        await showErrorDialog(context, TeacherStrings.errorBlePermissions);
         return;
       }
     }
@@ -220,9 +236,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   body: TeacherStrings.activeSessionHint,
                   action: FilledButton.icon(
                     onPressed: () async {
-                      await context.push(
-                        '/teacher/session/$_activeSessionId',
-                      );
+                      await context.push('/teacher/session/$_activeSessionId');
                       _loadActiveSession();
                     },
                     icon: const Icon(Icons.arrow_forward_rounded),

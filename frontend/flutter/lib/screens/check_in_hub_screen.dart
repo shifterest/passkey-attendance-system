@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -32,6 +33,8 @@ class CheckInHubScreen extends StatefulWidget {
 
 class _CheckInHubScreenState extends State<CheckInHubScreen>
     with SingleTickerProviderStateMixin {
+  static final _teacherServiceGuid =
+      Guid('0000fff0-0000-1000-8000-00805f9b34fb');
   late final Future<String?> _userIdFuture;
   String? _ongoingClass;
   Map<String, dynamic>? _lastCheckIn;
@@ -185,13 +188,20 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
       int? strongestRssi;
       String? strongestToken;
       for (final result in results) {
-        final advName = result.advertisementData.advName;
-        if (advName.isEmpty) {
-          continue;
+        final serviceData = result.advertisementData.serviceData;
+        List<int>? bytes;
+        for (final entry in serviceData.entries) {
+          if (entry.key == _teacherServiceGuid) {
+            bytes = entry.value;
+            break;
+          }
         }
+        if (bytes == null || bytes.isEmpty) continue;
+        final token = utf8.decode(bytes, allowMalformed: true).trim();
+        if (token.isEmpty) continue;
         if (strongestRssi == null || result.rssi > strongestRssi) {
           strongestRssi = result.rssi;
-          strongestToken = advName;
+          strongestToken = token;
         }
       }
       if (!mounted || strongestRssi == null || strongestToken == null) {

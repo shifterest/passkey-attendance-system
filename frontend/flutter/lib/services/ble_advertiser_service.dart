@@ -14,6 +14,17 @@ class BleAdvertiserService {
     }
   }
 
+  static Future<bool> startToken(String token) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('start', {
+        'payload': token,
+      });
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   static Future<void> stop() async {
     try {
       await _channel.invokeMethod<void>('stop');
