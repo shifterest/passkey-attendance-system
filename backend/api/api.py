@@ -1,9 +1,12 @@
 import logging
 import secrets
+import traceback
 from contextlib import asynccontextmanager
 
 import fastapi
 from database.migrations import ensure_database_schema
+from fastapi import Request
+from fastapi.responses import PlainTextResponse
 from starlette.middleware.cors import CORSMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -95,6 +98,17 @@ async def _lifespan(app: fastapi.FastAPI):
 
 
 app = fastapi.FastAPI(lifespan=_lifespan)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception on %s %s\n%s",
+        request.method,
+        request.url.path,
+        traceback.format_exc(),
+    )
+    return PlainTextResponse("Internal Server Error", status_code=500)
 
 
 if settings.trusted_proxy:
