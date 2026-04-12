@@ -62,6 +62,11 @@ import {
 } from "@/components/ui/field";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { NumberStepper } from "@/components/ui/number-stepper";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 
 const studentColumns: ColumnDef<UserExtendedDto>[] = [
 	{
@@ -350,7 +355,7 @@ export function EnrollmentCreateClient({
 				}
 			/>
 
-			<FieldGroup className="max-w-4xl px-4 lg:px-6">
+			<FieldGroup className="px-4 lg:px-6">
 				<Field orientation="horizontal">
 					<FieldContent>
 						<FieldLabel>Classes</FieldLabel>
@@ -358,7 +363,7 @@ export function EnrollmentCreateClient({
 							Select one or more classes for this enrollment batch.
 						</FieldDescription>
 					</FieldContent>
-					<div className="w-full space-y-2 md:max-w-2xl">
+					<div className="w-full space-y-2">
 						<Combobox multiple value={classIds} onValueChange={setClassIds}>
 							<ComboboxChips ref={chipsRef}>
 								{classIds.map((id) => {
@@ -385,13 +390,62 @@ export function EnrollmentCreateClient({
 				</Field>
 			</FieldGroup>
 
-			<FieldSeparator className="mx-4 max-w-4xl lg:mx-6" />
+			<FieldSeparator className="mx-4 lg:mx-6" />
 
 			<DataTableScaffold
 				toolbarStart={
 					<DataTableToolbar
 						table={table}
 						onSearch={(query) => setGlobalFilter(query)}
+						extraActions={
+							<Popover>
+								<PopoverTrigger render={<Button variant="outline" size="sm" />}>
+									Batch select
+								</PopoverTrigger>
+								<PopoverContent align="end" className="w-56">
+									<div className="flex flex-col gap-3">
+										<Field className="gap-1">
+											<FieldLabel
+												htmlFor="enrollment-block-size"
+												className="text-xs"
+											>
+												Block size
+											</FieldLabel>
+											<NumberStepper
+												id="enrollment-block-size"
+												value={blockSize}
+												onChange={setBlockSize}
+												min={1}
+												max={filteredData.length || 100}
+											/>
+										</Field>
+										<Field className="gap-1">
+											<FieldLabel
+												htmlFor="enrollment-offset"
+												className="text-xs"
+											>
+												Offset
+											</FieldLabel>
+											<NumberStepper
+												id="enrollment-offset"
+												value={offset}
+												onChange={setOffset}
+												min={0}
+												step={10}
+											/>
+										</Field>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={selectRange}
+										>
+											Select range
+										</Button>
+									</div>
+								</PopoverContent>
+							</Popover>
+						}
 						filters={
 							<DataTableFilterSheet
 								title="Student filters"
@@ -451,36 +505,6 @@ export function EnrollmentCreateClient({
 					}
 				/>
 			</DataTableScaffold>
-
-			<div className="flex flex-wrap items-end gap-4 px-4 lg:px-6">
-				<Field orientation="horizontal" className="gap-2">
-					<FieldLabel htmlFor="enrollment-block-size" className="text-xs">
-						Block size
-					</FieldLabel>
-					<NumberStepper
-						id="enrollment-block-size"
-						value={blockSize}
-						onChange={setBlockSize}
-						min={1}
-						max={filteredData.length || 100}
-					/>
-				</Field>
-				<Field orientation="horizontal" className="gap-2">
-					<FieldLabel htmlFor="enrollment-offset" className="text-xs">
-						Offset
-					</FieldLabel>
-					<NumberStepper
-						id="enrollment-offset"
-						value={offset}
-						onChange={setOffset}
-						min={0}
-						step={10}
-					/>
-				</Field>
-				<Button type="button" variant="outline" size="sm" onClick={selectRange}>
-					Select range
-				</Button>
-			</div>
 		</>
 	);
 }

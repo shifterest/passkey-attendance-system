@@ -48,7 +48,9 @@ import {
 	FieldSeparator,
 	FieldTitle,
 } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
 import { LoadingButton } from "@/components/ui/loading-button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
 	SelectContent,
@@ -58,6 +60,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { getSelectLabel } from "@/lib/select-label";
 
 type PolicyScope = "system" | "teacher" | "class";
@@ -174,21 +177,6 @@ function getAssuranceBand(score: number, values: PolicyFormValues) {
 	}
 
 	return "Low";
-}
-
-function getAttendanceStatus(
-	minutesSinceOpen: number,
-	values: PolicyFormValues,
-) {
-	if (minutesSinceOpen <= values.present_cutoff_minutes) {
-		return "Present";
-	}
-
-	if (minutesSinceOpen <= values.late_cutoff_minutes) {
-		return "Late";
-	}
-
-	return "Absent";
 }
 
 function getPolicyOwnerLabel(
@@ -436,20 +424,23 @@ function PolicyFormFields({
 }
 
 function PolicyPlayground({ values }: { values: PolicyFormValues }) {
-	const [score, setScore] = React.useState(
-		Math.min(values.standard_assurance_threshold, MAX_ASSURANCE_SCORE),
+	const [vouched, setVouched] = React.useState(false);
+	const [ble, setBle] = React.useState<"none" | "weak" | "medium" | "strong">(
+		"none",
 	);
-	const [minutes, setMinutes] = React.useState(values.present_cutoff_minutes);
+	const [gps, setGps] = React.useState(false);
+	const [network, setNetwork] = React.useState(false);
+	const [nfc, setNfc] = React.useState(false);
 
-	React.useEffect(() => {
-		setScore(
-			Math.min(values.standard_assurance_threshold, MAX_ASSURANCE_SCORE),
-		);
-		setMinutes(values.present_cutoff_minutes);
-	}, [values]);
+	const bleWeights = vouched
+		? { none: 0, weak: 2, medium: 4, strong: 7 }
+		: { none: 0, weak: 1, medium: 2, strong: 4 };
+	const gpsWeight = gps ? (vouched ? 3 : 1) : 0;
+	const networkWeight = network ? 2 : 0;
+	const nfcWeight = nfc ? 5 : 0;
+	const score = bleWeights[ble] + gpsWeight + networkWeight + nfcWeight;
 
 	const band = getAssuranceBand(score, values);
-	const attendanceStatus = getAttendanceStatus(minutes, values);
 	const reviewState =
 		band === "Low"
 			? "Teacher confirmation required"
@@ -464,42 +455,77 @@ function PolicyPlayground({ values }: { values: PolicyFormValues }) {
 					<div>
 						<div className="font-medium text-foreground">Policy playground</div>
 						<div className="mt-1 text-sm font-normal text-muted-foreground">
-							Preview how band thresholds and time windows behave before saving.
+							Toggle proximity signals to see how the assurance score and band
+							respond.
 						</div>
 					</div>
 				</AccordionTrigger>
 				<AccordionContent>
 					<div className="space-y-6">
-						<div className="grid gap-6 xl:grid-cols-2">
-							<PolicySliderField
-								title="Assurance score"
-								description="Try the effective score a check-in would receive after proximity and integrity weighting."
-								value={score}
-								min={0}
-								max={MAX_ASSURANCE_SCORE}
-								onChange={setScore}
-								formatValue={(value) => `${value}`}
-							/>
-							<PolicySliderField
-								title="Minutes since open"
-								description="Slide forward through the attendance window to see when present becomes late and absent."
-								value={minutes}
-								min={0}
-								max={MAX_WINDOW_MINUTES}
-								onChange={setMinutes}
-								formatValue={(value) => `${value} min`}
-							/>
+						<div className="grid gap-x-6 gap-y-4 xl:grid-cols-2">
+							<div className="flex items-center justify-between rounded-lg border p-3">
+								<Label htmlFor="pg-vouched">
+									Integrity vouch (Play Integrity)
+								</Label>
+								<Switch
+									id="pg-vouched"
+									checked={vouched}
+									onCheckedChange={setVouched}
+								/>
+							</div>
+							<div className="space-y-2 rounded-lg border p-3">
+								<Label>BLE proximity</Label>
+								<RadioGroup
+									value={ble}
+									onValueChange={(v) =>
+										setBle(v as "none" | "weak" | "medium" | "strong")
+									}
+									className="flex gap-4"
+								>
+									{(
+										[
+											["none", "None"],
+											["weak", "Weak"],
+											["medium", "Medium"],
+											["strong", "Strong"],
+										] as const
+									).map(([val, label]) => (
+										<div key={val} className="flex items-center gap-1.5">
+											<RadioGroupItem value={val} id={`pg-ble-${val}`} />
+											<Label htmlFor={`pg-ble-${val}`} className="font-normal">
+												{label}
+											</Label>
+										</div>
+									))}
+								</RadioGroup>
+							</div>
+							<div className="flex items-center justify-between rounded-lg border p-3">
+								<Label htmlFor="pg-gps">GPS</Label>
+								<Switch id="pg-gps" checked={gps} onCheckedChange={setGps} />
+							</div>
+							<div className="flex items-center justify-between rounded-lg border p-3">
+								<Label htmlFor="pg-network">School network</Label>
+								<Switch
+									id="pg-network"
+									checked={network}
+									onCheckedChange={setNetwork}
+								/>
+							</div>
+							<div className="flex items-center justify-between rounded-lg border p-3">
+								<Label htmlFor="pg-nfc">NFC tap</Label>
+								<Switch id="pg-nfc" checked={nfc} onCheckedChange={setNfc} />
+							</div>
 						</div>
 						<div className="grid gap-3 lg:grid-cols-3">
+							<PolicyMetric
+								label="Score"
+								value={`${score}`}
+								hint={`Sum of active proximity weights${vouched ? " (integrity vouched)" : " (no integrity vouch)"}.`}
+							/>
 							<PolicyMetric
 								label="Band"
 								value={band}
 								hint={`Standard begins at ${values.standard_assurance_threshold}; high begins at ${values.high_assurance_threshold}.`}
-							/>
-							<PolicyMetric
-								label="Attendance"
-								value={attendanceStatus}
-								hint={`Present until ${values.present_cutoff_minutes} min, late until ${values.late_cutoff_minutes} min.`}
 							/>
 							<PolicyMetric
 								label="Teacher action"
@@ -1118,68 +1144,72 @@ export function DataTablePolicies({
 					)}
 				</div>
 			</div>
-			<div className="space-y-4">
-				<div>
-					<h2 className="font-heading text-lg font-medium text-foreground">
-						{currentUser.role === "teacher"
-							? "Teacher default"
-							: "Teacher defaults"}
-					</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Teacher-owned baselines keep routine class policy consistent without
-						forcing every class to carry an override.
-					</p>
-				</div>
-				<div className="grid gap-4 xl:grid-cols-2">
-					{teacherPolicies.length > 0 ? (
-						teacherPolicies.map((policy) => (
-							<PolicyCard
-								key={policy.id}
-								policy={policy}
-								classMap={classMap}
-								teacherMap={teacherMap}
-								currentUser={currentUser}
-								onRefresh={onRefresh}
+			{currentUser.role === "teacher" && (
+				<div className="space-y-4">
+					<div>
+						<h2 className="font-heading text-lg font-medium text-foreground">
+							{currentUser.role === "teacher"
+								? "Teacher default"
+								: "Teacher defaults"}
+						</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Teacher-owned baselines keep routine class policy consistent
+							without forcing every class to carry an override.
+						</p>
+					</div>
+					<div className="grid gap-4 xl:grid-cols-2">
+						{teacherPolicies.length > 0 ? (
+							teacherPolicies.map((policy) => (
+								<PolicyCard
+									key={policy.id}
+									policy={policy}
+									classMap={classMap}
+									teacherMap={teacherMap}
+									currentUser={currentUser}
+									onRefresh={onRefresh}
+								/>
+							))
+						) : (
+							<PolicyEmptyState
+								title="No teacher defaults yet"
+								description="Teacher defaults are optional, but they keep repeated class policy changes from turning into manual override sprawl."
 							/>
-						))
-					) : (
-						<PolicyEmptyState
-							title="No teacher defaults yet"
-							description="Teacher defaults are optional, but they keep repeated class policy changes from turning into manual override sprawl."
-						/>
-					)}
+						)}
+					</div>
 				</div>
-			</div>
-			<div className="space-y-4">
-				<div>
-					<h2 className="font-heading text-lg font-medium text-foreground">
-						Class overrides
-					</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Use direct overrides only when one class truly needs a different
-						timing or assurance policy than its default fallback.
-					</p>
-				</div>
-				<div className="grid gap-4 xl:grid-cols-2">
-					{classPolicies.length > 0 ? (
-						classPolicies.map((policy) => (
-							<PolicyCard
-								key={policy.id}
-								policy={policy}
-								classMap={classMap}
-								teacherMap={teacherMap}
-								currentUser={currentUser}
-								onRefresh={onRefresh}
+			)}
+			{currentUser.role === "teacher" && (
+				<div className="space-y-4">
+					<div>
+						<h2 className="font-heading text-lg font-medium text-foreground">
+							Class overrides
+						</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Use direct overrides only when one class truly needs a different
+							timing or assurance policy than its default fallback.
+						</p>
+					</div>
+					<div className="grid gap-4 xl:grid-cols-2">
+						{classPolicies.length > 0 ? (
+							classPolicies.map((policy) => (
+								<PolicyCard
+									key={policy.id}
+									policy={policy}
+									classMap={classMap}
+									teacherMap={teacherMap}
+									currentUser={currentUser}
+									onRefresh={onRefresh}
+								/>
+							))
+						) : (
+							<PolicyEmptyState
+								title="No class overrides yet"
+								description="That is usually a healthy sign. Keep overrides rare and let the fallback chain do most of the work."
 							/>
-						))
-					) : (
-						<PolicyEmptyState
-							title="No class overrides yet"
-							description="That is usually a healthy sign. Keep overrides rare and let the fallback chain do most of the work."
-						/>
-					)}
+						)}
+					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	);
 }

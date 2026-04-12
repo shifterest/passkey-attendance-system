@@ -53,7 +53,7 @@ def get_class(
     return class_
 
 
-@router.post("", response_model=ClassResponse)
+@router.post("/", response_model=ClassResponse)
 def create_class(
     class_data: ClassCreate,
     db: Session = Depends(get_db),

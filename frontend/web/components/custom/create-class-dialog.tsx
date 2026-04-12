@@ -262,59 +262,63 @@ export function CreateClassDialog({
 				<div className="flex flex-col gap-3">
 					<FieldLabel>Schedule</FieldLabel>
 					{schedule.map((block, i) => (
-						<Card key={block.id} size="sm" className="relative">
-							{schedule.length > 1 && (
-								<Button
-									variant="ghost"
-									size="icon-xs"
-									className="absolute top-2 right-2"
-									onClick={() =>
-										setSchedule((p) => p.filter((_, j) => j !== i))
-									}
-								>
-									<IconX />
-								</Button>
+						<div key={block.id} className="flex flex-col gap-1">
+							{schedule.length > 1 && i > 0 && (
+								<div className="flex justify-end">
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() =>
+											setSchedule((p) => p.filter((_, j) => j !== i))
+										}
+									>
+										<IconX data-icon="inline-start" />
+										Remove
+									</Button>
+								</div>
 							)}
-							<CardContent className="flex flex-col gap-3 pt-4">
-								<div className="grid grid-cols-7 gap-1">
-									{DAYS.map((day) => (
-										<Button
-											key={day.key}
-											variant={
-												block.days.includes(day.key) ? "default" : "outline"
-											}
-											size="sm"
-											className="h-8 text-xs"
-											onClick={() => toggleDay(i, day.key)}
-										>
-											{day.label}
-										</Button>
-									))}
-								</div>
-								<div className="grid grid-cols-2 gap-2">
-									<Field>
-										<FieldLabel className="text-xs">Start</FieldLabel>
-										<Input
-											type="time"
-											value={block.start_time}
-											onChange={(e) =>
-												updateBlock(i, { start_time: e.target.value })
-											}
-										/>
-									</Field>
-									<Field>
-										<FieldLabel className="text-xs">End</FieldLabel>
-										<Input
-											type="time"
-											value={block.end_time}
-											onChange={(e) =>
-												updateBlock(i, { end_time: e.target.value })
-											}
-										/>
-									</Field>
-								</div>
-							</CardContent>
-						</Card>
+							<Card size="sm">
+								<CardContent className="flex flex-col gap-3">
+									<div className="grid grid-cols-7 gap-1">
+										{DAYS.map((day) => (
+											<Button
+												key={day.key}
+												variant={
+													block.days.includes(day.key) ? "default" : "outline"
+												}
+												size="sm"
+												className="h-8 text-xs"
+												onClick={() => toggleDay(i, day.key)}
+											>
+												{day.label}
+											</Button>
+										))}
+									</div>
+									<div className="grid grid-cols-2 gap-2">
+										<Field>
+											<FieldLabel className="text-xs">Start</FieldLabel>
+											<Input
+												type="time"
+												value={block.start_time}
+												onChange={(e) =>
+													updateBlock(i, { start_time: e.target.value })
+												}
+											/>
+										</Field>
+										<Field>
+											<FieldLabel className="text-xs">End</FieldLabel>
+											<Input
+												type="time"
+												value={block.end_time}
+												onChange={(e) =>
+													updateBlock(i, { end_time: e.target.value })
+												}
+											/>
+										</Field>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
 					))}
 					<Button
 						variant="outline"
