@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/secure_store.dart';
 import 'package:passkey_attendance_system/services/passkey.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
@@ -71,6 +72,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() {
       _status = RegistrationStrings.creatingPasskey;
     });
+
+    await SecureStore.deleteKey();
 
     final credentialJson = await passkey.register(
       optionsJson,

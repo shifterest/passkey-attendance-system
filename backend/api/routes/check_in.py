@@ -1,7 +1,7 @@
 import hashlib
 import ipaddress
-import json
 import logging
+import secrets
 import uuid
 from datetime import datetime, timezone
 
@@ -13,8 +13,6 @@ from api.helpers.assurance import (
     is_within_geofence,
     resolve_attendance_status,
 )
-from api.helpers.base64url import encode_base64url
-from api.helpers.credential import normalize_credential_id_base64url
 from api.helpers.device_payload import build_device_payload
 from api.helpers.membership import is_event_attendee
 from api.redis import redis_client
@@ -25,13 +23,11 @@ from api.schemas import (
     CheckInResponseBase,
     DeviceKeyMismatchDetail,
     DeviceSignatureFailureDetail,
-    SignCountAnomalyDetail,
 )
 from api.services.attestation_service import fetch_crl_status_by_serial
 from api.services.audit_service import log_audit_event
 from api.services.auth_service import (
     check_auth_rate_limit,
-    get_user_credential_for_assertion,
     issued_at_ms_now,
     load_issued_at_ms,
     verify_device_signature,
@@ -46,25 +42,19 @@ from database.models import (
     Class,
     ClassEnrollment,
     ClassPolicy,
+    Credential,
     Event,
     User,
 )
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from webauthn import (
-    generate_authentication_options,
-    options_to_json,
-    verify_authentication_response,
-)
-from webauthn.helpers.exceptions import WebAuthnException
-from webauthn.helpers.structs import UserVerificationRequirement
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/check-in", tags=["auth"])
 
 
-@router.post("/options")
-def check_in_options(
+@router.post("/initiate")
+def check_in_initiate(
     options_data: CheckInOptionsBase,
     request: Request,
     db: Session = Depends(get_db),
@@ -146,16 +136,23 @@ def check_in_options(
     if session.event_id:
         event = db.query(Event).filter(Event.id == session.event_id).first()
 
-    options = generate_authentication_options(
-        rp_id=settings.rp_id,
-        timeout=settings.challenge_timeout * 1000,
-        user_verification=UserVerificationRequirement.REQUIRED,
+    user_credential = (
+        db.query(Credential)
+        .filter(Credential.user_id == user.id)
+        .first()
     )
+    if user_credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.AUTH_NO_CREDENTIAL,
+        )
+
+    challenge = secrets.token_urlsafe(32)
     issued_at_ms = issued_at_ms_now()
 
     redis_client.set(
         f"check_in_challenge:{user.id}",
-        options.challenge,
+        challenge,
         ex=settings.challenge_timeout,
     )
     redis_client.set(
@@ -193,9 +190,12 @@ def check_in_options(
             ex=settings.challenge_timeout,
         )
 
-    options_json = json.loads(options_to_json(options))
-    options_json["session_id"] = session.id
-    options_json["issued_at_ms"] = issued_at_ms
+    result = {
+        "session_id": session.id,
+        "challenge": challenge,
+        "issued_at_ms": issued_at_ms,
+        "credential_id": user_credential.credential_id,
+    }
     if class_ is not None:
         effective_policy = (
             db.query(ClassPolicy)
@@ -211,22 +211,20 @@ def check_in_options(
             )
             .first()
         )
-        options_json["standard_assurance_threshold"] = (
+        result["standard_assurance_threshold"] = (
             effective_policy.standard_assurance_threshold
             if effective_policy
             else class_.standard_assurance_threshold
         )
-        options_json["high_assurance_threshold"] = (
+        result["high_assurance_threshold"] = (
             effective_policy.high_assurance_threshold
             if effective_policy
             else class_.high_assurance_threshold
         )
     elif event is not None:
-        options_json["standard_assurance_threshold"] = (
-            event.standard_assurance_threshold
-        )
-        options_json["high_assurance_threshold"] = event.high_assurance_threshold
-    return options_json
+        result["standard_assurance_threshold"] = event.standard_assurance_threshold
+        result["high_assurance_threshold"] = event.high_assurance_threshold
+    return result
 
 
 @router.post("/verify", response_model=AttendanceRecordResponse)
@@ -351,6 +349,9 @@ def check_in_verify(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=Messages.AUTH_NO_PENDING
         )
+    challenge = (
+        challenge_bytes.decode() if isinstance(challenge_bytes, bytes) else challenge_bytes
+    )
     issued_at_ms = load_issued_at_ms(issued_at_ms_key, Messages.AUTH_NO_PENDING)
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     if now_ms - issued_at_ms > settings.device_payload_max_age_ms:
@@ -359,11 +360,19 @@ def check_in_verify(
             detail=Messages.DEVICE_PAYLOAD_STALE,
         )
 
-    user_credential = get_user_credential_for_assertion(
-        user_id=user.id,
-        assertion_credential=response_data.credential,
-        db=db,
+    user_credential = (
+        db.query(Credential)
+        .filter(
+            Credential.user_id == user.id,
+            Credential.credential_id == response_data.credential_id,
+        )
+        .first()
     )
+    if user_credential is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.AUTH_CREDENTIAL_MISMATCH,
+        )
 
     if user_credential.attestation_crl_verified is False:
         raise HTTPException(
@@ -396,269 +405,224 @@ def check_in_verify(
                 )
             )
 
-    user_public_key = user_credential.public_key
-    user_sign_count = user_credential.sign_count
-
-    try:
-        if isinstance(challenge_bytes, bytes):
-            authentication_verification = verify_authentication_response(
-                credential=response_data.credential,
-                expected_challenge=challenge_bytes,
-                expected_origin=[settings.web_origin, settings.app_origin],
-                expected_rp_id=settings.rp_id,
-                credential_public_key=bytes.fromhex(user_public_key),
-                credential_current_sign_count=user_sign_count,
+    if session.class_id:
+        enrollment = (
+            db.query(ClassEnrollment.id)
+            .filter(ClassEnrollment.class_id == session.class_id)
+            .filter(ClassEnrollment.student_id == user.id)
+            .filter(
+                (ClassEnrollment.expires_at.is_(None))
+                | (ClassEnrollment.expires_at > datetime.now(timezone.utc))
             )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=Messages.INVALID_CHALLENGE_DATA,
-            )
-
-        if session.class_id:
-            enrollment = (
-                db.query(ClassEnrollment.id)
-                .filter(ClassEnrollment.class_id == session.class_id)
-                .filter(ClassEnrollment.student_id == user.id)
-                .filter(
-                    (ClassEnrollment.expires_at.is_(None))
-                    | (ClassEnrollment.expires_at > datetime.now(timezone.utc))
-                )
-                .first()
-            )
-            if enrollment is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
-                )
-
-        if response_data.device_public_key != user_credential.device_public_key:
-            log_audit_event(
-                AuditEvents.DEVICE_KEY_MISMATCH,
-                current_user.id,
-                user.id,
-                DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
-                db,
-            )
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
-            )
-
-        challenge = encode_base64url(challenge_bytes)
-        device_payload = build_device_payload(
-            flow=DeviceBindingFlow.CHECK_IN,
-            user_id=user.id,
-            session_id=response_data.session_id,
-            credential_id=normalize_credential_id_base64url(response_data.credential),
-            challenge=challenge,
-            issued_at_ms=issued_at_ms,
+            .first()
         )
-        try:
-            verify_device_signature(
-                device_public_key=user_credential.device_public_key,
-                device_signature=response_data.device_signature,
-                payload=device_payload,
+        if enrollment is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=Messages.AUTH_VERIFY_SESSION_NOT_FOUND,
             )
-        except HTTPException:
-            log_audit_event(
-                AuditEvents.DEVICE_SIGNATURE_FAILURE,
-                current_user.id,
-                user.id,
-                DeviceSignatureFailureDetail(
-                    credential_id=user_credential.id
-                ).model_dump(),
-                db,
-            )
-            db.commit()
-            raise
 
-        attempted_at = datetime.now(timezone.utc)
-        verification_methods = [
-            AttendanceRecordVerificationMethods.PASSKEY.value,
-            AttendanceRecordVerificationMethods.DEVICE.value,
+    if response_data.device_public_key != user_credential.device_public_key:
+        log_audit_event(
+            AuditEvents.DEVICE_KEY_MISMATCH,
+            current_user.id,
+            user.id,
+            DeviceKeyMismatchDetail(credential_id=user_credential.id).model_dump(),
+            db,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=Messages.DEVICE_PUBLIC_KEY_MISMATCH,
+        )
+
+    device_payload = build_device_payload(
+        flow=DeviceBindingFlow.CHECK_IN,
+        user_id=user.id,
+        session_id=response_data.session_id,
+        credential_id=response_data.credential_id,
+        challenge=challenge,
+        issued_at_ms=issued_at_ms,
+    )
+    try:
+        verify_device_signature(
+            device_public_key=user_credential.device_public_key,
+            device_signature=response_data.device_signature,
+            payload=device_payload,
+        )
+    except HTTPException:
+        log_audit_event(
+            AuditEvents.DEVICE_SIGNATURE_FAILURE,
+            current_user.id,
+            user.id,
+            DeviceSignatureFailureDetail(
+                credential_id=user_credential.id
+            ).model_dump(),
+            db,
+        )
+        db.commit()
+        raise
+
+    attempted_at = datetime.now(timezone.utc)
+    verification_methods = [
+        AttendanceRecordVerificationMethods.DEVICE.value,
+    ]
+    if response_data.bluetooth_rssi_readings:
+        readings = [
+            r for r in response_data.bluetooth_rssi_readings if -127 <= r <= 20
         ]
-        if response_data.bluetooth_rssi_readings:
-            readings = [
-                r for r in response_data.bluetooth_rssi_readings if -127 <= r <= 20
-            ]
-            if readings and response_data.ble_token is not None:
-                expected_token_raw = redis_client.getdel(
-                    f"check_in_ble_token:{user.id}:{session.id}"
+        if readings and response_data.ble_token is not None:
+            expected_token_raw = redis_client.getdel(
+                f"check_in_ble_token:{user.id}:{session.id}"
+            )
+            expected_ble_token = (
+                expected_token_raw.decode() if expected_token_raw else None
+            )
+            if (
+                expected_ble_token is not None
+                and response_data.ble_token == expected_ble_token
+            ):
+                avg_rssi = round(sum(readings) / len(readings))
+                verification_methods.append(
+                    f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:{avg_rssi}"
                 )
-                expected_ble_token = (
-                    expected_token_raw.decode() if expected_token_raw else None
-                )
-                if (
-                    expected_ble_token is not None
-                    and response_data.ble_token == expected_ble_token
-                ):
-                    avg_rssi = round(sum(readings) / len(readings))
-                    verification_methods.append(
-                        f"{AttendanceRecordVerificationMethods.BLUETOOTH.value}:{avg_rssi}"
-                    )
-                else:
-                    logger.warning(
-                        Logs.BLE_TOKEN_MISMATCH.format(
-                            user_id=user.id, session_id=session.id
-                        )
-                    )
-            elif readings:
+            else:
                 logger.warning(
                     Logs.BLE_TOKEN_MISMATCH.format(
                         user_id=user.id, session_id=session.id
                     )
                 )
-        if response_data.nfc_token is not None:
-            expected_nfc_raw = redis_client.getdel(
-                f"check_in_nfc_token:{user.id}:{session.id}"
+        elif readings:
+            logger.warning(
+                Logs.BLE_TOKEN_MISMATCH.format(
+                    user_id=user.id, session_id=session.id
+                )
             )
-            expected_nfc_token = expected_nfc_raw.decode() if expected_nfc_raw else None
-            if (
-                expected_nfc_token is not None
-                and response_data.nfc_token == expected_nfc_token
-            ):
-                verification_methods.append(
-                    AttendanceRecordVerificationMethods.NFC.value
-                )
-            else:
-                logger.warning(
-                    Logs.NFC_TOKEN_MISMATCH.format(
-                        user_id=user.id, session_id=session.id
-                    )
-                )
-        gps_is_mock = bool(response_data.gps_is_mock)
-        gps_in_geofence = None
+    if response_data.nfc_token is not None:
+        expected_nfc_raw = redis_client.getdel(
+            f"check_in_nfc_token:{user.id}:{session.id}"
+        )
+        expected_nfc_token = expected_nfc_raw.decode() if expected_nfc_raw else None
         if (
-            response_data.gps_latitude is not None
-            and response_data.gps_longitude is not None
-            and settings.school_lat is not None
-            and settings.school_lng is not None
+            expected_nfc_token is not None
+            and response_data.nfc_token == expected_nfc_token
         ):
-            gps_in_geofence = is_within_geofence(
-                response_data.gps_latitude,
-                response_data.gps_longitude,
-                settings.school_lat,
-                settings.school_lng,
-                settings.school_geofence_radius_m,
-            )
-            if gps_in_geofence:
-                verification_methods.append(
-                    AttendanceRecordVerificationMethods.GPS.value
-                )
-        play_integrity_enabled = (
-            settings.outbound_integrity_checks_enabled
-            and settings.play_integrity_enabled
-        )
-        integrity_vouched = play_integrity_enabled and has_valid_vouch(
-            user_credential.credential_id
-        )
-        if integrity_vouched:
             verification_methods.append(
-                AttendanceRecordVerificationMethods.PLAY_INTEGRITY.value
+                AttendanceRecordVerificationMethods.NFC.value
             )
-        network_anomaly = False
-        if settings.school_subnet_cidr:
-            network_ok_raw = redis_client.getdel(
-                f"check_in_network_ok:{user.id}:{session.id}"
-            )
-            if network_ok_raw in (b"1", "1"):
-                verification_methods.append(
-                    AttendanceRecordVerificationMethods.NETWORK.value
+        else:
+            logger.warning(
+                Logs.NFC_TOKEN_MISMATCH.format(
+                    user_id=user.id, session_id=session.id
                 )
-            else:
-                network_anomaly = True
-        assurance_score = assurance_score_from_verification_methods(
-            verification_methods,
-            integrity_vouched=integrity_vouched,
+            )
+    gps_is_mock = bool(response_data.gps_is_mock)
+    gps_in_geofence = None
+    if (
+        response_data.gps_latitude is not None
+        and response_data.gps_longitude is not None
+        and settings.school_lat is not None
+        and settings.school_lng is not None
+    ):
+        gps_in_geofence = is_within_geofence(
+            response_data.gps_latitude,
+            response_data.gps_longitude,
+            settings.school_lat,
+            settings.school_lng,
+            settings.school_geofence_radius_m,
         )
-        effective_standard = (
-            policy.standard_assurance_threshold
-            if policy
-            else event.standard_assurance_threshold
-            if event
-            else class_.standard_assurance_threshold
+        if gps_in_geofence:
+            verification_methods.append(
+                AttendanceRecordVerificationMethods.GPS.value
+            )
+    play_integrity_enabled = (
+        settings.outbound_integrity_checks_enabled
+        and settings.play_integrity_enabled
+    )
+    integrity_vouched = play_integrity_enabled and has_valid_vouch(
+        user_credential.credential_id
+    )
+    if integrity_vouched:
+        verification_methods.append(
+            AttendanceRecordVerificationMethods.PLAY_INTEGRITY.value
         )
-        effective_high = (
-            policy.high_assurance_threshold
-            if policy
-            else event.high_assurance_threshold
-            if event
-            else class_.high_assurance_threshold
+    network_anomaly = False
+    if settings.school_subnet_cidr:
+        network_ok_raw = redis_client.getdel(
+            f"check_in_network_ok:{user.id}:{session.id}"
         )
-        assurance_band = compute_assurance_band(
-            assurance_score, effective_standard, effective_high
-        )
-        attendance_status = resolve_attendance_status(
-            attempted_at=attempted_at,
-            session=session,
-        )
+        if network_ok_raw in (b"1", "1"):
+            verification_methods.append(
+                AttendanceRecordVerificationMethods.NETWORK.value
+            )
+        else:
+            network_anomaly = True
+    assurance_score = assurance_score_from_verification_methods(
+        verification_methods,
+        integrity_vouched=integrity_vouched,
+    )
+    effective_standard = (
+        policy.standard_assurance_threshold
+        if policy
+        else event.standard_assurance_threshold
+        if event
+        else class_.standard_assurance_threshold
+    )
+    effective_high = (
+        policy.high_assurance_threshold
+        if policy
+        else event.high_assurance_threshold
+        if event
+        else class_.high_assurance_threshold
+    )
+    assurance_band = compute_assurance_band(
+        assurance_score, effective_standard, effective_high
+    )
+    attendance_status = resolve_attendance_status(
+        attempted_at=attempted_at,
+        session=session,
+    )
 
-        user_credential.sign_count = authentication_verification.new_sign_count
-        if (
-            authentication_verification.new_sign_count > 0
-            and authentication_verification.new_sign_count <= user_sign_count
-        ):
-            user_credential.sign_count_anomaly = True
-            log_audit_event(
-                AuditEvents.SIGN_COUNT_ANOMALY,
-                current_user.id,
-                user.id,
-                SignCountAnomalyDetail(
-                    credential_id=user_credential.id,
-                    old_count=user_sign_count,
-                    new_count=authentication_verification.new_sign_count,
-                ).model_dump(),
-                db,
-            )
-        new_record = AttendanceRecord(
-            id=str(uuid.uuid4()),
-            session_id=response_data.session_id,
-            user_id=user.id,
-            timestamp=attempted_at,
-            is_flagged=False,
-            flag_reason=None,
-            verification_methods=verification_methods,
-            assurance_score=assurance_score,
-            assurance_band_recorded=assurance_band,
-            standard_threshold_recorded=effective_standard,
-            high_threshold_recorded=effective_high,
-            status=attendance_status.value,
-            gps_is_mock=gps_is_mock,
-            gps_in_geofence=gps_in_geofence,
-            network_anomaly=network_anomaly,
-            sync_pending=False,
+    new_record = AttendanceRecord(
+        id=str(uuid.uuid4()),
+        session_id=response_data.session_id,
+        user_id=user.id,
+        timestamp=attempted_at,
+        is_flagged=False,
+        flag_reason=None,
+        verification_methods=verification_methods,
+        assurance_score=assurance_score,
+        assurance_band_recorded=assurance_band,
+        standard_threshold_recorded=effective_standard,
+        high_threshold_recorded=effective_high,
+        status=attendance_status.value,
+        gps_is_mock=gps_is_mock,
+        gps_in_geofence=gps_in_geofence,
+        network_anomaly=network_anomaly,
+        sync_pending=False,
+    )
+    db.add(new_record)
+    log_audit_event(
+        AuditEvents.CHECK_IN_SUCCESS,
+        current_user.id,
+        new_record.id,
+        {"session_id": response_data.session_id, "assurance_band": assurance_band},
+        db,
+    )
+    db.commit()
+    db.refresh(new_record)
+    logger.info(
+        Logs.RECORD_ADDED.format(
+            full_name=user.full_name,
+            user_id=new_record.user_id,
+            record_id=new_record.id,
         )
-        db.add(new_record)
-        log_audit_event(
-            AuditEvents.CHECK_IN_SUCCESS,
-            current_user.id,
-            new_record.id,
-            {"session_id": response_data.session_id, "assurance_band": assurance_band},
-            db,
+    )
+    if x_idempotency_key:
+        redis_client.set(
+            f"checkin_idempotency:{user.id}:{x_idempotency_key}",
+            AttendanceRecordResponse.model_validate(new_record).model_dump_json(),
+            ex=settings.challenge_timeout,
         )
-        db.commit()
-        db.refresh(new_record)
-        logger.info(
-            Logs.RECORD_ADDED.format(
-                full_name=user.full_name,
-                user_id=new_record.user_id,
-                record_id=new_record.id,
-            )
-        )
-        if x_idempotency_key:
-            redis_client.set(
-                f"checkin_idempotency:{user.id}:{x_idempotency_key}",
-                AttendanceRecordResponse.model_validate(new_record).model_dump_json(),
-                ex=settings.challenge_timeout,
-            )
-        redis_client.set(sig_cache_key, "1", ex=settings.challenge_timeout)
-        return new_record
-    except WebAuthnException as e:
-        logger.error(Logs.AUTH_VERIFY_FAILED.format(error=str(e)))
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=Messages.AUTH_VERIFY_FAILED
-        )
-    except HTTPException:
-        raise
+    redis_client.set(sig_cache_key, "1", ex=settings.challenge_timeout)
+    return new_record

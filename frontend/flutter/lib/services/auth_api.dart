@@ -48,15 +48,15 @@ class AuthApi {
   }
 
   // Authentication
-  static Future<Map<String, dynamic>> checkInOptions(String userId) async {
+  static Future<Map<String, dynamic>> checkInInitiate(String userId) async {
     ApiClient client = ApiClient(Config.apiBaseUrl);
     final sessionHeaders = await _sessionHeaders();
 
-    dynamic authenticationOptions = await client.post(ApiPaths.checkInOptions, {
+    dynamic initiateResponse = await client.post(ApiPaths.checkInInitiate, {
       'user_id': userId,
     }, extraHeaders: sessionHeaders);
-    if (authenticationOptions is Map<String, dynamic>) {
-      return authenticationOptions;
+    if (initiateResponse is Map<String, dynamic>) {
+      return initiateResponse;
     } else {
       throw Exception('Invalid response from server');
     }

@@ -31,4 +31,24 @@ class SecureStore {
       return null;
     }
   }
+
+  static Future<Uint8List?> signPayloadWithBiometric(Uint8List payload) async {
+    try {
+      return await kotlinChannel.invokeMethod<Uint8List>(
+        'signPayloadWithBiometric',
+        payload,
+      );
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  static Future<bool> deleteKey() async {
+    try {
+      final result = await kotlinChannel.invokeMethod<bool>('deleteKey');
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    }
+  }
 }

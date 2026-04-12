@@ -50,7 +50,7 @@ class TestNfcSchema:
         obj = CheckInResponseBase(
             user_id="u-1",
             session_id="s-1",
-            credential={},
+            credential_id="cred-1",
             device_signature="sig",
             device_public_key="pub",
             nfc_token="tok123",
@@ -61,7 +61,7 @@ class TestNfcSchema:
         obj = CheckInResponseBase(
             user_id="u-1",
             session_id="s-1",
-            credential={},
+            credential_id="cred-1",
             device_signature="sig",
             device_public_key="pub",
         )

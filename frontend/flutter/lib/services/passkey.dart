@@ -144,7 +144,7 @@ Future<Map<String, String>> _createDeviceBinding({
   );
 
   final payloadBytes = utf8.encode(payload.toCanonicalJson());
-  final signatureBytes = await SecureStore.signPayload(
+  final signatureBytes = await SecureStore.signPayloadWithBiometric(
     Uint8List.fromList(payloadBytes),
   );
 
@@ -209,18 +209,17 @@ Future<Map<String, dynamic>> checkIn(
   String? nfcToken,
 }) async {
   try {
-    final authenticator = PasskeyAuthenticator();
-    final request = AuthenticateRequestType.fromJson(optionsJson);
+    final credentialId = optionsJson['credential_id'] as String?;
+    final challenge = optionsJson['challenge'] as String?;
+    final issuedAtMs = _extractIssuedAtMs(optionsJson);
 
-    final response = await authenticator.authenticate(request);
-    final credential = response.toJson();
     final deviceBinding = await _createDeviceBinding(
       flow: DeviceBindingFlow.checkIn,
       userId: userId,
       sessionId: sessionId,
-      credentialId: _extractCredentialId(credential),
-      challenge: _extractChallenge(optionsJson),
-      issuedAtMs: _extractIssuedAtMs(optionsJson),
+      credentialId: credentialId,
+      challenge: challenge,
+      issuedAtMs: issuedAtMs,
     );
 
     return {
@@ -233,7 +232,7 @@ Future<Map<String, dynamic>> checkIn(
       'gps_longitude': ?gpsLongitude,
       'gps_is_mock': ?gpsIsMock,
       'nfc_token': ?nfcToken,
-      'credential': credential,
+      'credential_id': credentialId,
       'device_signature': deviceBinding['device_signature'],
       'device_public_key': deviceBinding['device_public_key'],
     };
@@ -241,7 +240,7 @@ Future<Map<String, dynamic>> checkIn(
     if (_isCancellationError(e)) {
       throw const PasskeyAuthCancelledException();
     }
-    throw PasskeyAuthenticationException('Authentication error: $e');
+    throw PasskeyAuthenticationException('Check-in error: $e');
   }
 }
 

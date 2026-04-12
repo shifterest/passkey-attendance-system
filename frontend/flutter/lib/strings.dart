@@ -1,7 +1,7 @@
 final class ApiPaths {
   static const String registerOptions = '/auth/register/options';
   static const String registerVerify = '/auth/register/verify';
-  static const String checkInOptions = '/auth/check-in/options';
+  static const String checkInInitiate = '/auth/check-in/initiate';
   static const String checkInVerify = '/auth/check-in/verify';
   static const String loginOptions = '/auth/login/options';
   static const String loginVerify = '/auth/login/verify';
@@ -33,6 +33,7 @@ final class AuthStrings {
   static const String collectingNfc =
       'Tap NFC reader to submit proximity token...';
   static const String verifyingPasskey = 'Verifying passkey with server...';
+  static const String verifyingCheckIn = 'Verifying check-in with server...';
   static const String checkInSuccess = 'Check-in successful';
   static const String authErrorBody =
       'Something went wrong during authentication. Please try again.';

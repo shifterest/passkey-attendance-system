@@ -33,7 +33,7 @@ class OfflinePayloadService {
     );
 
     final payloadBytes = utf8.encode(payload.toCanonicalJson());
-    final signatureBytes = await SecureStore.signPayload(
+    final signatureBytes = await SecureStore.signPayloadWithBiometric(
       Uint8List.fromList(payloadBytes),
     );
 

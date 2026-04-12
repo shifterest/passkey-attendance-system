@@ -241,7 +241,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     if (widget.webLoginToken != null || widget.login) {
       optionsJson = await AuthApi.loginOptions(widget.userId);
     } else {
-      optionsJson = await AuthApi.checkInOptions(widget.userId);
+      optionsJson = await AuthApi.checkInInitiate(widget.userId);
     }
 
     Map<String, dynamic> credentialJson;
@@ -277,7 +277,9 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     }
 
     setState(() {
-      _status = AuthStrings.verifyingPasskey;
+      _status = (widget.webLoginToken != null || widget.login)
+          ? AuthStrings.verifyingPasskey
+          : AuthStrings.verifyingCheckIn;
     });
 
     if (widget.webLoginToken != null) {

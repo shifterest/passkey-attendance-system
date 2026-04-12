@@ -454,7 +454,7 @@ class CheckInResponseBase(BaseModel):
     gps_latitude: float | None = None
     gps_longitude: float | None = None
     gps_is_mock: bool | None = None
-    credential: dict
+    credential_id: str
     device_signature: str
     device_public_key: str
 
