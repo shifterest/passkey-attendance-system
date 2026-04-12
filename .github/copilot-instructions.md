@@ -18,6 +18,30 @@ Educational FIDO2 passkey attendance system with two-factor proximity and creden
 - Web lint: `cd frontend/web && pnpm biome check`
 - Flutter dev: `cd frontend/flutter && flutter run`
 
+## Deployment Wrap-Up
+
+- Treat deployment verification as a mandatory wrap-up step for each completed implementation batch or one-shot task unless the user explicitly says not to deploy yet.
+- Wrap-up must happen after the code batch is finished, not after every small intermediate edit.
+- Before final handoff, run the most relevant local validation for touched surfaces when possible: backend `uv run ruff check` and targeted `uv run pytest`; web `pnpm biome check` and targeted build/lint checks; Flutter relevant analyze/test/build checks when applicable.
+- If local validation is blocked by environment/tooling issues, say so clearly and continue with the remote deployment verification instead of pretending validation passed.
+- After a completed batch that changes deployed behavior, push the current branch to `origin` and sync the test deployment immediately.
+- Current test deployment target:
+  - SSH: `ssh -i "C:\Users\candy\Documents\Keys\key" ubuntu@152.69.213.52`
+  - Remote checkout: `/home/ubuntu/passkey-attendance-system`
+  - Active branch on test host: `vibed`
+- Remote deployment procedure:
+  - `cd /home/ubuntu/passkey-attendance-system`
+  - `git pull --ff-only origin vibed`
+  - Rebuild and redeploy affected services with Docker Compose
+  - Prefer `docker compose up -d --build --force-recreate ...` for changed services so stale containers are not reused
+  - For backend/web work, default to `docker compose up -d --build --force-recreate backend web`
+- Mandatory post-deploy verification on the test host:
+  - `docker compose ps`
+  - `curl -fsS http://localhost:8000/health`
+  - Check logs or running container contents when verifying a specific fix
+  - Confirm the deployed container actually contains the expected code when container reuse is suspicious
+- Final response for a completed batch should state what validation ran, whether deployment was synced, and whether remote health checks passed.
+
 ## Collaboration Workflow
 
 - All coding work, including boilerplate work (schema wiring, DTO alignment, repetitive refactors, straightforward endpoint/key renames), requires explicit user approval before implementation.

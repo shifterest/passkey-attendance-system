@@ -555,15 +555,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         icon: Icons.smartphone_rounded,
                         text: '${HomeStrings.deviceIdLabel}: $deviceIdLabel',
                       ),
-                      Text(
-                        HomeStrings.userId(userId),
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${HomeStrings.deviceIdLabel}: $deviceIdLabel',
-                        style: theme.textTheme.bodyMedium,
-                      ),
                       if (_lastCheckIn != null) ...[
                         const SizedBox(height: 10),
                         Text(

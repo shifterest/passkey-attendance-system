@@ -16,17 +16,19 @@ class StudentShell extends StatefulWidget {
 
 class _StudentShellState extends State<StudentShell> {
   late int _selectedIndex;
-  late final List<Widget> _pages;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _pages = [
-      HomeScreen(embedded: true, onOpenCheckIn: () => _selectTab(1)),
-      CheckInHubScreen(embedded: true, active: _selectedIndex == 1),
-      const AttendanceHistoryScreen(embedded: true),
-    ];
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   void _selectTab(int index) {
@@ -34,6 +36,11 @@ class _StudentShellState extends State<StudentShell> {
       return;
     }
     setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -41,12 +48,6 @@ class _StudentShellState extends State<StudentShell> {
     final theme = Theme.of(context);
     final immersive = _selectedIndex == 1;
     final isDark = immersive || theme.brightness == Brightness.dark;
-    final navBackground = immersive
-        ? const Color(0xFF0D1015)
-        : theme.colorScheme.surfaceContainer;
-    final navBorder = immersive
-        ? Colors.white.withValues(alpha: 0.08)
-        : theme.colorScheme.outlineVariant.withValues(alpha: 0.6);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
@@ -61,30 +62,23 @@ class _StudentShellState extends State<StudentShell> {
           ),
       child: Scaffold(
         backgroundColor: immersive ? Colors.black : theme.colorScheme.surface,
-        body: Stack(
-          fit: StackFit.expand,
-          children: List.generate(_pages.length, (index) {
-            final selected = _selectedIndex == index;
-            return IgnorePointer(
-              ignoring: !selected,
-              child: TickerMode(
-                enabled: selected,
-                child: AnimatedOpacity(
-                  opacity: selected ? 1 : 0,
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: KeyedSubtree(
-                    key: ValueKey(index),
-                    child: _pages[index],
-                  ),
-                ),
-              ),
-            );
-          }),
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          onPageChanged: (index) {
+            if (_selectedIndex != index) {
+              setState(() => _selectedIndex = index);
+            }
+          },
+          children: [
+            HomeScreen(embedded: true, onOpenCheckIn: () => _selectTab(1)),
+            CheckInHubScreen(embedded: true, active: _selectedIndex == 1),
+            const AttendanceHistoryScreen(embedded: true),
+          ],
         ),
         bottomNavigationBar: NavigationBarTheme(
           data: NavigationBarThemeData(
-            backgroundColor: Colors.transparent,
+            backgroundColor: immersive ? Colors.black : null,
             indicatorColor: immersive
                 ? Colors.white.withValues(alpha: 0.12)
                 : theme.colorScheme.primary.withValues(alpha: 0.12),
@@ -107,46 +101,26 @@ class _StudentShellState extends State<StudentShell> {
               );
             }),
           ),
-          child: Container(
-            color: immersive ? Colors.black : theme.colorScheme.surface,
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: navBackground,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: navBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: immersive ? 0.24 : 0.06,
-                    ),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: _selectTab,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.dashboard_outlined),
+                selectedIcon: Icon(Icons.dashboard_rounded),
+                label: HomeStrings.dashboardTab,
               ),
-              child: NavigationBar(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _selectTab,
-                destinations: const [
-                  NavigationDestination(
-                    icon: Icon(Icons.dashboard_outlined),
-                    selectedIcon: Icon(Icons.dashboard_rounded),
-                    label: HomeStrings.dashboardTab,
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.how_to_reg_outlined),
-                    selectedIcon: Icon(Icons.how_to_reg_rounded),
-                    label: HomeStrings.checkInTab,
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.history_outlined),
-                    selectedIcon: Icon(Icons.history_rounded),
-                    label: HomeStrings.historyTab,
-                  ),
-                ],
+              NavigationDestination(
+                icon: Icon(Icons.how_to_reg_outlined),
+                selectedIcon: Icon(Icons.how_to_reg_rounded),
+                label: HomeStrings.checkInTab,
               ),
-            ),
+              NavigationDestination(
+                icon: Icon(Icons.history_outlined),
+                selectedIcon: Icon(Icons.history_rounded),
+                label: HomeStrings.historyTab,
+              ),
+            ],
           ),
         ),
       ),
