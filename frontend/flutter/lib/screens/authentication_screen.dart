@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
-import 'package:passkey_attendance_system/services/passkey.dart';
+import 'package:passkey_attendance_system/services/passkey.dart'
+    show PasskeyAuthCancelledException;
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
@@ -68,6 +69,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
   }
 
   Future<void> _authenticate() async {
+    if (!mounted) return;
     setState(() {
       _status = AuthStrings.initiatingLogin;
     });
@@ -75,6 +77,7 @@ class _AuthenticationScreenState extends State<AuthenticationScreen> {
     final optionsJson = await AuthApi.loginOptions(widget.userId);
     final credentialJson = await passkey.login(optionsJson, widget.userId);
 
+    if (!mounted) return;
     setState(() {
       _status = AuthStrings.verifyingPasskey;
     });

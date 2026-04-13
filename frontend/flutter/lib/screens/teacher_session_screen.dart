@@ -7,8 +7,8 @@ import 'package:passkey_attendance_system/services/ble_advertiser_service.dart';
 import 'package:passkey_attendance_system/services/nfc_hce_service.dart';
 import 'package:passkey_attendance_system/services/session_api.dart';
 import 'package:passkey_attendance_system/strings.dart';
-import 'package:passkey_attendance_system/theme/app_theme.dart';
 import 'package:passkey_attendance_system/widgets/error_dialog.dart';
+import 'package:passkey_attendance_system/widgets/live_session_surface.dart';
 
 class TeacherSessionScreen extends StatefulWidget {
   const TeacherSessionScreen({super.key, required this.sessionId});
@@ -155,6 +155,51 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
     return '$hour:$minute $suffix';
   }
 
+  LiveSessionPhase get _livePhase {
+    if (_isClosed) {
+      return LiveSessionPhase.completed;
+    }
+    if (_bleToken == null) {
+      return LiveSessionPhase.preparing;
+    }
+    return LiveSessionPhase.active;
+  }
+
+  String get _phaseLabel {
+    return switch (_livePhase) {
+      LiveSessionPhase.idle => 'Idle',
+      LiveSessionPhase.preparing => 'Preparing',
+      LiveSessionPhase.active => 'Broadcasting',
+      LiveSessionPhase.reviewing => 'Reviewing',
+      LiveSessionPhase.completed => 'Closed',
+      LiveSessionPhase.error => 'Needs attention',
+    };
+  }
+
+  String get _nfcMetricLabel {
+    if (!NfcHceService.isSupported) {
+      return 'Unavailable';
+    }
+    return _nfcEnabled ? 'On' : 'Off';
+  }
+
+  String get _bleCapabilityBody {
+    if (_bleToken == null) {
+      return TeacherStrings.tokenUnavailableHint;
+    }
+    return TeacherStrings.sessionSummaryBody;
+  }
+
+  String get _nfcCapabilityBody {
+    if (!NfcHceService.isSupported) {
+      return TeacherStrings.nfcNotSupported;
+    }
+    if (_nfcEnabled) {
+      return TeacherStrings.nfcBroadcasting;
+    }
+    return TeacherStrings.nfcOff;
+  }
+
   Future<void> _closeSession() async {
     if (_isClosing) return;
     setState(() => _isClosing = true);
@@ -242,100 +287,89 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
-              Card(
-                color: colorScheme.primaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.onPrimaryContainer.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.circle,
-                                  color: sessionStatusColor,
-                                  size: 10,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _isClosed
-                                      ? TeacherStrings.sessionClosedLabel
-                                      : TeacherStrings.sessionActive,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: colorScheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            _shortId(widget.sessionId),
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: colorScheme.onPrimaryContainer.withValues(
-                                alpha: 0.85,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        TeacherStrings.sessionSummaryTitle,
-                        style: AppTheme.variable(
-                          theme.textTheme.headlineSmall,
-                          weight: 700,
-                          width: 134,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        TeacherStrings.sessionSummaryBody,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withValues(
-                            alpha: 0.9,
-                          ),
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          _SessionMetricCard(
-                            label: TeacherStrings.checkedIn,
-                            value: '$_checkInCount',
-                            icon: Icons.people_alt_rounded,
-                          ),
-                          _SessionMetricCard(
-                            label: TeacherStrings.lastUpdated,
-                            value: _formatTimestamp(_lastUpdatedAt),
-                            icon: Icons.schedule_rounded,
-                          ),
-                        ],
-                      ),
-                    ],
+              LiveSessionHeroCard(
+                phase: _livePhase,
+                phaseLabel: _phaseLabel,
+                title: TeacherStrings.sessionSummaryTitle,
+                body:
+                    '${TeacherStrings.sessionSummaryBody} ${TeacherStrings.sessionId}: ${_shortId(widget.sessionId)}',
+                backgroundColor: colorScheme.primaryContainer,
+                foregroundColor: colorScheme.onPrimaryContainer,
+                metrics: [
+                  LiveSessionMetricItem(
+                    label: TeacherStrings.checkedIn,
+                    value: '$_checkInCount',
+                    icon: Icons.people_alt_rounded,
                   ),
-                ),
+                  LiveSessionMetricItem(
+                    label: TeacherStrings.lastUpdated,
+                    value: _formatTimestamp(_lastUpdatedAt),
+                    icon: Icons.schedule_rounded,
+                  ),
+                  LiveSessionMetricItem(
+                    label: 'BLE',
+                    value: bleStatus,
+                    icon: Icons.bluetooth_searching_rounded,
+                  ),
+                  LiveSessionMetricItem(
+                    label: 'NFC',
+                    value: _nfcMetricLabel,
+                    icon: Icons.nfc_rounded,
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
+              LiveSessionSectionCard(
+                title: 'Broadcast readiness',
+                subtitle:
+                    'Students depend on the same session signals you host here. Keep BLE live, enable NFC when available, and move to roster review when submissions arrive.',
+                child: Column(
+                  children: [
+                    LiveSessionCapabilityTile(
+                      icon: Icons.bluetooth_searching_rounded,
+                      title: 'Bluetooth broadcast',
+                      body: _bleCapabilityBody,
+                      statusLabel: bleStatus,
+                      statusColor: _bleToken == null
+                          ? colorScheme.outline
+                          : colorScheme.primary,
+                    ),
+                    const SizedBox(height: 14),
+                    LiveSessionCapabilityTile(
+                      icon: Icons.nfc_rounded,
+                      title: 'NFC proximity',
+                      body: _nfcCapabilityBody,
+                      statusLabel: _nfcMetricLabel,
+                      statusColor: !NfcHceService.isSupported
+                          ? colorScheme.outline
+                          : (_nfcEnabled
+                                ? colorScheme.primary
+                                : const Color(0xFFCB6A00)),
+                    ),
+                    const SizedBox(height: 14),
+                    LiveSessionCapabilityTile(
+                      icon: Icons.fact_check_outlined,
+                      title: 'Live roster',
+                      body: TeacherStrings.viewRosterHint,
+                      statusLabel: '$_checkInCount',
+                      statusColor: sessionStatusColor,
+                      trailing: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            context.push(
+                              '/teacher/session/${widget.sessionId}/roster',
+                            );
+                          },
+                          icon: const Icon(Icons.list_alt_rounded),
+                          label: const Text(TeacherStrings.openRoster),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               _TokenPanel(
                 title: TeacherStrings.bleToken,
                 subtitle: TeacherStrings.bleBroadcasting,
@@ -506,55 +540,6 @@ class _TeacherSessionScreenState extends State<TeacherSessionScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SessionMetricCard extends StatelessWidget {
-  const _SessionMetricCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: 160,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onPrimaryContainer),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer.withValues(
-                alpha: 0.8,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

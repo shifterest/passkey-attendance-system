@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
+import 'package:passkey_attendance_system/services/passkey.dart'
+    show PasskeyRegistrationCancelledException;
 import 'package:passkey_attendance_system/services/secure_store.dart';
-import 'package:passkey_attendance_system/services/passkey.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/widgets/auth_scaffold.dart';
@@ -60,6 +61,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Future<bool> _register() async {
+    if (!mounted) return false;
     setState(() {
       _status = RegistrationStrings.initiating;
     });
@@ -69,6 +71,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       widget.registrationToken,
     );
 
+    if (!mounted) return false;
     setState(() {
       _status = RegistrationStrings.creatingPasskey;
     });
@@ -81,6 +84,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       widget.registrationToken,
     );
 
+    if (!mounted) return false;
     setState(() {
       _status = RegistrationStrings.verifyingPasskey;
     });

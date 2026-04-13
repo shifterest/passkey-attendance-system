@@ -102,7 +102,7 @@ Map<String, dynamic> _sanitizeRegisterOptions(
 
     final residentKey = selection['residentKey'];
     if (residentKey is! String || residentKey.isEmpty) {
-      selection['residentKey'] = 'preferred';
+      selection['residentKey'] = 'required';
     }
 
     final userVerification = selection['userVerification'];
@@ -251,19 +251,45 @@ Future<Map<String, dynamic>> login(
 ) async {
   try {
     final authenticator = PasskeyAuthenticator();
-    final request = AuthenticateRequestType.fromJson(optionsJson);
+    final request = AuthenticateRequestType.fromJson(
+      optionsJson,
+      preferImmediatelyAvailableCredentials: false,
+    );
 
     final response = await authenticator.authenticate(request);
     final credential = response.toJson();
 
-    return {
-      'user_id': userId,
-      'credential': credential,
-    };
+    return {'user_id': userId, 'credential': credential};
   } catch (e) {
     if (_isCancellationError(e)) {
       throw const PasskeyAuthCancelledException();
     }
+    if (_isNoCredentialsError(e)) {
+      return _loginWithoutAllowCredentials(optionsJson, userId);
+    }
     throw PasskeyAuthenticationException('Login error: $e');
   }
+}
+
+bool _isNoCredentialsError(Object error) {
+  return error is NoCredentialsAvailableException ||
+      error.toString().toLowerCase().contains('no credential');
+}
+
+Future<Map<String, dynamic>> _loginWithoutAllowCredentials(
+  Map<String, dynamic> optionsJson,
+  String? userId,
+) async {
+  final stripped = Map<String, dynamic>.from(optionsJson)
+    ..remove('allowCredentials');
+
+  final authenticator = PasskeyAuthenticator();
+  final request = AuthenticateRequestType.fromJson(
+    stripped,
+    preferImmediatelyAvailableCredentials: false,
+  );
+  final response = await authenticator.authenticate(request);
+  final credential = response.toJson();
+
+  return {'user_id': userId, 'credential': credential};
 }

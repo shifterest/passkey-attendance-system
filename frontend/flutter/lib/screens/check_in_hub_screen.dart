@@ -11,7 +11,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:passkey_attendance_system/services/auth_api.dart';
 import 'package:passkey_attendance_system/services/nfc_service.dart';
 import 'package:passkey_attendance_system/services/passkey.dart' as passkey;
-import 'package:passkey_attendance_system/services/passkey.dart';
+import 'package:passkey_attendance_system/services/passkey.dart'
+    show PasskeyAuthCancelledException;
 import 'package:passkey_attendance_system/services/play_integrity_service.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/services/student_api.dart';
@@ -19,6 +20,7 @@ import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/theme/app_theme.dart';
 import 'package:passkey_attendance_system/widgets/check_in_signal_shape.dart';
 import 'package:passkey_attendance_system/widgets/embedded_web_login_scanner.dart';
+import 'package:passkey_attendance_system/widgets/live_session_surface.dart';
 import 'package:passkey_attendance_system/widgets/student_account_action_button.dart';
 
 import 'offline_check_in_screen.dart';
@@ -302,6 +304,129 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
     return CheckInSignalVisualState.idle;
   }
 
+  LiveSessionPhase get _livePhase {
+    if (_checkInError != null) {
+      return LiveSessionPhase.error;
+    }
+    if (!_canCheckIn) {
+      return LiveSessionPhase.idle;
+    }
+    if (_isCheckingIn) {
+      return LiveSessionPhase.reviewing;
+    }
+    if (_hasFreshSuccess) {
+      return LiveSessionPhase.completed;
+    }
+    if (!_blePermissionGranted ||
+        !_bluetoothReady ||
+        _detectedBleToken == null) {
+      return LiveSessionPhase.preparing;
+    }
+    return LiveSessionPhase.active;
+  }
+
+  String get _phaseLabel {
+    return switch (_livePhase) {
+      LiveSessionPhase.idle => 'Idle',
+      LiveSessionPhase.preparing => 'Preparing',
+      LiveSessionPhase.active => 'Signal live',
+      LiveSessionPhase.reviewing => 'Submitting',
+      LiveSessionPhase.completed => 'Recorded',
+      LiveSessionPhase.error => 'Needs attention',
+    };
+  }
+
+  String get _sessionMetricLabel => _canCheckIn ? 'Live' : 'Waiting';
+
+  String get _bleMetricLabel {
+    if (!_blePermissionGranted) {
+      return 'Blocked';
+    }
+    if (!_bluetoothReady) {
+      return 'Off';
+    }
+    if (_detectedBleToken != null) {
+      return _signalLabel;
+    }
+    return 'Searching';
+  }
+
+  String get _nfcMetricLabel {
+    if (!NfcService.isSupported) {
+      return 'Unavailable';
+    }
+    return _nfcListening ? 'Ready' : 'Standby';
+  }
+
+  String get _bluetoothCapabilityBody {
+    if (!_canCheckIn) {
+      return CheckInStrings.normalDisabled;
+    }
+    if (!_blePermissionGranted) {
+      return CheckInStrings.bluetoothPermissionBody;
+    }
+    if (!_bluetoothReady) {
+      return CheckInStrings.bluetoothOffBody;
+    }
+    if (_detectedBleToken != null) {
+      return CheckInStrings.stageDetectedBody;
+    }
+    return CheckInStrings.stageReadyBody;
+  }
+
+  String get _nfcCapabilityBody {
+    if (!NfcService.isSupported) {
+      return HomeStrings.nfcInfoBody;
+    }
+    if (_nfcListening) {
+      return AuthStrings.collectingNfc;
+    }
+    return 'NFC tap will wake up automatically when a teacher token is available.';
+  }
+
+  String get _submissionCapabilityBody {
+    if (_hasFreshSuccess) {
+      return CheckInStrings.stageSuccessBody;
+    }
+    if (_isCheckingIn) {
+      return CheckInStrings.stageCheckingInBody;
+    }
+    return 'Passkey and device binding will be verified when you submit the current signal.';
+  }
+
+  Color get _bluetoothCapabilityColor {
+    if (!_blePermissionGranted) {
+      return const Color(0xFFFF5B57);
+    }
+    if (!_bluetoothReady) {
+      return const Color(0xFFF5A623);
+    }
+    if (_detectedBleToken != null) {
+      return const Color(0xFF35C66B);
+    }
+    return const Color(0xFF4E8DFF);
+  }
+
+  Color get _nfcCapabilityColor {
+    if (!NfcService.isSupported) {
+      return const Color(0xFF8A94A6);
+    }
+    return _nfcListening ? const Color(0xFF35C66B) : const Color(0xFF4E8DFF);
+  }
+
+  Color get _submissionCapabilityColor {
+    if (_checkInError != null) {
+      return const Color(0xFFFF5B57);
+    }
+    if (_hasFreshSuccess) {
+      return const Color(0xFF35C66B);
+    }
+    if (_isCheckingIn) {
+      return const Color(0xFFF5A623);
+    }
+    return Colors.white70;
+  }
+
   String get _signalLabel {
     final rssi = _strongestRssi;
     if (rssi == null) {
@@ -523,13 +648,18 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
 
   Future<void> _listenForNfc() async {
     while (_nfcListening && mounted) {
-      final token = await NfcService.readToken();
-      if (!_nfcListening || !mounted) break;
-      if (token != null && token.isNotEmpty) {
-        final userId = await SessionStore.getUserId();
-        if (userId != null && userId.isNotEmpty && _canCheckIn) {
-          await _performCheckIn(userId, nfcToken: token);
+      try {
+        final token = await NfcService.readToken();
+        if (!_nfcListening || !mounted) break;
+        if (token != null && token.isNotEmpty) {
+          final userId = await SessionStore.getUserId();
+          if (userId != null && userId.isNotEmpty && _canCheckIn) {
+            await _performCheckIn(userId, nfcToken: token);
+          }
         }
+      } catch (_) {
+        if (!_nfcListening || !mounted) break;
+        await Future<void>.delayed(const Duration(seconds: 2));
       }
     }
   }
@@ -594,95 +724,144 @@ class _CheckInHubScreenState extends State<CheckInHubScreen>
   }
 
   Widget _buildNormalTab(BuildContext context, String userId) {
-    final theme = Theme.of(context);
     final canTap =
         !_isCheckingIn &&
         (_hasFreshSuccess ||
             _detectedBleToken != null ||
             (_canCheckIn && _blePermissionGranted && !_bluetoothReady) ||
             (_canCheckIn && !_blePermissionGranted));
+    const surfaceColor = Color(0xFF0D0D0D);
 
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            HomeStrings.userId(userId),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.54),
-            ),
+      children: [
+        Text(
+          HomeStrings.userId(userId),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.white.withValues(alpha: 0.54),
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Center(
-              child: SizedBox(
-                width: double.infinity,
-                height: 352,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Center(
-                      child: CheckInSignalShape(
-                        visualState: _visualState,
-                        color: _stageColor,
-                        size: _stageSize,
-                        enabled: canTap,
-                        onTap: () => _handleShapeTap(userId),
-                      ),
-                    ),
-                    IgnorePointer(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _stageTitle,
-                              textAlign: TextAlign.center,
-                              style: AppTheme.variable(
-                                theme.textTheme.headlineSmall,
-                                weight: 700,
-                                width: 142,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (_detectedBleToken != null &&
-                                _strongestRssi != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                _signalLabel,
-                                textAlign: TextAlign.center,
-                                style: AppTheme.variable(
-                                  theme.textTheme.labelLarge,
-                                  weight: 620,
-                                  width: 110,
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+        ),
+        const SizedBox(height: 12),
+        LiveSessionHeroCard(
+          phase: _livePhase,
+          phaseLabel: _phaseLabel,
+          title: _stageTitle,
+          body: _stageBody,
+          backgroundColor: surfaceColor,
+          foregroundColor: Colors.white,
+          metrics: [
+            LiveSessionMetricItem(
+              label: 'Session',
+              value: _sessionMetricLabel,
+              icon: Icons.event_available_rounded,
+            ),
+            LiveSessionMetricItem(
+              label: 'BLE',
+              value: _bleMetricLabel,
+              icon: Icons.bluetooth_searching_rounded,
+            ),
+            LiveSessionMetricItem(
+              label: 'NFC',
+              value: _nfcMetricLabel,
+              icon: Icons.nfc_rounded,
+            ),
+          ],
+          visual: SizedBox(
+            width: double.infinity,
+            height: 300,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Center(
+                  child: CheckInSignalShape(
+                    visualState: _visualState,
+                    color: _stageColor,
+                    size: _stageSize,
+                    enabled: canTap,
+                    onTap: () => _handleShapeTap(userId),
+                  ),
                 ),
+                IgnorePointer(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _stageTitle,
+                          textAlign: TextAlign.center,
+                          style: AppTheme.variable(
+                            Theme.of(context).textTheme.headlineSmall,
+                            weight: 700,
+                            width: 142,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (_detectedBleToken != null &&
+                            _strongestRssi != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _signalLabel,
+                            textAlign: TextAlign.center,
+                            style: AppTheme.variable(
+                              Theme.of(context).textTheme.labelLarge,
+                              weight: 620,
+                              width: 110,
+                              color: Colors.white.withValues(alpha: 0.82),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        LiveSessionSectionCard(
+          title: 'Readiness',
+          subtitle: _canCheckIn
+              ? CheckInStrings.normalBody
+              : CheckInStrings.normalDisabled,
+          backgroundColor: surfaceColor,
+          foregroundColor: Colors.white,
+          child: Column(
+            children: [
+              LiveSessionCapabilityTile(
+                icon: Icons.bluetooth_searching_rounded,
+                title: 'Bluetooth',
+                body: _bluetoothCapabilityBody,
+                statusLabel: _bleMetricLabel,
+                statusColor: _bluetoothCapabilityColor,
+                foregroundColor: Colors.white,
               ),
-            ),
+              const SizedBox(height: 14),
+              LiveSessionCapabilityTile(
+                icon: Icons.nfc_rounded,
+                title: 'NFC tap',
+                body: _nfcCapabilityBody,
+                statusLabel: _nfcMetricLabel,
+                statusColor: _nfcCapabilityColor,
+                foregroundColor: Colors.white,
+              ),
+              const SizedBox(height: 14),
+              LiveSessionCapabilityTile(
+                icon: Icons.verified_user_outlined,
+                title: 'Submission',
+                body: _submissionCapabilityBody,
+                statusLabel: _hasFreshSuccess
+                    ? 'Recorded'
+                    : (_isCheckingIn ? 'Running' : 'Passkey'),
+                statusColor: _submissionCapabilityColor,
+                foregroundColor: Colors.white,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            _stageBody,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withValues(alpha: 0.72),
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

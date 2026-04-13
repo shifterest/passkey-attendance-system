@@ -7,6 +7,7 @@ import 'package:passkey_attendance_system/config/config.dart';
 import 'package:passkey_attendance_system/services/session_store.dart';
 import 'package:passkey_attendance_system/strings.dart';
 import 'package:passkey_attendance_system/theme/app_theme.dart';
+import 'package:passkey_attendance_system/widgets/managed_mobile_scanner.dart';
 
 class EmbeddedWebLoginScanner extends StatefulWidget {
   const EmbeddedWebLoginScanner({
@@ -24,7 +25,6 @@ class EmbeddedWebLoginScanner extends StatefulWidget {
 }
 
 class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
-  bool _isBusy = false;
   final MobileScannerController _controller = MobileScannerController(
     torchEnabled: false,
   );
@@ -36,8 +36,6 @@ class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
   }
 
   Future<void> _handleDetect(BarcodeCapture result) async {
-    if (_isBusy) return;
-    _isBusy = true;
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -72,6 +70,7 @@ class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
         return;
       }
 
+      await _controller.stop();
       if (!mounted) return;
       router.push(
         '/authenticate?user_id=${Uri.encodeComponent(userId)}&web_login_token=${Uri.encodeComponent(token)}',
@@ -81,8 +80,6 @@ class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
       messenger.showSnackBar(
         const SnackBar(content: Text(QrStrings.errorUnexpectedFailure)),
       );
-    } finally {
-      _isBusy = false;
     }
   }
 
@@ -110,7 +107,7 @@ class _EmbeddedWebLoginScannerState extends State<EmbeddedWebLoginScanner> {
         borderRadius: BorderRadius.circular(28),
         child: SizedBox.square(
           dimension: dimension,
-          child: MobileScanner(
+          child: ManagedMobileScanner(
             controller: _controller,
             fit: BoxFit.cover,
             onDetect: _handleDetect,

@@ -73,10 +73,10 @@ class BottomHeavyState extends StatelessWidget {
                   ),
                 ],
                 const Spacer(flex: 2),
-                if (primaryAction != null) primaryAction!,
+                ?primaryAction,
                 if (primaryAction != null && secondaryAction != null)
                   const SizedBox(height: 12),
-                if (secondaryAction != null) secondaryAction!,
+                ?secondaryAction,
               ],
             ),
           ),

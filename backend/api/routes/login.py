@@ -61,9 +61,7 @@ def login_options(options_data: LoginOptionsBase, db: Session = Depends(get_db))
             status_code=status.HTTP_404_NOT_FOUND, detail=Messages.USER_NOT_FOUND
         )
 
-    user_credentials = (
-        db.query(Credential).filter(Credential.user_id == user.id).all()
-    )
+    user_credentials = db.query(Credential).filter(Credential.user_id == user.id).all()
     if not user_credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

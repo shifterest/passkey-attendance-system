@@ -154,11 +154,7 @@ class _CheckInSignalShapeState extends State<CheckInSignalShape>
       return _toShape.toPath();
     }
     final t = Curves.easeOutCubic.transform(_morphController.value);
-    return morph.toPath(
-      progress: t,
-      rotationPivotX: 0.5,
-      rotationPivotY: 0.5,
-    );
+    return morph.toPath(progress: t, rotationPivotX: 0.5, rotationPivotY: 0.5);
   }
 
   @override
@@ -225,8 +221,7 @@ class _MorphShapePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final matrix = Matrix4.identity()
-      ..scale(size.width, size.height);
+    final matrix = Matrix4.diagonal3Values(size.width, size.height, 1);
     final scaled = path.transform(matrix.storage);
 
     final shadowPaint = Paint()
@@ -238,8 +233,7 @@ class _MorphShapePainter extends CustomPainter {
     canvas.restore();
 
     final rect = Offset.zero & size;
-    final fillPaint = Paint()
-      ..shader = gradient.createShader(rect);
+    final fillPaint = Paint()..shader = gradient.createShader(rect);
     canvas.drawPath(scaled, fillPaint);
   }
 

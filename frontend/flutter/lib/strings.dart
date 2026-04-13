@@ -256,9 +256,19 @@ final class TeacherStrings {
 final class OfflineStrings {
   static const String studentTitle = 'Offline Check-In';
   static const String scanningForTeacher = 'Scanning for teacher device...';
+  static const String scanningTitle = 'Looking for offline session';
+  static const String scanningBody =
+      'Move closer to the teacher device until the offline session broadcast is detected.';
   static const String noTeacherFound = 'No teacher device found';
+  static const String noTeacherFoundBody =
+      'If the teacher already started offline attendance, move closer and retry the signal search.';
   static const String retryScan = 'Retry Scan';
   static const String sessionFound = 'Session found';
+  static const String sessionFoundBody =
+      'Generate a short-lived QR payload and present it to your teacher for scanning.';
+  static const String qrReadyTitle = 'QR ready to present';
+  static const String qrReadyBody =
+      'Keep this code visible until your teacher scans it. A fresh payload will be generated automatically when it expires.';
   static const String sessionId = 'Session';
   static const String generateQr = 'Generate QR Code';
   static const String showQrToTeacher = 'Show this QR to your teacher';
@@ -275,11 +285,32 @@ final class OfflineStrings {
   static const String chooseClass = 'Choose a class';
   static const String startOfflineSession = 'Start Offline Session';
   static const String advertising = 'Broadcasting...';
+  static const String hostTitle = 'Host offline attendance';
+  static const String hostBody =
+      'Choose a cached class, broadcast a short-lived nonce, then switch to scanning student QR payloads.';
+  static const String hostReady = 'Ready to broadcast';
+  static const String hostWaiting =
+      'Select a cached class to begin hosting the offline flow.';
+  static const String hostActiveBody =
+      'Keep this phone visible while students generate QR payloads from your broadcast.';
   static const String scanStudents = 'Scan Students';
   static const String stopAdvertising = 'Stop Broadcasting';
   static const String back = 'Back';
   static const String errorStartingBle = 'Failed to start BLE advertising';
   static const String scannerTitle = 'Scan Student QR';
+  static const String scannerBody =
+      'Scan student offline QR payloads, review the queue, then submit the batch to the server.';
+  static const String scannerReadyTitle = 'Scanner active';
+  static const String scannerReadyBody =
+      'Keep scanning until everyone is queued, then submit the batch once the roster looks complete.';
+  static const String scannerPausedTitle = 'Sync in progress';
+  static const String scannerPausedBody =
+      'Scanning pauses while the current batch is being submitted to prevent duplicate captures.';
+  static const String reviewQueueTitle = 'Review queued students';
+  static const String reviewQueueBody =
+      'Each accepted QR must match this session nonce, be fresh, and avoid duplicate user IDs.';
+  static const String scannerSessionLabel = 'Offline session';
+  static const String scannerQueueEmpty = 'No student payloads queued yet';
   static const String scanned = 'Scanned';
   static const String scannedStudents = 'Scanned students';
   static const String submitSync = 'Submit to Server';
@@ -339,6 +370,9 @@ final class HistoryStrings {
   static const String subtitle = 'Review recent attendance results.';
   static const String noRecords = 'No attendance records yet';
   static const String notLoggedIn = 'Not logged in';
+  static const String detailsTitle = 'Attendance details';
+  static const String detailsBody =
+      'Review the recorded score, signals, and any anomalies for this check-in.';
   static const String score = 'Score';
   static const String bandHigh = 'High';
   static const String bandStandard = 'Standard';
@@ -379,4 +413,5 @@ final class DashboardStrings {
   static const String signCountAnomaly = 'Sign count anomaly';
   static const String syncPending = 'Sync pending';
   static const String manuallyApproved = 'Manually approved';
+  static const String queuedForReview = 'Needs review';
 }
